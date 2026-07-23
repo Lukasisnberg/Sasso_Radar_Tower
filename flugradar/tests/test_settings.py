@@ -83,3 +83,68 @@ class TestPortalSettings:
         s.save_portal_settings({"home_lat": 52.52, "radius_km": 200})
         assert s.home.lat == pytest.approx(52.52)
         assert s.home.radius_km == 200.0
+
+
+class TestLiveReload:
+    def test_no_change_returns_false(self, monkeypatch, tmp_path):
+        portal_file = tmp_path / "settings.json"
+        portal_file.write_text(json.dumps({"theme": "dark"}))
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
+        s = AppSettings()
+        assert s.check_portal_reload() is False
+
+    def test_file_change_returns_true(self, monkeypatch, tmp_path):
+        portal_file = tmp_path / "settings.json"
+        portal_file.write_text(json.dumps({"theme": "dark"}))
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
+        s = AppSettings()
+
+        os.utime(portal_file, (0, 0))
+        portal_file.write_text(json.dumps({"theme": "amber"}))
+        assert s.check_portal_reload() is True
+        assert s.theme == "amber"
+
+    def test_reload_applies_new_values(self, monkeypatch, tmp_path):
+        portal_file = tmp_path / "settings.json"
+        portal_file.write_text(json.dumps({"home_lat": 48.0, "radius_km": 50}))
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
+        s = AppSettings()
+        assert s.home.lat == pytest.approx(48.0)
+
+        os.utime(portal_file, (0, 0))
+        portal_file.write_text(json.dumps({"home_lat": 52.0, "radius_km": 200}))
+        s.check_portal_reload()
+        assert s.home.lat == pytest.approx(52.0)
+        assert s.home.radius_km == 200.0
+
+    def test_reload_env_still_wins(self, monkeypatch, tmp_path):
+        portal_file = tmp_path / "settings.json"
+        portal_file.write_text(json.dumps({"home_lat": 48.0}))
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
+        monkeypatch.setenv("FLUGRADAR_HOME_LAT", "52.0")
+        s = AppSettings()
+        assert s.home.lat == pytest.approx(52.0)
+
+        os.utime(portal_file, (0, 0))
+        portal_file.write_text(json.dumps({"home_lat": 40.0}))
+        s.check_portal_reload()
+        assert s.home.lat == pytest.approx(52.0)
+
+    def test_reload_missing_file(self, monkeypatch, tmp_path):
+        portal_file = tmp_path / "settings.json"
+        portal_file.write_text(json.dumps({"theme": "amber"}))
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
+        s = AppSettings()
+        assert s.theme == "amber"
+
+        portal_file.unlink()
+        assert s.check_portal_reload() is True
+        assert s.theme == "dark"
+
+    def test_no_reload_when_mtime_unchanged(self, monkeypatch, tmp_path):
+        portal_file = tmp_path / "settings.json"
+        portal_file.write_text(json.dumps({"theme": "dark"}))
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
+        s = AppSettings()
+        assert s.check_portal_reload() is False
+        assert s.check_portal_reload() is False

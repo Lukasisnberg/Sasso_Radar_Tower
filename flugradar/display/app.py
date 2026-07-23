@@ -60,6 +60,7 @@ class RadarApp:
         self._weather_client: WeatherClient | None = None
         self._enrichment_client: EnrichmentClient | None = None
         self._last_interaction: float = 0.0
+        self._last_reload_check: float = 0.0
 
     def run(self) -> None:
         pygame.init()
@@ -154,6 +155,14 @@ class RadarApp:
 
                 now = time.monotonic()
 
+                if now - self._last_reload_check >= 2.0:
+                    self._last_reload_check = now
+                    if self.settings.check_portal_reload():
+                        self._apply_live_settings(
+                            proj, radar, detail, clock_scr, about,
+                            settings_scr, map_comp,
+                        )
+
                 if (
                     self.settings.auto_clock_s > 0
                     and self._active != ActiveScreen.CLOCK
@@ -219,6 +228,33 @@ class RadarApp:
             if map_comp:
                 map_comp.tiles.close()
             pygame.quit()
+
+    def _apply_live_settings(
+        self, proj, radar, detail, clock_scr, about, settings_scr, map_comp,
+    ) -> None:
+        """Hot-apply changed portal settings without restarting."""
+        theme = THEMES.get(self.settings.theme, THEMES["dark"])
+        radar.update_theme(theme)
+        radar.update_unit(self.settings.distance_unit)
+        detail.theme = theme
+        detail.distance_unit = self.settings.distance_unit
+        clock_scr.theme = theme
+        about.theme = theme
+        settings_scr.theme = theme
+
+        proj.home_lat = self.settings.home.lat
+        proj.home_lon = self.settings.home.lon
+        proj.radius_km = self.settings.home.radius_km
+
+        if map_comp:
+            map_comp.invalidate()
+
+        log.debug(
+            "Live-reload: theme=%s unit=%s home=%.4f,%.4f radius=%.0f",
+            self.settings.theme, self.settings.distance_unit,
+            self.settings.home.lat, self.settings.home.lon,
+            self.settings.home.radius_km,
+        )
 
     def _draw_attribution(self, surface: pygame.Surface, text: str) -> None:
         font = pygame.font.SysFont("sans", 11)

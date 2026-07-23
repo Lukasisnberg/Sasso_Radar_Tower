@@ -4,6 +4,7 @@ import json
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Optional
 
 _SETTINGS_DIR = Path(os.environ.get(
     "FLUGRADAR_DATA_DIR",
@@ -40,9 +41,12 @@ class AppSettings:
     tomorrow_api_key: str = ""
     airlabs_api_key: str = ""
 
+    _portal_mtime: Optional[float] = field(default=None, repr=False)
+
     def __post_init__(self) -> None:
         self._apply_portal_settings()
         self._apply_env()
+        self._portal_mtime = self._get_portal_mtime()
 
     def _apply_env(self) -> None:
         if v := os.environ.get("FLUGRADAR_HOME_LAT"):
@@ -92,6 +96,44 @@ class AppSettings:
             self.min_altitude_ft = int(data["min_altitude_ft"])
         if "auto_clock_s" in data:
             self.auto_clock_s = int(data["auto_clock_s"])
+
+    def _get_portal_mtime(self) -> Optional[float]:
+        try:
+            return PORTAL_SETTINGS_FILE.stat().st_mtime
+        except OSError:
+            return None
+
+    def check_portal_reload(self) -> bool:
+        """Re-read portal settings if the file changed. Returns True if reloaded."""
+        mtime = self._get_portal_mtime()
+        if mtime == self._portal_mtime:
+            return False
+        self._portal_mtime = mtime
+        old_theme = self.theme
+        old_unit = self.distance_unit
+        old_lat = self.home.lat
+        old_lon = self.home.lon
+        old_radius = self.home.radius_km
+        old_min_alt = self.min_altitude_ft
+        old_auto_clock = self.auto_clock_s
+
+        self.home = HomeLocation()
+        self.distance_unit = "km"
+        self.theme = "dark"
+        self.min_altitude_ft = 0
+        self.auto_clock_s = 300
+        self._apply_portal_settings()
+        self._apply_env()
+
+        return (
+            self.theme != old_theme
+            or self.distance_unit != old_unit
+            or self.home.lat != old_lat
+            or self.home.lon != old_lon
+            or self.home.radius_km != old_radius
+            or self.min_altitude_ft != old_min_alt
+            or self.auto_clock_s != old_auto_clock
+        )
 
     def save_portal_settings(self, updates: dict) -> None:
         _SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
