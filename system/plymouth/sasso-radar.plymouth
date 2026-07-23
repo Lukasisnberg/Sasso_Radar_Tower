@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=Sasso Radar Tower
+Description=Boot splash for the Sasso Radar Tower flight radar
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/sasso-radar
+ScriptFile=/usr/share/plymouth/themes/sasso-radar/sasso-radar.script

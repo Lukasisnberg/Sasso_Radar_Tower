@@ -1,0 +1,17 @@
+[Unit]
+Description=Sasso Radar Tower — Web Portal
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+EnvironmentFile=-/home/pi/.env
+ExecStart=/home/pi/sasso-radar-tower/.venv/bin/flugradar-web --host 0.0.0.0 --port 5000
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

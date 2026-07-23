@@ -1,0 +1,19 @@
+[Unit]
+Description=Sasso Radar Tower — Display
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+Environment=DISPLAY=:0
+Environment=SDL_VIDEODRIVER=kmsdrm
+EnvironmentFile=-/home/pi/.env
+ExecStart=/home/pi/sasso-radar-tower/.venv/bin/flugradar-display --size 720
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=graphical.target
