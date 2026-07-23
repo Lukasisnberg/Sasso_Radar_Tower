@@ -4,8 +4,6 @@ set -euo pipefail
 # Sasso Radar Tower — Raspberry Pi install script
 # Run as root:  sudo bash install.sh
 
-INSTALL_DIR="/home/pi/sasso-radar-tower"
-VENV_DIR="${INSTALL_DIR}/.venv"
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 info()  { echo -e "\033[0;32m[SRT]\033[0m $*"; }
@@ -18,7 +16,21 @@ if [[ $EUID -ne 0 ]]; then
     exit 1
 fi
 
-info "Installing Sasso Radar Tower..."
+# Determine the real user who invoked sudo
+if [[ -n "${SUDO_USER:-}" && "${SUDO_USER}" != "root" ]]; then
+    SRT_USER="${SUDO_USER}"
+else
+    error "Cannot determine target user. Run this script with: sudo bash install.sh"
+    error "(Do not run as root directly — sudo is required to identify the user.)"
+    exit 1
+fi
+
+SRT_HOME="$(eval echo "~${SRT_USER}")"
+INSTALL_DIR="${SRT_HOME}/sasso-radar-tower"
+VENV_DIR="${INSTALL_DIR}/.venv"
+ENV_FILE="${SRT_HOME}/.env"
+
+info "Installing Sasso Radar Tower for user '${SRT_USER}' (${SRT_HOME})..."
 
 # --- System packages ---
 info "Installing system dependencies..."
@@ -40,26 +52,108 @@ if [[ "${REPO_DIR}" != "${INSTALL_DIR}" ]]; then
         --exclude='*.egg-info' --exclude='.pytest_cache' \
         "${REPO_DIR}/" "${INSTALL_DIR}/"
 fi
-chown -R pi:pi "${INSTALL_DIR}"
+chown -R "${SRT_USER}:${SRT_USER}" "${INSTALL_DIR}"
 
 # --- Python venv + dependencies ---
 info "Creating virtual environment..."
-sudo -u pi python3 -m venv "${VENV_DIR}"
-sudo -u pi "${VENV_DIR}/bin/pip" install --upgrade pip
-sudo -u pi "${VENV_DIR}/bin/pip" install -e "${INSTALL_DIR}[display,web]"
+sudo -u "${SRT_USER}" python3 -m venv "${VENV_DIR}"
+sudo -u "${SRT_USER}" "${VENV_DIR}/bin/pip" install --upgrade pip
+sudo -u "${SRT_USER}" "${VENV_DIR}/bin/pip" install -e "${INSTALL_DIR}[display,web]"
 
 # --- Environment file ---
-if [[ ! -f /home/pi/.env ]]; then
+if [[ ! -f "${ENV_FILE}" ]]; then
     info "Creating default .env from template..."
-    cp "${INSTALL_DIR}/.env.example" /home/pi/.env
-    chown pi:pi /home/pi/.env
-    warn "Edit /home/pi/.env to set your location and API keys."
+    cp "${INSTALL_DIR}/.env.example" "${ENV_FILE}"
+    chown "${SRT_USER}:${SRT_USER}" "${ENV_FILE}"
+    warn "Edit ${ENV_FILE} to set your location and API keys."
 fi
 
-# --- systemd services ---
+# --- Generate systemd service files with correct paths ---
 info "Installing systemd services..."
-cp "${INSTALL_DIR}/system/systemd/flugradar-display.service" /etc/systemd/system/
-cp "${INSTALL_DIR}/system/systemd/flugradar-web.service" /etc/systemd/system/
+
+cat > /etc/systemd/system/flugradar-display.service <<UNIT
+[Unit]
+Description=Sasso Radar Tower — Display
+After=graphical-session.target
+Wants=graphical-session.target
+
+[Service]
+Type=simple
+User=${SRT_USER}
+EnvironmentFile=-${ENV_FILE}
+ExecStart=${INSTALL_DIR}/system/flugradar-display-start.sh
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=graphical.target
+UNIT
+
+cat > /etc/systemd/system/flugradar-web.service <<UNIT
+[Unit]
+Description=Sasso Radar Tower — Web Portal
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=${SRT_USER}
+EnvironmentFile=-${ENV_FILE}
+ExecStart=${INSTALL_DIR}/.venv/bin/flugradar-web --host 0.0.0.0 --port 5000
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+# --- Display start wrapper script ---
+cat > "${INSTALL_DIR}/system/flugradar-display-start.sh" <<'WRAPPER'
+#!/usr/bin/env bash
+# Sasso Radar Tower — display start wrapper
+# Selects desktop (X11/Xwayland) or kiosk (KMS/DRM) mode based on DISPLAY_BACKEND.
+
+DISPLAY_BACKEND="${DISPLAY_BACKEND:-desktop}"
+
+case "${DISPLAY_BACKEND}" in
+    desktop)
+        export SDL_VIDEODRIVER=x11
+        export DISPLAY="${DISPLAY:-:0}"
+        # Find XAUTHORITY — Xwayland/labwc often places it outside the default path
+        if [[ -z "${XAUTHORITY:-}" ]]; then
+            for candidate in \
+                "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/.Xauthority" \
+                "${HOME}/.Xauthority" \
+                "/run/user/$(id -u)/Xauthority"; do
+                if [[ -f "${candidate}" ]]; then
+                    export XAUTHORITY="${candidate}"
+                    break
+                fi
+            done
+        fi
+        ;;
+    kiosk)
+        export SDL_VIDEODRIVER=kmsdrm
+        unset DISPLAY
+        unset XAUTHORITY
+        ;;
+    *)
+        echo "[SRT] Unknown DISPLAY_BACKEND='${DISPLAY_BACKEND}' — use 'desktop' or 'kiosk'" >&2
+        exit 1
+        ;;
+esac
+
+SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+exec "${SCRIPT_DIR}/.venv/bin/flugradar-display" --size 720
+WRAPPER
+
+chmod +x "${INSTALL_DIR}/system/flugradar-display-start.sh"
+chown "${SRT_USER}:${SRT_USER}" "${INSTALL_DIR}/system/flugradar-display-start.sh"
+
 systemctl daemon-reload
 systemctl enable flugradar-display.service
 systemctl enable flugradar-web.service
@@ -102,10 +196,14 @@ fi
 echo ""
 info "Installation complete!"
 echo ""
+echo "  User:      ${SRT_USER}"
 echo "  Services:  flugradar-display, flugradar-web"
-echo "  Config:    /home/pi/.env"
+echo "  Config:    ${ENV_FILE}"
 echo "  Portal:    http://$(hostname).local:5000"
 echo "  Logs:      journalctl -u flugradar-display -f"
+echo ""
+echo "  Display mode: DISPLAY_BACKEND=desktop (default)"
+echo "  Switch to kiosk: set DISPLAY_BACKEND=kiosk in ${ENV_FILE}"
 echo ""
 echo "  Start now: sudo systemctl start flugradar-display flugradar-web"
 echo "  Reboot to launch automatically."
