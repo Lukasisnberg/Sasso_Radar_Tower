@@ -22,7 +22,7 @@ class HomeLocation:
 
 @dataclass
 class AdsbConfig:
-    base_url: str = "https://api.adsb.fi/v2"
+    base_url: str = "https://opendata.adsb.fi/api/v2"
     poll_interval_s: float = 3.0
     cache_ttl_s: float = 5.0
     request_timeout_s: float = 10.0
