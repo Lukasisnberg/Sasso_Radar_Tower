@@ -28,10 +28,30 @@ class Aircraft:
     destination: Optional[str] = None
     flight_number: Optional[str] = None
     tags: list[str] = field(default_factory=list)
+    # photo fields (populated by aircraft_photo background thread)
+    photo_path: Optional[str] = None
+    photo_credit: Optional[str] = None
+    # branding fields
+    operator_icao: Optional[str] = None
+    airline_icao: Optional[str] = None
 
     @property
     def is_emergency(self) -> bool:
         return self.squawk in ("7500", "7600", "7700")
+
+    @property
+    def is_military(self) -> bool:
+        if self.squawk and self.squawk.startswith("7"):
+            return False
+        cat = (self.category or "").upper()
+        if cat in ("A6", "A7", "B6", "B7"):
+            return True
+        cs = (self.callsign or "").upper()
+        mil_prefixes = (
+            "RCH", "NAVY", "ARMY", "DUKE", "COBRA", "TOPCAT", "EVAC",
+            "REACH", "FORGE", "VALOR", "HAWK", "VIPER", "SKULL",
+        )
+        return any(cs.startswith(p) for p in mil_prefixes)
 
     @property
     def display_label(self) -> str:

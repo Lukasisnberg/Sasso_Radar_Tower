@@ -8,11 +8,13 @@ import pygame
 
 from flugradar.config.settings import AppSettings
 from flugradar.data_sources.adsb_fi import AdsbFiClient
+from flugradar.data_sources.aircraft_photo import request_photo
 from flugradar.data_sources.demo import DemoSource
 from flugradar.data_sources.enrichment import EnrichmentClient
 from flugradar.data_sources.models import Aircraft
 from flugradar.data_sources.projection import ScreenProjection
 from flugradar.data_sources.weather import WeatherClient
+from flugradar.display import scaling
 from flugradar.display.gestures import GestureRecogniser, GestureType
 from flugradar.display.mask import CircularViewport
 from flugradar.display.screens.about import AboutScreen
@@ -65,6 +67,8 @@ class RadarApp:
     def run(self) -> None:
         pygame.init()
         pygame.display.set_caption("Sasso Radar Tower")
+
+        scaling.init(self.screen_size)
 
         screen = pygame.display.set_mode(
             (self.screen_size, self.screen_size),
@@ -178,6 +182,8 @@ class RadarApp:
                     ]
                     if self._enrichment_client:
                         self._enrichment_client.enrich(self._aircraft)
+                    self._request_photos(self._aircraft)
+                    self._update_photo_fields(self._aircraft)
                     self._last_fetch = now
 
                 weather_status = ""
@@ -198,6 +204,7 @@ class RadarApp:
                     if map_comp:
                         self._draw_attribution(screen, map_comp.tiles.attribution)
                 elif self._active == ActiveScreen.DETAIL:
+                    detail.set_aircraft_list(self._aircraft)
                     if detail.aircraft:
                         for ac in self._aircraft:
                             if ac.icao_hex == detail.aircraft.icao_hex:
@@ -228,6 +235,18 @@ class RadarApp:
             if map_comp:
                 map_comp.tiles.close()
             pygame.quit()
+
+    def _request_photos(self, aircraft: list[Aircraft]) -> None:
+        for ac in aircraft:
+            request_photo(ac.icao_hex, ac.registration or "")
+
+    def _update_photo_fields(self, aircraft: list[Aircraft]) -> None:
+        from flugradar.data_sources.aircraft_photo import get_photo_info
+        for ac in aircraft:
+            info = get_photo_info(ac.icao_hex)
+            if info:
+                ac.photo_path = info["path"]
+                ac.photo_credit = info.get("credit", "")
 
     def _apply_live_settings(
         self, proj, radar, detail, clock_scr, about, settings_scr, map_comp,
@@ -271,6 +290,7 @@ class RadarApp:
                 ac = radar.handle_tap(gesture.x, gesture.y)
                 if ac:
                     detail.set_aircraft(ac)
+                    detail.set_aircraft_list(self._aircraft)
                     self._active = ActiveScreen.DETAIL
             elif gesture.type == GestureType.ZOOM_IN:
                 radar.zoom(0.8)
@@ -289,10 +309,15 @@ class RadarApp:
 
         elif self._active == ActiveScreen.DETAIL:
             if gesture.type == GestureType.TAP:
-                if detail.handle_tap(gesture.x, gesture.y):
+                result = detail.handle_tap(gesture.x, gesture.y)
+                if result == "radar":
                     self._active = ActiveScreen.RADAR
             elif gesture.type in (GestureType.SWIPE_RIGHT, GestureType.SWIPE_DOWN):
                 self._active = ActiveScreen.RADAR
+            elif gesture.type == GestureType.SWIPE_UP:
+                detail.handle_scroll(1)
+            elif gesture.type == GestureType.SWIPE_LEFT:
+                detail.handle_scroll(-1)
 
         elif self._active == ActiveScreen.CLOCK:
             if gesture.type == GestureType.SWIPE_UP:
