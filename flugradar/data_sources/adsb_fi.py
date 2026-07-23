@@ -55,7 +55,7 @@ class AdsbFiClient:
 
     def _parse(self, data: dict) -> list[Aircraft]:
         results: list[Aircraft] = []
-        for ac in data.get("ac", []):
+        for ac in data.get("aircraft", []):
             lat = _float(ac, "lat")
             lon = _float(ac, "lon")
             if lat is None or lon is None:

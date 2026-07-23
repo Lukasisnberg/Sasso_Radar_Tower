@@ -10,7 +10,7 @@ from flugradar.config.settings import AdsbConfig, HomeLocation
 from flugradar.data_sources.adsb_fi import AdsbFiClient
 
 SAMPLE_RESPONSE = {
-    "ac": [
+    "aircraft": [
         {
             "hex": "4b1812",
             "flight": "SWR123 ",
@@ -164,6 +164,47 @@ class TestAdsbFiClient:
         cached = client.get_aircraft(force_refresh=False)
         assert len(cached) == 2
         assert len(responses.calls) == 1  # no second request
+
+
+class TestResponseFieldName:
+    """Ensure the parser reads from 'aircraft', not 'ac'."""
+
+    @responses.activate
+    def test_ignores_ac_field(self, client):
+        wrong_key_response = {
+            "ac": [
+                {"hex": "aaaaaa", "lat": 47.5, "lon": 8.6, "alt_baro": 30000},
+            ],
+            "total": 1,
+            "now": 1700000000.0,
+        }
+        responses.add(
+            responses.GET,
+            "https://opendata.adsb.fi/api/v2/lat/47.3769/lon/8.5417/dist/54",
+            json=wrong_key_response,
+            status=200,
+        )
+        aircraft = client.get_aircraft(force_refresh=True)
+        assert len(aircraft) == 0
+
+    @responses.activate
+    def test_reads_aircraft_field(self, client):
+        correct_response = {
+            "aircraft": [
+                {"hex": "bbbbbb", "lat": 47.5, "lon": 8.6, "alt_baro": 30000},
+            ],
+            "total": 1,
+            "now": 1700000000.0,
+        }
+        responses.add(
+            responses.GET,
+            "https://opendata.adsb.fi/api/v2/lat/47.3769/lon/8.5417/dist/54",
+            json=correct_response,
+            status=200,
+        )
+        aircraft = client.get_aircraft(force_refresh=True)
+        assert len(aircraft) == 1
+        assert aircraft[0].icao_hex == "bbbbbb"
 
 
 class TestDisplayLabel:
