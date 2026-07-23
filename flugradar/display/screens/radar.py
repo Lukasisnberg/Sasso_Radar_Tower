@@ -35,8 +35,10 @@ class RadarScreen:
         self,
         surface: pygame.Surface,
         aircraft: list[Aircraft],
+        has_map_bg: bool = False,
     ) -> None:
-        self.renderer.draw_background(surface)
+        if not has_map_bg:
+            self.renderer.draw_background(surface)
         self.renderer.draw_rings(surface)
         self.renderer.draw_compass(surface)
         self.renderer.draw_centre(surface)

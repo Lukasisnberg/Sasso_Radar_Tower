@@ -3,7 +3,8 @@
 
 Usage:
     python -m flugradar.main
-    python -m flugradar.main --size 720
+    python -m flugradar.main --demo
+    python -m flugradar.main --demo --no-map --no-mask
     python -m flugradar.main --lat 48.85 --lon 2.35 --radius 80
 """
 
@@ -23,6 +24,9 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--unit", choices=("km", "sm", "nm"), help="Distance unit")
     p.add_argument("--theme", choices=("dark", "amber"), default=None, help="Colour theme")
     p.add_argument("--demo", action="store_true", help="Use simulated aircraft (no network)")
+    p.add_argument("--no-map", action="store_true", help="Disable map tile background")
+    p.add_argument("--no-mask", action="store_true", help="Disable circular mask (square window)")
+    p.add_argument("--rotation", type=float, default=0.0, help="Display rotation in degrees")
     p.add_argument("--debug", action="store_true", help="Enable debug logging")
     return p
 
@@ -44,7 +48,14 @@ def main() -> None:
     if args.unit:
         settings.distance_unit = args.unit
 
-    app = RadarApp(settings, screen_size=args.size, demo_mode=args.demo)
+    app = RadarApp(
+        settings,
+        screen_size=args.size,
+        demo_mode=args.demo,
+        enable_map=not args.no_map,
+        round_mask=not args.no_mask,
+        rotation_deg=args.rotation,
+    )
     app.run()
 
 
