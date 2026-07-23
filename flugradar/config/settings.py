@@ -33,6 +33,7 @@ class AppSettings:
     home: HomeLocation = field(default_factory=HomeLocation)
     adsb: AdsbConfig = field(default_factory=AdsbConfig)
     distance_unit: str = "km"  # km | sm | nm
+    theme: str = "dark"  # dark | amber
     min_altitude_ft: int = 0
     fr24_api_key: str = ""
     tomorrow_api_key: str = ""
@@ -53,6 +54,8 @@ class AppSettings:
             self.adsb.poll_interval_s = float(v)
         if v := os.environ.get("FLUGRADAR_DISTANCE_UNIT"):
             self.distance_unit = v
+        if v := os.environ.get("FLUGRADAR_THEME"):
+            self.theme = v
         if v := os.environ.get("FLUGRADAR_MIN_ALT_FT"):
             self.min_altitude_ft = int(v)
         if v := os.environ.get("FR24_API_KEY"):
@@ -77,6 +80,8 @@ class AppSettings:
             self.home.radius_km = float(data["radius_km"])
         if "distance_unit" in data:
             self.distance_unit = data["distance_unit"]
+        if "theme" in data:
+            self.theme = data["theme"]
         if "min_altitude_ft" in data:
             self.min_altitude_ft = int(data["min_altitude_ft"])
 

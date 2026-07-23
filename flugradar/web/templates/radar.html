@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Radar Settings - SRT{% endblock %}
+{% block content %}
+<h1>Radar Settings</h1>
+
+{% if request.args.get('saved') %}
+<div class="alert alert-success">Settings saved.</div>
+{% endif %}
+
+<form method="post">
+  <div class="card">
+    <h2>Home Location</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="home_lat">Latitude</label>
+        <input type="number" step="0.0001" id="home_lat" name="home_lat"
+               value="{{ settings.home.lat }}">
+      </div>
+      <div class="form-group">
+        <label for="home_lon">Longitude</label>
+        <input type="number" step="0.0001" id="home_lon" name="home_lon"
+               value="{{ settings.home.lon }}">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Range &amp; Filter</h2>
+    <div class="form-row-3">
+      <div class="form-group">
+        <label for="radius_km">Radius (km)</label>
+        <input type="number" step="1" id="radius_km" name="radius_km"
+               value="{{ settings.home.radius_km | int }}">
+      </div>
+      <div class="form-group">
+        <label for="distance_unit">Unit</label>
+        <select id="distance_unit" name="distance_unit">
+          <option value="km" {% if settings.distance_unit == 'km' %}selected{% endif %}>km</option>
+          <option value="sm" {% if settings.distance_unit == 'sm' %}selected{% endif %}>sm</option>
+          <option value="nm" {% if settings.distance_unit == 'nm' %}selected{% endif %}>nm</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="min_altitude_ft">Min Alt (ft)</label>
+        <input type="number" step="100" id="min_altitude_ft" name="min_altitude_ft"
+               value="{{ settings.min_altitude_ft }}">
+      </div>
+    </div>
+  </div>
+
+  <div class="btn-group">
+    <button type="submit" class="btn">Save</button>
+  </div>
+</form>
+{% endblock %}
