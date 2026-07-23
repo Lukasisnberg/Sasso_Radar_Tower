@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}API Keys - SRT{% endblock %}
+{% block content %}
+<h1>API Keys</h1>
+
+{% if request.args.get('saved') %}
+<div class="alert alert-success">Settings saved.</div>
+{% endif %}
+
+<div class="alert alert-info">
+  Keys are stored locally and never sent to third parties other than
+  the respective API provider.
+</div>
+
+<form method="post">
+  <div class="card">
+    <h2>FlightRadar24</h2>
+    <div class="form-group">
+      <label for="fr24_api_key">FR24 API Key</label>
+      <input type="password" id="fr24_api_key" name="fr24_api_key"
+             value="{{ settings.fr24_api_key }}"
+             placeholder="optional">
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Tomorrow.io (Weather)</h2>
+    <div class="form-group">
+      <label for="tomorrow_api_key">Tomorrow API Key</label>
+      <input type="password" id="tomorrow_api_key" name="tomorrow_api_key"
+             value="{{ settings.tomorrow_api_key }}"
+             placeholder="optional">
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>AirLabs</h2>
+    <div class="form-group">
+      <label for="airlabs_api_key">AirLabs API Key</label>
+      <input type="password" id="airlabs_api_key" name="airlabs_api_key"
+             value="{{ settings.airlabs_api_key }}"
+             placeholder="optional">
+    </div>
+  </div>
+
+  <div class="btn-group">
+    <button type="submit" class="btn">Save</button>
+  </div>
+</form>
+{% endblock %}

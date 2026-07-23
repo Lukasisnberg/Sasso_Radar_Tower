@@ -18,6 +18,8 @@ dev = ["pytest>=7.4", "responses>=0.24"]
 
 [project.scripts]
 flugradar-cli = "flugradar.cli:main"
+flugradar-display = "flugradar.main:main"
+flugradar-web = "flugradar.web.run:main"
 
 [tool.pytest.ini_options]
 testpaths = ["flugradar/tests"]

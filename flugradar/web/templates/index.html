@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Sasso Radar Tower{% endblock %}
+{% block content %}
+<h1>Sasso Radar Tower</h1>
+
+<div class="home-grid">
+  <a class="home-link" href="{{ url_for('radar') }}">
+    <span class="icon">&#x1F4E1;</span>
+    <span class="label">Radar Settings</span>
+  </a>
+  <a class="home-link" href="{{ url_for('display') }}">
+    <span class="icon">&#x1F3A8;</span>
+    <span class="label">Display</span>
+  </a>
+  <a class="home-link" href="{{ url_for('api_keys') }}">
+    <span class="icon">&#x1F511;</span>
+    <span class="label">API Keys</span>
+  </a>
+  <a class="home-link" href="{{ url_for('system') }}">
+    <span class="icon">&#x2699;</span>
+    <span class="label">System</span>
+  </a>
+</div>
+
+<div class="card">
+  <h2>Quick Status</h2>
+  <table class="info-table">
+    <tr><td>Location</td><td>{{ settings.home.lat }}, {{ settings.home.lon }}</td></tr>
+    <tr><td>Radius</td><td>{{ settings.home.radius_km }} km</td></tr>
+    <tr><td>Unit</td><td>{{ settings.distance_unit }}</td></tr>
+    <tr><td>Version</td><td>{{ version }}</td></tr>
+  </table>
+</div>
+{% endblock %}

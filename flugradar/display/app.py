@@ -13,20 +13,24 @@ from flugradar.data_sources.models import Aircraft
 from flugradar.data_sources.projection import ScreenProjection
 from flugradar.display.gestures import GestureRecogniser, GestureType
 from flugradar.display.mask import CircularViewport
+from flugradar.display.screens.about import AboutScreen
+from flugradar.display.screens.clock import ClockScreen
 from flugradar.display.screens.detail import DetailScreen
 from flugradar.display.screens.radar import RadarScreen
+from flugradar.display.screens.settings_screen import SettingsScreen
 from flugradar.display.theme import THEMES
 from flugradar.maps.compositor import MapCompositor
 from flugradar.maps.tiles import TileManager
 
 log = logging.getLogger(__name__)
 
-_ZOOM_PRESETS_KM = [25, 50, 100, 150, 250, 400]
-
 
 class ActiveScreen(Enum):
     RADAR = auto()
     DETAIL = auto()
+    CLOCK = auto()
+    ABOUT = auto()
+    SETTINGS = auto()
 
 
 class RadarApp:
@@ -49,12 +53,8 @@ class RadarApp:
         self.rotation_deg = rotation_deg
         self.running = False
         self._active = ActiveScreen.RADAR
-        self._zoom_idx = _ZOOM_PRESETS_KM.index(
-            min(_ZOOM_PRESETS_KM, key=lambda z: abs(z - settings.home.radius_km))
-        )
         self._aircraft: list[Aircraft] = []
         self._last_fetch: float = 0.0
-        self._prev_radius: float = 0.0
 
     def run(self) -> None:
         pygame.init()
@@ -66,8 +66,9 @@ class RadarApp:
         )
         clock = pygame.time.Clock()
 
-        theme_name = getattr(self.settings, "theme", "dark")
-        theme = THEMES.get(theme_name, THEMES["dark"])
+        theme = THEMES.get(
+            getattr(self.settings, "theme", "dark"), THEMES["dark"]
+        )
 
         proj = ScreenProjection(
             home_lat=self.settings.home.lat,
@@ -84,6 +85,9 @@ class RadarApp:
             self.screen_size, theme,
             distance_unit=self.settings.distance_unit,
         )
+        clock_scr = ClockScreen(self.screen_size, theme)
+        about = AboutScreen(self.screen_size, theme)
+        settings_scr = SettingsScreen(self.screen_size, theme)
         gestures = GestureRecogniser()
 
         viewport = CircularViewport(self.screen_size, self.rotation_deg) if self.round_mask else None
@@ -102,13 +106,10 @@ class RadarApp:
             client = AdsbFiClient(self.settings.adsb, self.settings.home)
 
         self.running = True
-        self._prev_radius = proj.radius_km
         log.info(
-            "Starting radar: %.4f, %.4f radius=%.0fkm map=%s mask=%s",
+            "Starting radar: %.4f, %.4f radius=%.0fkm",
             self.settings.home.lat, self.settings.home.lon,
             self.settings.home.radius_km,
-            "on" if map_comp else "off",
-            "round" if viewport else "off",
         )
 
         try:
@@ -117,16 +118,20 @@ class RadarApp:
                     if event.type == pygame.QUIT:
                         self.running = False
                         break
-                    if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                        if self._active == ActiveScreen.DETAIL:
-                            self._active = ActiveScreen.RADAR
-                        else:
-                            self.running = False
-                        continue
+                    if event.type == pygame.KEYDOWN:
+                        if event.key == pygame.K_ESCAPE:
+                            if self._active in (ActiveScreen.DETAIL, ActiveScreen.ABOUT,
+                                                ActiveScreen.SETTINGS, ActiveScreen.CLOCK):
+                                self._active = ActiveScreen.RADAR
+                            else:
+                                self.running = False
+                            continue
 
                     gesture = gestures.process_event(event)
                     if gesture:
-                        self._handle_gesture(gesture, radar, detail, map_comp)
+                        self._handle_gesture(
+                            gesture, radar, detail, clock_scr, about, settings_scr, map_comp
+                        )
 
                 now = time.monotonic()
                 if now - self._last_fetch >= self.settings.adsb.poll_interval_s:
@@ -144,8 +149,6 @@ class RadarApp:
                     radar.draw(screen, self._aircraft, has_map_bg=map_comp is not None)
                     if map_comp:
                         self._draw_attribution(screen, map_comp.tiles.attribution)
-                    if viewport:
-                        viewport.apply(screen)
                 elif self._active == ActiveScreen.DETAIL:
                     if detail.aircraft:
                         for ac in self._aircraft:
@@ -153,8 +156,15 @@ class RadarApp:
                                 detail.set_aircraft(ac)
                                 break
                     detail.draw(screen)
-                    if viewport:
-                        viewport.apply(screen)
+                elif self._active == ActiveScreen.CLOCK:
+                    clock_scr.draw(screen)
+                elif self._active == ActiveScreen.ABOUT:
+                    about.draw(screen)
+                elif self._active == ActiveScreen.SETTINGS:
+                    settings_scr.draw(screen)
+
+                if viewport:
+                    viewport.apply(screen)
 
                 pygame.display.flip()
                 clock.tick(30)
@@ -175,11 +185,7 @@ class RadarApp:
         surface.blit(txt, (x, y))
 
     def _handle_gesture(
-        self,
-        gesture,
-        radar: RadarScreen,
-        detail: DetailScreen,
-        map_comp,
+        self, gesture, radar, detail, clock_scr, about, settings_scr, map_comp
     ) -> None:
         if self._active == ActiveScreen.RADAR:
             if gesture.type == GestureType.TAP:
@@ -195,10 +201,42 @@ class RadarApp:
                 radar.zoom(1.25)
                 if map_comp:
                     map_comp.invalidate()
+            elif gesture.type == GestureType.SWIPE_DOWN:
+                self._active = ActiveScreen.CLOCK
+            elif gesture.type == GestureType.SWIPE_UP:
+                self._active = ActiveScreen.ABOUT
+            elif gesture.type == GestureType.SWIPE_LEFT:
+                self._active = ActiveScreen.SETTINGS
 
         elif self._active == ActiveScreen.DETAIL:
             if gesture.type == GestureType.TAP:
                 if detail.handle_tap(gesture.x, gesture.y):
                     self._active = ActiveScreen.RADAR
             elif gesture.type in (GestureType.SWIPE_RIGHT, GestureType.SWIPE_DOWN):
+                self._active = ActiveScreen.RADAR
+
+        elif self._active == ActiveScreen.CLOCK:
+            if gesture.type == GestureType.SWIPE_UP:
+                self._active = ActiveScreen.RADAR
+            elif gesture.type == GestureType.SWIPE_LEFT:
+                self._active = ActiveScreen.SETTINGS
+
+        elif self._active == ActiveScreen.ABOUT:
+            if gesture.type == GestureType.TAP:
+                if about.handle_tap(gesture.x, gesture.y):
+                    self._active = ActiveScreen.RADAR
+            elif gesture.type in (GestureType.SWIPE_DOWN, GestureType.SWIPE_RIGHT):
+                self._active = ActiveScreen.RADAR
+
+        elif self._active == ActiveScreen.SETTINGS:
+            if gesture.type == GestureType.TAP:
+                result = settings_scr.handle_tap(gesture.x, gesture.y)
+                if result == "back":
+                    self._active = ActiveScreen.RADAR
+                elif result == "changed":
+                    new_theme = THEMES.get(settings_scr.selected_theme)
+                    if new_theme:
+                        radar.update_theme(new_theme)
+                    radar.update_unit(settings_scr.selected_unit)
+            elif gesture.type == GestureType.SWIPE_RIGHT:
                 self._active = ActiveScreen.RADAR
