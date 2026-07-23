@@ -5,6 +5,7 @@ from typing import Optional
 
 import pygame
 
+from flugradar.display.fonts import get_font
 from flugradar.display.theme import Theme
 
 
@@ -23,10 +24,10 @@ class ClockScreen:
 
     def _ensure_fonts(self) -> None:
         if self._font_time is None:
-            self._font_time = pygame.font.SysFont("monospace", 72, bold=True)
-            self._font_date = pygame.font.SysFont("monospace", 22)
-            self._font_weather = pygame.font.SysFont("monospace", 28)
-            self._font_sm = pygame.font.SysFont("monospace", 14)
+            self._font_time = get_font(72, bold=True, mono=True)
+            self._font_date = get_font(20)
+            self._font_weather = get_font(28)
+            self._font_sm = get_font(13)
 
     def set_weather(self, temperature: str, condition: str) -> None:
         self.temperature = temperature
