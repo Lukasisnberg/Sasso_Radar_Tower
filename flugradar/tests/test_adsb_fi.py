@@ -60,7 +60,7 @@ def home():
 @pytest.fixture
 def adsb_cfg():
     return AdsbConfig(
-        base_url="https://api.adsb.fi/v2",
+        base_url="https://opendata.adsb.fi/api/v2",
         poll_interval_s=3.0,
         cache_ttl_s=2.0,
         request_timeout_s=5.0,
@@ -79,7 +79,7 @@ class TestAdsbFiClient:
     def test_fetch_parses_aircraft(self, client):
         responses.add(
             responses.GET,
-            "https://api.adsb.fi/v2/lat/47.3769/lon/8.5417/dist/54",
+            "https://opendata.adsb.fi/api/v2/lat/47.3769/lon/8.5417/dist/54",
             json=SAMPLE_RESPONSE,
             status=200,
         )
@@ -90,7 +90,7 @@ class TestAdsbFiClient:
     def test_aircraft_fields(self, client):
         responses.add(
             responses.GET,
-            "https://api.adsb.fi/v2/lat/47.3769/lon/8.5417/dist/54",
+            "https://opendata.adsb.fi/api/v2/lat/47.3769/lon/8.5417/dist/54",
             json=SAMPLE_RESPONSE,
             status=200,
         )
@@ -109,7 +109,7 @@ class TestAdsbFiClient:
     def test_emergency_flag(self, client):
         responses.add(
             responses.GET,
-            "https://api.adsb.fi/v2/lat/47.3769/lon/8.5417/dist/54",
+            "https://opendata.adsb.fi/api/v2/lat/47.3769/lon/8.5417/dist/54",
             json=SAMPLE_RESPONSE,
             status=200,
         )
@@ -122,7 +122,7 @@ class TestAdsbFiClient:
     def test_sorted_by_distance(self, client):
         responses.add(
             responses.GET,
-            "https://api.adsb.fi/v2/lat/47.3769/lon/8.5417/dist/54",
+            "https://opendata.adsb.fi/api/v2/lat/47.3769/lon/8.5417/dist/54",
             json=SAMPLE_RESPONSE,
             status=200,
         )
@@ -134,7 +134,7 @@ class TestAdsbFiClient:
     def test_cache_returns_stale_on_error(self, client):
         responses.add(
             responses.GET,
-            "https://api.adsb.fi/v2/lat/47.3769/lon/8.5417/dist/54",
+            "https://opendata.adsb.fi/api/v2/lat/47.3769/lon/8.5417/dist/54",
             json=SAMPLE_RESPONSE,
             status=200,
         )
@@ -143,7 +143,7 @@ class TestAdsbFiClient:
 
         responses.replace(
             responses.GET,
-            "https://api.adsb.fi/v2/lat/47.3769/lon/8.5417/dist/54",
+            "https://opendata.adsb.fi/api/v2/lat/47.3769/lon/8.5417/dist/54",
             body=ConnectionError("network down"),
         )
         client._cache_ts = 0  # expire cache
@@ -154,7 +154,7 @@ class TestAdsbFiClient:
     def test_cache_hit_no_request(self, client):
         responses.add(
             responses.GET,
-            "https://api.adsb.fi/v2/lat/47.3769/lon/8.5417/dist/54",
+            "https://opendata.adsb.fi/api/v2/lat/47.3769/lon/8.5417/dist/54",
             json=SAMPLE_RESPONSE,
             status=200,
         )

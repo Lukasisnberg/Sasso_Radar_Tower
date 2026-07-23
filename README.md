@@ -48,6 +48,13 @@ flugradar/
   main.py            # Display app entry point (future)
 ```
 
+## Data sources & attribution
+
+- **[adsb.fi](https://adsb.fi/)** — live ADS-B aircraft positions
+  (free open-data API, no key required)
+- **CARTO / OpenStreetMap** — map tile backgrounds
+  (© CARTO, © OpenStreetMap contributors)
+
 ## License
 
 MIT

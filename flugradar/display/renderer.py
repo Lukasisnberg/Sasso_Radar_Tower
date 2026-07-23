@@ -183,7 +183,7 @@ class RadarRenderer:
         dist_val = km_to_unit(radius_km, self.distance_unit)
         ulbl = unit_label(self.distance_unit)
         txt = self._font_sm.render(
-            f"  {count} aircraft | {dist_val:.0f}{ulbl} range  ",
+            f"  {count} aircraft | {dist_val:.0f}{ulbl} range | adsb.fi  ",
             True, self.theme.status_bar,
         )
         surface.blit(txt, (4, self.size - txt.get_height() - 4))
