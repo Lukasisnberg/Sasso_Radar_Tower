@@ -35,6 +35,7 @@ class AppSettings:
     distance_unit: str = "km"  # km | sm | nm
     theme: str = "dark"  # dark | amber
     min_altitude_ft: int = 0
+    auto_clock_s: int = 300
     fr24_api_key: str = ""
     tomorrow_api_key: str = ""
     airlabs_api_key: str = ""
@@ -58,6 +59,8 @@ class AppSettings:
             self.theme = v
         if v := os.environ.get("FLUGRADAR_MIN_ALT_FT"):
             self.min_altitude_ft = int(v)
+        if v := os.environ.get("FLUGRADAR_AUTO_CLOCK_S"):
+            self.auto_clock_s = int(v)
         if v := os.environ.get("FR24_API_KEY"):
             self.fr24_api_key = v
         if v := os.environ.get("TOMORROW_API_KEY"):
@@ -87,6 +90,8 @@ class AppSettings:
             self.theme = data["theme"]
         if "min_altitude_ft" in data:
             self.min_altitude_ft = int(data["min_altitude_ft"])
+        if "auto_clock_s" in data:
+            self.auto_clock_s = int(data["auto_clock_s"])
 
     def save_portal_settings(self, updates: dict) -> None:
         _SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
