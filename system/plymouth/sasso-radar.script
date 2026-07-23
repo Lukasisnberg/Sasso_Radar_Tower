@@ -1,0 +1,31 @@
+/* Sasso Radar Tower — Plymouth boot splash script */
+
+Window.SetBackgroundTopColor(0.04, 0.06, 0.04);
+Window.SetBackgroundBottomColor(0.02, 0.03, 0.02);
+
+logo_image = Image("logo.png");
+logo_sprite = Sprite(logo_image);
+logo_sprite.SetX(Window.GetWidth() / 2 - logo_image.GetWidth() / 2);
+logo_sprite.SetY(Window.GetHeight() / 2 - logo_image.GetHeight() / 2 - 40);
+
+title_image = Image.Text("SASSO RADAR TOWER", 0, 0.7, 0, "monospace");
+title_sprite = Sprite(title_image);
+title_sprite.SetX(Window.GetWidth() / 2 - title_image.GetWidth() / 2);
+title_sprite.SetY(Window.GetHeight() / 2 + logo_image.GetHeight() / 2);
+
+progress = 0;
+
+fun refresh_callback() {
+    progress++;
+    sweep_angle = progress * 0.05;
+
+    dot_x = Window.GetWidth() / 2 + Math.Cos(sweep_angle) * 60;
+    dot_y = Window.GetHeight() / 2 - 40 + Math.Sin(sweep_angle) * 60;
+
+    dot_image = Image.Text(".", 0, 0.8, 0, "monospace");
+    dot_sprite = Sprite(dot_image);
+    dot_sprite.SetX(dot_x);
+    dot_sprite.SetY(dot_y);
+}
+
+Plymouth.SetRefreshFunction(refresh_callback);
