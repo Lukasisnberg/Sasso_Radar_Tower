@@ -12,7 +12,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-display = ["pygame>=2.5"]
+display = ["pygame>=2.5", "numpy>=1.24"]
 web = ["flask>=3.0"]
 dev = ["pytest>=7.4", "responses>=0.24"]
 

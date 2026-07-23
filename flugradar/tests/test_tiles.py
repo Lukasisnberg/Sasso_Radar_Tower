@@ -1,5 +1,9 @@
-"""Unit tests for tile coordinate math and caching."""
+"""Unit tests for tile coordinate math, caching, and compositing."""
 
+from io import BytesIO
+from unittest.mock import patch
+
+import pygame
 import pytest
 
 from flugradar.maps.tiles import (
@@ -8,6 +12,14 @@ from flugradar.maps.tiles import (
     zoom_for_radius,
     TileCache,
 )
+
+
+@pytest.fixture(autouse=True)
+def init_pygame():
+    pygame.init()
+    pygame.display.set_mode((1, 1), pygame.NOFRAME)
+    yield
+    pygame.quit()
 
 
 class TestTileCoords:
@@ -61,3 +73,31 @@ class TestTileCache:
         cache.put("osm", 10, 100, 200, b"osm")
         assert cache.get("carto_dark", 10, 100, 200) == b"dark"
         assert cache.get("osm", 10, 100, 200) == b"osm"
+
+
+class TestCompositorSmoothscale:
+    """Ensure tiles with unusual pixel formats don't crash smoothscale."""
+
+    def test_palette_mode_tile_does_not_crash(self):
+        from flugradar.data_sources.projection import ScreenProjection
+        from flugradar.maps.compositor import MapCompositor
+        from flugradar.maps.tiles import TileManager
+
+        proj = ScreenProjection(
+            home_lat=47.3769, home_lon=8.5417,
+            radius_km=50.0, screen_size=200,
+        )
+
+        palette_surf = pygame.Surface((256, 256), depth=8)
+        palette_surf.set_palette([(i, i, i) for i in range(256)])
+        palette_surf.fill(42)
+        buf = BytesIO()
+        pygame.image.save(palette_surf, buf, "BMP")
+        tile_bytes = buf.getvalue()
+
+        tile_mgr = TileManager(provider_key="carto_dark")
+        fake_tiles = [(10, 536, 360, tile_bytes)]
+        with patch.object(tile_mgr, "fetch_region", return_value=fake_tiles):
+            compositor = MapCompositor(tile_mgr, proj)
+            target = pygame.Surface((200, 200))
+            compositor.render(target)

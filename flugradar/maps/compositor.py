@@ -49,7 +49,7 @@ class MapCompositor:
 
         for z, tx, ty, png_data in tile_data:
             try:
-                tile_surf = pygame.image.load(BytesIO(png_data))
+                tile_surf = pygame.image.load(BytesIO(png_data)).convert_alpha()
             except Exception:
                 continue
 
@@ -79,7 +79,13 @@ class MapCompositor:
 
     def _colour_grade(self, surface: pygame.Surface) -> None:
         """Darken and desaturate tiles to match the radar aesthetic."""
-        arr = pygame.surfarray.pixels3d(surface)
+        try:
+            arr = pygame.surfarray.pixels3d(surface)
+        except Exception:
+            surface.fill(
+                (int(10 * self.brightness), int(15 * self.brightness), int(10 * self.brightness))
+            )
+            return
         arr_float = arr.astype(float)
         grey = arr_float.mean(axis=2, keepdims=True)
         arr_float = grey + (arr_float - grey) * self.contrast
