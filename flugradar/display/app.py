@@ -249,7 +249,7 @@ class RadarApp:
         if map_comp:
             map_comp.invalidate()
 
-        log.debug(
+        log.info(
             "Live-reload: theme=%s unit=%s home=%.4f,%.4f radius=%.0f",
             self.settings.theme, self.settings.distance_unit,
             self.settings.home.lat, self.settings.home.lon,
