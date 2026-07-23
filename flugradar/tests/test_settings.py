@@ -70,3 +70,20 @@ class TestPortalSettings:
         data = json.loads(portal_file.read_text())
         assert data["home_lat"] == 51.0
         assert data["home_lon"] == 0.0
+
+    def test_save_updates_instance_in_memory(self, monkeypatch, tmp_path):
+        portal_file = tmp_path / "settings.json"
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
+        s = AppSettings()
+        assert s.theme == "dark"
+        s.save_portal_settings({"theme": "amber"})
+        assert s.theme == "amber"
+        assert s.home.lat == pytest.approx(47.3769)
+
+    def test_save_updates_home_location_in_memory(self, monkeypatch, tmp_path):
+        portal_file = tmp_path / "settings.json"
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
+        s = AppSettings()
+        s.save_portal_settings({"home_lat": 52.52, "radius_km": 200})
+        assert s.home.lat == pytest.approx(52.52)
+        assert s.home.radius_km == 200.0
