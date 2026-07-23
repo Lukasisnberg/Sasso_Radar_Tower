@@ -1,15 +1,16 @@
+# Template — install.sh generates the actual service file with correct paths.
+# This file serves as reference only.
+
 [Unit]
 Description=Sasso Radar Tower — Display
-After=network-online.target
-Wants=network-online.target
+After=graphical-session.target
+Wants=graphical-session.target
 
 [Service]
 Type=simple
-User=pi
-Environment=DISPLAY=:0
-Environment=SDL_VIDEODRIVER=kmsdrm
-EnvironmentFile=-/home/pi/.env
-ExecStart=/home/pi/sasso-radar-tower/.venv/bin/flugradar-display --size 720
+User=%u
+EnvironmentFile=-/home/%u/.env
+ExecStart=/home/%u/sasso-radar-tower/system/flugradar-display-start.sh
 Restart=on-failure
 RestartSec=5
 StandardOutput=journal

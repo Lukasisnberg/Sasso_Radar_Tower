@@ -12,6 +12,17 @@ if [[ $EUID -ne 0 ]]; then
     exit 1
 fi
 
+if [[ -n "${SUDO_USER:-}" && "${SUDO_USER}" != "root" ]]; then
+    SRT_USER="${SUDO_USER}"
+else
+    echo "Cannot determine target user. Run with: sudo bash uninstall.sh" >&2
+    exit 1
+fi
+
+SRT_HOME="$(eval echo "~${SRT_USER}")"
+INSTALL_DIR="${SRT_HOME}/sasso-radar-tower"
+ENV_FILE="${SRT_HOME}/.env"
+
 info "Stopping services..."
 systemctl stop flugradar-display.service 2>/dev/null || true
 systemctl stop flugradar-web.service 2>/dev/null || true
@@ -31,8 +42,8 @@ update-initramfs -u 2>/dev/null || true
 
 echo ""
 info "Services and theme removed."
-info "Project files in /home/pi/sasso-radar-tower and /home/pi/.env were kept."
+info "Project files in ${INSTALL_DIR} and ${ENV_FILE} were kept."
 info "Remove manually if no longer needed:"
-echo "  rm -rf /home/pi/sasso-radar-tower"
-echo "  rm /home/pi/.env"
+echo "  rm -rf ${INSTALL_DIR}"
+echo "  rm ${ENV_FILE}"
 echo ""
