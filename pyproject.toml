@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sasso-radar-tower"
+version = "0.1.0"
+description = "Live ADS-B flight radar for Raspberry Pi with round touch display"
+requires-python = ">=3.11"
+dependencies = [
+    "requests>=2.31",
+]
+
+[project.optional-dependencies]
+display = ["pygame>=2.5"]
+web = ["flask>=3.0"]
+dev = ["pytest>=7.4", "responses>=0.24"]
+
+[project.scripts]
+flugradar-cli = "flugradar.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["flugradar/tests"]
