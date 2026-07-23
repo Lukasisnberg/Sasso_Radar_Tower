@@ -6,6 +6,7 @@ from typing import Optional
 import pygame
 
 from flugradar import __version__
+from flugradar.display.fonts import get_font
 from flugradar.display.theme import Theme
 
 
@@ -22,9 +23,9 @@ class AboutScreen:
 
     def _ensure_fonts(self) -> None:
         if self._font is None:
-            self._font = pygame.font.SysFont("monospace", 16)
-            self._font_lg = pygame.font.SysFont("monospace", 26, bold=True)
-            self._font_sm = pygame.font.SysFont("monospace", 13)
+            self._font = get_font(16)
+            self._font_lg = get_font(26, bold=True)
+            self._font_sm = get_font(13)
 
     def draw(self, surface: pygame.Surface) -> None:
         self._ensure_fonts()
@@ -59,7 +60,7 @@ class AboutScreen:
         surface.blit(attr, (cx - attr.get_width() // 2, y))
 
         y = self.size - 50
-        back = self._font.render("[ BACK ]", True, self.theme.compass_text)
+        back = self._font.render("BACK", True, self.theme.compass_text)
         bx = cx - back.get_width() // 2
         surface.blit(back, (bx, y))
         self._back_rect = pygame.Rect(bx - 10, y - 5, back.get_width() + 20, back.get_height() + 10)

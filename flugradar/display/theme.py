@@ -1,4 +1,10 @@
-"""Colour theme definitions for the radar display."""
+"""Colour theme definitions for the radar display.
+
+Palette follows a "less but better" design language: dark anthracite
+background (not pure black), warm off-white text, a single muted teal
+accent for active/primary elements, red reserved exclusively for
+genuine emergencies (squawk 7500/7600/7700).
+"""
 
 from dataclasses import dataclass
 
@@ -25,43 +31,43 @@ class Theme:
 
 
 DARK = Theme(
-    background=(10, 15, 10),
-    radar_ring=(0, 60, 0),
-    radar_ring_alpha=120,
-    sweep_colour=(0, 200, 0),
-    sweep_alpha_max=80,
-    compass_text=(0, 180, 0),
-    compass_tick=(0, 100, 0),
-    aircraft_dot=(0, 255, 80),
-    aircraft_label=(0, 220, 60),
-    aircraft_trail=(0, 120, 40),
-    aircraft_selected=(255, 255, 0),
-    emergency=(255, 40, 40),
-    heading_line=(0, 160, 0),
-    range_label=(0, 140, 0),
-    centre_dot=(0, 200, 0),
-    info_text=(0, 180, 0),
-    status_bar=(0, 160, 0),
+    background=(11, 13, 15),          # #0B0D0F — dark anthracite
+    radar_ring=(40, 58, 60),          # muted teal hairline
+    radar_ring_alpha=80,
+    sweep_colour=(80, 180, 160),      # desaturated teal sweep
+    sweep_alpha_max=60,
+    compass_text=(237, 239, 241),     # #EDEFF1 — warm off-white
+    compass_tick=(70, 85, 88),        # subtle tick marks
+    aircraft_dot=(100, 210, 180),     # muted teal-green
+    aircraft_label=(180, 200, 195),   # soft off-white
+    aircraft_trail=(50, 100, 85),     # dim trail
+    aircraft_selected=(210, 195, 120),# warm gold highlight
+    emergency=(200, 60, 60),          # reserved for real alerts only
+    heading_line=(70, 140, 120),      # subtle heading indicator
+    range_label=(90, 110, 108),       # subdued label
+    centre_dot=(100, 180, 160),       # teal centre mark
+    info_text=(200, 210, 208),        # near-white for data values
+    status_bar=(90, 110, 108),        # subdued status text
 )
 
 CLASSIC_AMBER = Theme(
-    background=(10, 10, 5),
-    radar_ring=(60, 50, 0),
-    radar_ring_alpha=120,
-    sweep_colour=(200, 170, 0),
-    sweep_alpha_max=80,
-    compass_text=(200, 170, 0),
-    compass_tick=(120, 100, 0),
-    aircraft_dot=(255, 200, 0),
-    aircraft_label=(240, 190, 0),
-    aircraft_trail=(140, 110, 0),
-    aircraft_selected=(255, 255, 100),
-    emergency=(255, 40, 40),
-    heading_line=(180, 150, 0),
-    range_label=(160, 130, 0),
-    centre_dot=(220, 180, 0),
-    info_text=(200, 170, 0),
-    status_bar=(180, 150, 0),
+    background=(13, 12, 10),          # warm dark
+    radar_ring=(55, 48, 30),          # muted amber ring
+    radar_ring_alpha=80,
+    sweep_colour=(180, 155, 60),      # desaturated gold sweep
+    sweep_alpha_max=60,
+    compass_text=(237, 225, 200),     # warm off-white
+    compass_tick=(85, 75, 45),        # subtle amber tick
+    aircraft_dot=(210, 180, 70),      # muted gold
+    aircraft_label=(200, 190, 160),   # soft warm text
+    aircraft_trail=(100, 85, 40),     # dim amber trail
+    aircraft_selected=(235, 220, 130),# bright gold highlight
+    emergency=(200, 60, 60),          # same alert red
+    heading_line=(140, 120, 50),      # subtle heading
+    range_label=(110, 100, 65),       # subdued label
+    centre_dot=(180, 155, 60),        # amber centre
+    info_text=(210, 200, 175),        # warm data text
+    status_bar=(110, 100, 65),        # subdued status
 )
 
 THEMES: dict[str, Theme] = {

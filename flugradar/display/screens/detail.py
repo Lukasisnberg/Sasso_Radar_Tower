@@ -6,6 +6,7 @@ import pygame
 
 from flugradar.data_sources.geo import km_to_unit, unit_label
 from flugradar.data_sources.models import Aircraft
+from flugradar.display.fonts import get_font
 from flugradar.display.theme import Theme
 
 
@@ -19,12 +20,14 @@ class DetailScreen:
         self.aircraft: Optional[Aircraft] = None
         self._font: Optional[pygame.font.Font] = None
         self._font_lg: Optional[pygame.font.Font] = None
+        self._font_num: Optional[pygame.font.Font] = None
         self._back_rect: Optional[pygame.Rect] = None
 
     def _ensure_fonts(self) -> None:
         if self._font is None:
-            self._font = pygame.font.SysFont("monospace", 16)
-            self._font_lg = pygame.font.SysFont("monospace", 28)
+            self._font = get_font(16)
+            self._font_lg = get_font(28, bold=True)
+            self._font_num = get_font(16, mono=True)
 
     def set_aircraft(self, ac: Aircraft) -> None:
         self.aircraft = ac
@@ -43,37 +46,38 @@ class DetailScreen:
         surface.blit(title, (cx - title.get_width() // 2, y))
         y += 50
 
-        lines: list[tuple[str, str]] = []
-        lines.append(("ICAO", ac.icao_hex.upper()))
+        lines: list[tuple[str, str, bool]] = []
+        lines.append(("ICAO", ac.icao_hex.upper(), False))
         if ac.registration:
-            lines.append(("Reg", ac.registration))
+            lines.append(("Reg", ac.registration, False))
         if ac.aircraft_type:
-            lines.append(("Type", ac.aircraft_type))
+            lines.append(("Type", ac.aircraft_type, False))
         if ac.airline:
-            lines.append(("Airline", ac.airline))
+            lines.append(("Airline", ac.airline, False))
         if ac.flight_number:
-            lines.append(("Flight", ac.flight_number))
+            lines.append(("Flight", ac.flight_number, False))
         if ac.origin and ac.destination:
-            lines.append(("Route", f"{ac.origin} -> {ac.destination}"))
+            lines.append(("Route", f"{ac.origin} -> {ac.destination}", False))
         if ac.altitude_ft is not None:
-            lines.append(("Altitude", f"{ac.altitude_ft:,} ft"))
+            lines.append(("Altitude", f"{ac.altitude_ft:,} ft", True))
         if ac.ground_speed_kt is not None:
-            lines.append(("Speed", f"{ac.ground_speed_kt:.0f} kt"))
+            lines.append(("Speed", f"{ac.ground_speed_kt:.0f} kt", True))
         if ac.track_deg is not None:
-            lines.append(("Heading", f"{ac.track_deg:.0f}°"))
+            lines.append(("Heading", f"{ac.track_deg:.0f}°", True))
         if ac.vertical_rate_fpm:
-            lines.append(("V/S", f"{ac.vertical_rate_fpm:+,} fpm"))
+            lines.append(("V/S", f"{ac.vertical_rate_fpm:+,} fpm", True))
         if ac.squawk:
-            lines.append(("Squawk", ac.squawk))
+            lines.append(("Squawk", ac.squawk, True))
         if ac.distance_km is not None:
             d = km_to_unit(ac.distance_km, self.distance_unit)
-            lines.append(("Distance", f"{d:.1f} {unit_label(self.distance_unit)}"))
+            lines.append(("Distance", f"{d:.1f} {unit_label(self.distance_unit)}", True))
         if ac.bearing_deg is not None:
-            lines.append(("Bearing", f"{ac.bearing_deg:.0f}°"))
+            lines.append(("Bearing", f"{ac.bearing_deg:.0f}°", True))
 
-        for label, value in lines:
+        for label, value, is_numeric in lines:
             lbl_surf = self._font.render(f"{label}:", True, self.theme.range_label)
-            val_surf = self._font.render(value, True, self.theme.info_text)
+            font = self._font_num if is_numeric else self._font
+            val_surf = font.render(value, True, self.theme.info_text)
             surface.blit(lbl_surf, (60, y))
             surface.blit(val_surf, (200, y))
             y += 26
@@ -87,13 +91,12 @@ class DetailScreen:
             y += 40
 
         y = self.size - 50
-        back = self._font.render("[ BACK ]", True, self.theme.compass_text)
+        back = self._font.render("BACK", True, self.theme.compass_text)
         bx = cx - back.get_width() // 2
         surface.blit(back, (bx, y))
         self._back_rect = pygame.Rect(bx - 10, y - 5, back.get_width() + 20, back.get_height() + 10)
 
     def handle_tap(self, x: int, y: int) -> bool:
-        """Returns True if BACK was tapped."""
         if self._back_rect and self._back_rect.collidepoint(x, y):
             return True
         return False
