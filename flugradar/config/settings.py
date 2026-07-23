@@ -72,6 +72,9 @@ class AppSettings:
             data = json.loads(PORTAL_SETTINGS_FILE.read_text())
         except (json.JSONDecodeError, OSError):
             return
+        self._apply_data(data)
+
+    def _apply_data(self, data: dict) -> None:
         if "home_lat" in data:
             self.home.lat = float(data["home_lat"])
         if "home_lon" in data:
@@ -95,3 +98,4 @@ class AppSettings:
                 pass
         current.update(updates)
         PORTAL_SETTINGS_FILE.write_text(json.dumps(current, indent=2))
+        self._apply_data(updates)
