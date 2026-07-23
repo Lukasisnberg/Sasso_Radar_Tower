@@ -52,4 +52,57 @@
     <button type="submit" class="btn">Save</button>
   </div>
 </form>
+
+<div class="card">
+  <h2>Quick Presets</h2>
+  <div class="preset-grid">
+    <button class="preset-btn" onclick="applyPreset(42.7635, 11.1093, 30, 'Grosseto')">
+      <span class="preset-icon">🇮🇹</span>
+      <span class="preset-name">Grosseto, IT</span>
+      <span class="preset-detail">30 km</span>
+    </button>
+    <button class="preset-btn" onclick="applyPreset(50.5840, 8.6784, 30, 'Gießen')">
+      <span class="preset-icon">🇩🇪</span>
+      <span class="preset-name">Gießen, DE</span>
+      <span class="preset-detail">30 km</span>
+    </button>
+  </div>
+</div>
+
+<style>
+.preset-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.preset-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 12px;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.preset-btn:hover {
+  border-color: var(--accent);
+  background: var(--bg-card);
+}
+.preset-icon { font-size: 24px; margin-bottom: 6px; }
+.preset-name { font-size: 14px; font-weight: 600; }
+.preset-detail { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+</style>
+
+<script>
+function applyPreset(lat, lon, radius, name) {
+  document.getElementById('home_lat').value = lat;
+  document.getElementById('home_lon').value = lon;
+  document.getElementById('radius_km').value = radius;
+  document.querySelector('form').submit();
+}
+</script>
 {% endblock %}
