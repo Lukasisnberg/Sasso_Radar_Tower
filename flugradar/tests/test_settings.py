@@ -49,11 +49,7 @@ class TestPortalSettings:
         monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
         monkeypatch.setenv("FLUGRADAR_HOME_LAT", "52.0")
         s = AppSettings()
-        # env is applied first, then portal overrides — but per spec,
-        # env should win. Let's verify the current behaviour:
-        # _apply_env runs before _apply_portal_settings, so portal
-        # overwrites env. This tests current behavior; we'll fix priority later.
-        assert s.home.lat == pytest.approx(48.0)
+        assert s.home.lat == pytest.approx(52.0)
 
     def test_missing_portal_file(self, monkeypatch, tmp_path):
         monkeypatch.setattr(

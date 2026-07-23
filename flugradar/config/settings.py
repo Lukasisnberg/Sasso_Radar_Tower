@@ -40,8 +40,8 @@ class AppSettings:
     airlabs_api_key: str = ""
 
     def __post_init__(self) -> None:
-        self._apply_env()
         self._apply_portal_settings()
+        self._apply_env()
 
     def _apply_env(self) -> None:
         if v := os.environ.get("FLUGRADAR_HOME_LAT"):
