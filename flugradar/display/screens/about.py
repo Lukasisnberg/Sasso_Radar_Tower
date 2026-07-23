@@ -1,4 +1,7 @@
-"""About screen — version, network status, portal URL."""
+"""About screen — version, network status, portal URL.
+
+Centered layout fitted to the round display with Dieter Rams typography.
+"""
 
 import socket
 from typing import Optional
@@ -6,6 +9,8 @@ from typing import Optional
 import pygame
 
 from flugradar import __version__
+from flugradar.display import nav, scaling
+from flugradar.display.draw_helpers import draw_center_text
 from flugradar.display.fonts import get_font
 from flugradar.display.theme import Theme
 
@@ -16,57 +21,57 @@ class AboutScreen:
     def __init__(self, screen_size: int, theme: Theme) -> None:
         self.size = screen_size
         self.theme = theme
-        self._font: Optional[pygame.font.Font] = None
-        self._font_lg: Optional[pygame.font.Font] = None
-        self._font_sm: Optional[pygame.font.Font] = None
-        self._back_rect: Optional[pygame.Rect] = None
+        self._fonts_ready = False
+        self._title_font: Optional[pygame.font.Font] = None
+        self._detail_font: Optional[pygame.font.Font] = None
 
     def _ensure_fonts(self) -> None:
-        if self._font is None:
-            self._font = get_font(16)
-            self._font_lg = get_font(26, bold=True)
-            self._font_sm = get_font(13)
+        if not self._fonts_ready:
+            self._title_font = get_font(scaling.s(14), bold=True)
+            self._detail_font = get_font(scaling.s(8))
+            self._fonts_ready = True
 
     def draw(self, surface: pygame.Surface) -> None:
         self._ensure_fonts()
         surface.fill(self.theme.background)
-        cx = self.size // 2
-        y = 60
 
-        title = self._font_lg.render("Sasso Radar Tower", True, self.theme.compass_text)
-        surface.blit(title, (cx - title.get_width() // 2, y))
-        y += 50
+        nav.draw_breadcrumb(surface, ["Radar", "About"], self.theme)
+
+        top = nav.content_top_y()
+        bottom = nav.content_bottom_y()
+        y = top
+
+        y = draw_center_text(surface, "Sasso Radar Tower", y, self._title_font, self.theme.label)
+        y += scaling.s(4)
 
         lines = [
-            ("Version", __version__),
-            ("Hostname", _hostname()),
-            ("IP Address", _ip_address()),
-            ("Portal", f"http://{_hostname()}.local:5000"),
-            ("Data Source", "adsb.fi (opendata)"),
-            ("Display", f"{self.size}x{self.size}"),
+            f"v{__version__}",
+            "",
+            f"{_hostname()} · {_ip_address()}",
+            f"http://{_hostname()}.local:5000",
+            "",
+            f"Display {self.size}×{self.size}",
+            "Data: adsb.fi (opendata)",
+            "Maps: CARTO / OpenStreetMap",
+            "Photos: planespotters.net",
         ]
 
-        for label, value in lines:
-            lbl = self._font.render(f"{label}:", True, self.theme.range_label)
-            val = self._font.render(value, True, self.theme.info_text)
-            surface.blit(lbl, (60, y))
-            surface.blit(val, (220, y))
-            y += 30
+        for line in lines:
+            if not line:
+                y += scaling.s(4)
+                continue
+            if y + self._detail_font.get_height() > bottom:
+                break
+            y = draw_center_text(surface, line, y, self._detail_font, self.theme.muted)
 
-        y += 20
-        attr = self._font_sm.render(
-            "Data: adsb.fi | Maps: CARTO / OSM", True, self.theme.radar_ring
-        )
-        surface.blit(attr, (cx - attr.get_width() // 2, y))
-
-        y = self.size - 50
-        back = self._font.render("BACK", True, self.theme.compass_text)
-        bx = cx - back.get_width() // 2
-        surface.blit(back, (bx, y))
-        self._back_rect = pygame.Rect(bx - 10, y - 5, back.get_width() + 20, back.get_height() + 10)
+        nav.draw_footer_buttons(surface, ["radar"], self.theme)
 
     def handle_tap(self, x: int, y: int) -> bool:
-        if self._back_rect and self._back_rect.collidepoint(x, y):
+        idx = nav.tap_footer_button(x, y, 1)
+        if idx is not None:
+            return True
+        breadcrumb_y = scaling.center_y() - int(scaling.visible_radius() * 0.75)
+        if y < breadcrumb_y + scaling.s(30):
             return True
         return False
 
