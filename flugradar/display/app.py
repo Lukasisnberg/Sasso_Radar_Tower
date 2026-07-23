@@ -9,6 +9,7 @@ import pygame
 from flugradar.config.settings import AppSettings
 from flugradar.data_sources.adsb_fi import AdsbFiClient
 from flugradar.data_sources.demo import DemoSource
+from flugradar.data_sources.enrichment import EnrichmentClient
 from flugradar.data_sources.models import Aircraft
 from flugradar.data_sources.projection import ScreenProjection
 from flugradar.data_sources.weather import WeatherClient
@@ -57,6 +58,8 @@ class RadarApp:
         self._aircraft: list[Aircraft] = []
         self._last_fetch: float = 0.0
         self._weather_client: WeatherClient | None = None
+        self._enrichment_client: EnrichmentClient | None = None
+        self._last_interaction: float = 0.0
 
     def run(self) -> None:
         pygame.init()
@@ -114,6 +117,12 @@ class RadarApp:
                 lon=self.settings.home.lon,
             )
 
+        if self.settings.airlabs_api_key:
+            self._enrichment_client = EnrichmentClient(
+                api_key=self.settings.airlabs_api_key,
+            )
+
+        self._last_interaction = time.monotonic()
         self.running = True
         log.info(
             "Starting radar: %.4f, %.4f radius=%.0fkm",
@@ -138,11 +147,19 @@ class RadarApp:
 
                     gesture = gestures.process_event(event)
                     if gesture:
+                        self._last_interaction = time.monotonic()
                         self._handle_gesture(
                             gesture, radar, detail, clock_scr, about, settings_scr, map_comp
                         )
 
                 now = time.monotonic()
+
+                if (
+                    self.settings.auto_clock_s > 0
+                    and self._active != ActiveScreen.CLOCK
+                    and (now - self._last_interaction) >= self.settings.auto_clock_s
+                ):
+                    self._active = ActiveScreen.CLOCK
                 if now - self._last_fetch >= self.settings.adsb.poll_interval_s:
                     self._aircraft = client.get_aircraft()
                     self._aircraft = [
@@ -150,6 +167,8 @@ class RadarApp:
                         if (ac.altitude_ft or 0) >= self.settings.min_altitude_ft
                         or ac.is_on_ground
                     ]
+                    if self._enrichment_client:
+                        self._enrichment_client.enrich(self._aircraft)
                     self._last_fetch = now
 
                 weather_status = ""
@@ -193,6 +212,8 @@ class RadarApp:
             pass
         finally:
             client.close()
+            if self._enrichment_client:
+                self._enrichment_client.close()
             if self._weather_client:
                 self._weather_client.close()
             if map_comp:

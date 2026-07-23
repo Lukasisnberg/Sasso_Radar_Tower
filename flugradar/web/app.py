@@ -59,6 +59,8 @@ def create_app(settings: AppSettings | None = None) -> Flask:
             updates = {}
             if theme := request.form.get("theme"):
                 updates["theme"] = theme
+            if (v := request.form.get("auto_clock_s")) is not None:
+                updates["auto_clock_s"] = int(v)
             settings.save_portal_settings(updates)
             return redirect(url_for("display", saved=1))
         return render_template("display.html", settings=settings)
@@ -130,6 +132,7 @@ def create_app(settings: AppSettings | None = None) -> Flask:
             "distance_unit": settings.distance_unit,
             "theme": settings.theme,
             "min_altitude_ft": settings.min_altitude_ft,
+            "auto_clock_s": settings.auto_clock_s,
         })
 
     @app.route("/api/settings", methods=["POST"])
