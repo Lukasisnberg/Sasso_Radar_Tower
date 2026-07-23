@@ -11,6 +11,7 @@ from flugradar.data_sources.adsb_fi import AdsbFiClient
 from flugradar.data_sources.demo import DemoSource
 from flugradar.data_sources.models import Aircraft
 from flugradar.data_sources.projection import ScreenProjection
+from flugradar.data_sources.weather import WeatherClient
 from flugradar.display.gestures import GestureRecogniser, GestureType
 from flugradar.display.mask import CircularViewport
 from flugradar.display.screens.about import AboutScreen
@@ -55,6 +56,7 @@ class RadarApp:
         self._active = ActiveScreen.RADAR
         self._aircraft: list[Aircraft] = []
         self._last_fetch: float = 0.0
+        self._weather_client: WeatherClient | None = None
 
     def run(self) -> None:
         pygame.init()
@@ -105,6 +107,13 @@ class RadarApp:
         else:
             client = AdsbFiClient(self.settings.adsb, self.settings.home)
 
+        if self.settings.tomorrow_api_key:
+            self._weather_client = WeatherClient(
+                api_key=self.settings.tomorrow_api_key,
+                lat=self.settings.home.lat,
+                lon=self.settings.home.lon,
+            )
+
         self.running = True
         log.info(
             "Starting radar: %.4f, %.4f radius=%.0fkm",
@@ -143,10 +152,21 @@ class RadarApp:
                     ]
                     self._last_fetch = now
 
+                weather_status = ""
+                if self._weather_client:
+                    weather = self._weather_client.get_weather()
+                    if weather:
+                        clock_scr.set_weather(weather.temperature_str, weather.condition)
+                        weather_status = weather.temperature_str
+
                 if self._active == ActiveScreen.RADAR:
                     if map_comp:
                         map_comp.render(screen)
-                    radar.draw(screen, self._aircraft, has_map_bg=map_comp is not None)
+                    radar.draw(
+                        screen, self._aircraft,
+                        has_map_bg=map_comp is not None,
+                        weather_str=weather_status,
+                    )
                     if map_comp:
                         self._draw_attribution(screen, map_comp.tiles.attribution)
                 elif self._active == ActiveScreen.DETAIL:
@@ -173,6 +193,8 @@ class RadarApp:
             pass
         finally:
             client.close()
+            if self._weather_client:
+                self._weather_client.close()
             if map_comp:
                 map_comp.tiles.close()
             pygame.quit()

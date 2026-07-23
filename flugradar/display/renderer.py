@@ -183,12 +183,17 @@ class RadarRenderer:
         surface: pygame.Surface,
         count: int,
         radius_km: float,
+        weather_str: str = "",
     ) -> None:
         self._ensure_fonts()
         dist_val = km_to_unit(radius_km, self.distance_unit)
         ulbl = unit_label(self.distance_unit)
+        parts = [f"{count} aircraft", f"{dist_val:.0f}{ulbl} range"]
+        if weather_str:
+            parts.append(weather_str)
+        parts.append("adsb.fi")
         txt = self._font_sm.render(
-            f"  {count} aircraft | {dist_val:.0f}{ulbl} range | adsb.fi  ",
+            f"  {' | '.join(parts)}  ",
             True, self.theme.status_bar,
         )
         surface.blit(txt, (4, self.size - txt.get_height() - 4))

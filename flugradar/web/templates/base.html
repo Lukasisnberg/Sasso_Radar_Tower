@@ -13,6 +13,7 @@
       <div class="links">
         <a href="{{ url_for('radar') }}" {% if request.endpoint == 'radar' %}class="active"{% endif %}>Radar</a>
         <a href="{{ url_for('display') }}" {% if request.endpoint == 'display' %}class="active"{% endif %}>Display</a>
+        <a href="{{ url_for('weather') }}" {% if request.endpoint == 'weather' %}class="active"{% endif %}>Weather</a>
         <a href="{{ url_for('api_keys') }}" {% if request.endpoint == 'api_keys' %}class="active"{% endif %}>API Keys</a>
         <a href="{{ url_for('system') }}" {% if request.endpoint == 'system' %}class="active"{% endif %}>System</a>
         <a href="{{ url_for('about') }}" {% if request.endpoint == 'about' %}class="active"{% endif %}>About</a>

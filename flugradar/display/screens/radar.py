@@ -36,6 +36,7 @@ class RadarScreen:
         surface: pygame.Surface,
         aircraft: list[Aircraft],
         has_map_bg: bool = False,
+        weather_str: str = "",
     ) -> None:
         if not has_map_bg:
             self.renderer.draw_background(surface)
@@ -46,7 +47,9 @@ class RadarScreen:
             surface, aircraft, self.selected_hex
         )
         self.renderer.draw_sweep(surface)
-        self.renderer.draw_status_bar(surface, len(aircraft), self.proj.radius_km)
+        self.renderer.draw_status_bar(
+            surface, len(aircraft), self.proj.radius_km, weather_str
+        )
 
     def handle_tap(self, x: int, y: int) -> Optional[Aircraft]:
         for rect, ac in self._hit_rects:
