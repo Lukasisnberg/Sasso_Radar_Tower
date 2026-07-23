@@ -13,8 +13,12 @@
     <div class="form-group">
       <label for="theme">Colour Theme</label>
       <select id="theme" name="theme">
-        <option value="dark" {% if settings.theme | default('dark') == 'dark' %}selected{% endif %}>Dark (Green)</option>
+        <option value="dark" {% if settings.theme | default('dark') == 'dark' %}selected{% endif %}>Dark Teal</option>
         <option value="amber" {% if settings.theme | default('dark') == 'amber' %}selected{% endif %}>Classic Amber</option>
+        <option value="green" {% if settings.theme == 'green' %}selected{% endif %}>Radar Green</option>
+        <option value="red" {% if settings.theme == 'red' %}selected{% endif %}>Radar Red</option>
+        <option value="yellow" {% if settings.theme == 'yellow' %}selected{% endif %}>Radar Yellow</option>
+        <option value="white" {% if settings.theme == 'white' %}selected{% endif %}>Radar White</option>
       </select>
     </div>
   </div>

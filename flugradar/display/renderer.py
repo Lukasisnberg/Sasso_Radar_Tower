@@ -1,4 +1,8 @@
-"""Low-level radar drawing primitives: sweep, rings, compass, aircraft."""
+"""Low-level radar drawing primitives: sweep, rings, compass, aircraft.
+
+Enhanced with multi-line colored tags, aircraft silhouettes,
+and alert rim flashing for military/emergency traffic.
+"""
 
 import math
 import time
@@ -9,6 +13,12 @@ import pygame
 from flugradar.data_sources.geo import km_to_unit, unit_label
 from flugradar.data_sources.models import Aircraft
 from flugradar.data_sources.projection import ScreenProjection
+from flugradar.display import scaling
+from flugradar.display.aircraft_icons import (
+    altitude_tag_color,
+    draw_plane_icon,
+    format_altitude,
+)
 from flugradar.display.fonts import get_font
 from flugradar.display.theme import Theme
 
@@ -39,13 +49,17 @@ class RadarRenderer:
         self._font_md: Optional[pygame.font.Font] = None
         self._font_lg: Optional[pygame.font.Font] = None
         self._font_num: Optional[pygame.font.Font] = None
+        self._font_tag: Optional[pygame.font.Font] = None
+        self._font_tag_sub: Optional[pygame.font.Font] = None
 
     def _ensure_fonts(self) -> None:
         if self._font_sm is None:
-            self._font_sm = get_font(12)
-            self._font_md = get_font(14)
-            self._font_lg = get_font(18, bold=True)
-            self._font_num = get_font(12, mono=True)
+            self._font_sm = get_font(scaling.s(7))
+            self._font_md = get_font(scaling.s(8))
+            self._font_lg = get_font(scaling.s(10), bold=True)
+            self._font_num = get_font(scaling.s(7), mono=True)
+            self._font_tag = get_font(scaling.s(7))
+            self._font_tag_sub = get_font(scaling.s(6))
 
     def sweep_angle(self) -> float:
         return (time.time() * self.sweep_rpm / 60.0 * _TWO_PI) % _TWO_PI
@@ -126,6 +140,62 @@ class RadarRenderer:
             )
         surface.blit(self._sweep_surface, (0, 0))
 
+    def _flight_icon_color(self, ac: Aircraft, is_selected: bool) -> tuple[int, int, int]:
+        if ac.is_emergency:
+            t = (time.time() * 4) % 2
+            return self.theme.alert_flash_other if t < 1 else self.theme.alert_other
+        if ac.is_military:
+            t = (time.time() * 3) % 2
+            return self.theme.alert_flash if t < 1 else self.theme.alert_military
+        if is_selected:
+            return self.theme.aircraft_selected
+        return self.theme.aircraft_dot
+
+    def _draw_aircraft_tag(
+        self,
+        surface: pygame.Surface,
+        ac: Aircraft,
+        ix: int, iy: int,
+    ) -> pygame.Rect:
+        tag_x = ix + scaling.s(12)
+        tag_y = iy - scaling.s(8)
+
+        cs_surf = self._font_tag.render(ac.display_label, True, self.theme.tag_callsign)
+        surface.blit(cs_surf, (tag_x, tag_y))
+        line_h = cs_surf.get_height() + 1
+        tag_w = cs_surf.get_width()
+
+        if ac.aircraft_type:
+            type_surf = self._font_tag_sub.render(
+                ac.aircraft_type, True, self.theme.tag_type
+            )
+            surface.blit(type_surf, (tag_x, tag_y + line_h))
+            tag_w = max(tag_w, type_surf.get_width())
+
+        alt_str = format_altitude(ac.altitude_ft)
+        if alt_str:
+            alt_color = altitude_tag_color(ac.vertical_rate_fpm, self.theme)
+            alt_surf = self._font_tag_sub.render(alt_str, True, alt_color)
+            surface.blit(alt_surf, (tag_x, tag_y + line_h * 2))
+            tag_w = max(tag_w, alt_surf.get_width())
+
+        return pygame.Rect(
+            ix - scaling.s(14), iy - scaling.s(14),
+            scaling.s(14) + tag_x - ix + tag_w + scaling.s(4),
+            scaling.s(28) + line_h * 2,
+        )
+
+    def _draw_alert_rim(self, surface: pygame.Surface, ac: Aircraft) -> None:
+        t = (time.time() * 4) % 1.0
+        alpha = int(40 * abs(math.sin(t * math.pi)))
+        if alpha < 5:
+            return
+        color = self.theme.alert_flash_other if ac.is_emergency else self.theme.alert_flash
+        cx, cy = int(self.proj.centre[0]), int(self.proj.centre[1])
+        rim_surf = pygame.Surface((self.size, self.size), pygame.SRCALPHA)
+        pygame.draw.circle(rim_surf, (*color, alpha), (cx, cy), self.size // 2, scaling.s(4))
+        surface.blit(rim_surf, (0, 0))
+
     def draw_aircraft(
         self,
         surface: pygame.Surface,
@@ -134,6 +204,8 @@ class RadarRenderer:
     ) -> list[tuple[pygame.Rect, Aircraft]]:
         self._ensure_fonts()
         hit_rects: list[tuple[pygame.Rect, Aircraft]] = []
+        alert_ac = None
+
         for ac in aircraft:
             if ac.lat is None or ac.lon is None:
                 continue
@@ -142,39 +214,22 @@ class RadarRenderer:
                 continue
             ix, iy = int(x), int(y)
             is_sel = ac.icao_hex == selected_hex
-            if ac.is_emergency:
-                colour = self.theme.emergency
-                dot_r = 6
-            elif is_sel:
-                colour = self.theme.aircraft_selected
-                dot_r = 5
-            else:
-                colour = self.theme.aircraft_dot
-                dot_r = 4
+            colour = self._flight_icon_color(ac, is_sel)
 
-            pygame.draw.circle(surface, colour, (ix, iy), dot_r)
+            heading = ac.track_deg if ac.track_deg is not None else 0.0
+            draw_plane_icon(
+                surface, ix, iy, heading, colour,
+                aircraft_type=ac.aircraft_type or "",
+            )
 
-            if ac.track_deg is not None:
-                hdg_rad = math.radians(ac.track_deg - 90)
-                hx = ix + int(18 * math.cos(hdg_rad))
-                hy = iy + int(18 * math.sin(hdg_rad))
-                pygame.draw.line(surface, self.theme.heading_line, (ix, iy), (hx, hy), _STROKE)
-
-            label = ac.display_label
-            alt_str = ""
-            if ac.altitude_ft:
-                fl = ac.altitude_ft // 100
-                alt_str = f" FL{fl:03d}" if ac.altitude_ft >= 18000 else f" {ac.altitude_ft:,}ft"
-            label_surf = self._font_sm.render(label, True, self.theme.aircraft_label)
-            alt_surf = self._font_num.render(alt_str, True, colour) if alt_str else None
-            tx = ix + dot_r + 4
-            ty = iy - label_surf.get_height() // 2
-            surface.blit(label_surf, (tx, ty))
-            if alt_surf:
-                surface.blit(alt_surf, (tx + label_surf.get_width(), ty))
-
-            hit = pygame.Rect(ix - 16, iy - 16, 32, 32)
+            hit = self._draw_aircraft_tag(surface, ac, ix, iy)
             hit_rects.append((hit, ac))
+
+            if ac.is_emergency or ac.is_military:
+                alert_ac = ac
+
+        if alert_ac:
+            self._draw_alert_rim(surface, alert_ac)
 
         return hit_rects
 
