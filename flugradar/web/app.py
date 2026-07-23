@@ -9,6 +9,7 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for
 
 from flugradar import __version__
 from flugradar.config.settings import AppSettings, PORTAL_SETTINGS_FILE
+from flugradar.data_sources.weather import WeatherClient
 
 log = logging.getLogger(__name__)
 
@@ -23,6 +24,14 @@ def create_app(settings: AppSettings | None = None) -> Flask:
         static_folder=os.path.join(os.path.dirname(__file__), "static"),
     )
     app.config["settings"] = settings
+
+    weather_client: WeatherClient | None = None
+    if settings.tomorrow_api_key:
+        weather_client = WeatherClient(
+            api_key=settings.tomorrow_api_key,
+            lat=settings.home.lat,
+            lon=settings.home.lon,
+        )
 
     @app.route("/")
     def index():
@@ -80,9 +89,37 @@ def create_app(settings: AppSettings | None = None) -> Flask:
             "system.html", settings=settings, version=__version__, message=message
         )
 
+    @app.route("/weather")
+    def weather():
+        data = None
+        if weather_client:
+            data = weather_client.get_weather()
+        return render_template(
+            "weather.html", settings=settings, weather=data,
+            has_key=bool(settings.tomorrow_api_key),
+        )
+
     @app.route("/about")
     def about():
         return render_template("about.html", version=__version__)
+
+    @app.route("/api/weather", methods=["GET"])
+    def api_weather():
+        if not weather_client:
+            return jsonify({"error": "no API key configured"}), 404
+        data = weather_client.get_weather()
+        if not data:
+            return jsonify({"error": "weather unavailable"}), 503
+        return jsonify({
+            "temperature_c": data.temperature_c,
+            "condition": data.condition,
+            "humidity": data.humidity,
+            "wind_speed_ms": data.wind_speed_ms,
+            "wind_direction_deg": data.wind_direction_deg,
+            "visibility_km": data.visibility_km,
+            "pressure_hpa": data.pressure_hpa,
+            "cloud_cover_pct": data.cloud_cover_pct,
+        })
 
     @app.route("/api/settings", methods=["GET"])
     def api_get_settings():

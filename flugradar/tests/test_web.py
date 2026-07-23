@@ -51,6 +51,15 @@ class TestPages:
         assert r.status_code == 200
         assert b"adsb.fi" in r.data
 
+    def test_weather_get_no_key(self, client):
+        r = client.get("/weather")
+        assert r.status_code == 200
+        assert b"No Tomorrow.io API key" in r.data
+
+    def test_weather_api_no_key(self, client):
+        r = client.get("/api/weather")
+        assert r.status_code == 404
+
 
 class TestRadarPost:
     def test_save_location(self, client, monkeypatch, tmp_path):
