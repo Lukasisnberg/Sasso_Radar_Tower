@@ -21,5 +21,8 @@ flugradar-cli = "flugradar.cli:main"
 flugradar-display = "flugradar.main:main"
 flugradar-web = "flugradar.web.run:main"
 
+[tool.setuptools.packages.find]
+include = ["flugradar*"]
+
 [tool.pytest.ini_options]
 testpaths = ["flugradar/tests"]
