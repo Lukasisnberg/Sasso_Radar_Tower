@@ -117,7 +117,10 @@ class AppSettings:
         old_min_alt = self.min_altitude_ft
         old_auto_clock = self.auto_clock_s
 
-        self.home = HomeLocation()
+        defaults = HomeLocation()
+        self.home.lat = defaults.lat
+        self.home.lon = defaults.lon
+        self.home.radius_km = defaults.radius_km
         self.distance_unit = "km"
         self.theme = "dark"
         self.min_altitude_ft = 0
