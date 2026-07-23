@@ -6,6 +6,7 @@ import pygame
 
 from flugradar.data_sources.aircraft_photo import get_photo_info, load_photo_surface
 from flugradar.data_sources.airline_branding import display_flight_id, marketing_brand_name
+from flugradar.data_sources.airports import format_route_endpoint
 from flugradar.data_sources.geo import km_to_unit, unit_label
 from flugradar.data_sources.models import Aircraft
 from flugradar.display import nav, scaling
@@ -87,11 +88,12 @@ class DetailScreen:
             rows.append((airline_name, self._body_font, self.theme.muted))
 
         if ac.origin and ac.destination:
-            rows.append((f"{ac.origin} → {ac.destination}", self._body_font, self.theme.route))
+            rows.append((f"{format_route_endpoint(ac.origin)}  →", self._body_font, self.theme.route))
+            rows.append((format_route_endpoint(ac.destination), self._body_font, self.theme.route))
         elif ac.origin:
-            rows.append((f"From {ac.origin}", self._body_font, self.theme.route))
+            rows.append((f"From {format_route_endpoint(ac.origin)}", self._body_font, self.theme.route))
         elif ac.destination:
-            rows.append((f"To {ac.destination}", self._body_font, self.theme.route))
+            rows.append((f"To {format_route_endpoint(ac.destination)}", self._body_font, self.theme.route))
 
         meta_parts = []
         if ac.aircraft_type:
