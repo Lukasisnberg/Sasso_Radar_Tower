@@ -11,11 +11,19 @@ from flugradar.data_sources.weather import WeatherClient, WeatherData, _WEATHER_
 class TestWeatherData:
     def test_temperature_str(self):
         w = WeatherData(temperature_c=21.7)
-        assert w.temperature_str == "22°C"
+        assert w.temperature_str() == "22°C"
 
     def test_temperature_str_negative(self):
         w = WeatherData(temperature_c=-3.2)
-        assert w.temperature_str == "-3°C"
+        assert w.temperature_str() == "-3°C"
+
+    def test_temperature_str_fahrenheit(self):
+        w = WeatherData(temperature_c=0.0)
+        assert w.temperature_str("f") == "32°F"
+
+    def test_temperature_str_fahrenheit_rounding(self):
+        w = WeatherData(temperature_c=21.7)
+        assert w.temperature_str("f") == "71°F"
 
     def test_wind_str(self):
         w = WeatherData(temperature_c=20, wind_speed_ms=5.14)

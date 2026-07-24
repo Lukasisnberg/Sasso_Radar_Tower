@@ -46,6 +46,27 @@
                value="{{ settings.min_altitude_ft }}">
       </div>
     </div>
+    <div class="form-group">
+      <label for="highlight_emergency">
+        <input type="checkbox" id="highlight_emergency" name="highlight_emergency"
+               value="1" {% if settings.highlight_emergency %}checked{% endif %}>
+        Highlight emergency squawks
+      </label>
+    </div>
+    <div class="form-group">
+      <label for="highlight_military">
+        <input type="checkbox" id="highlight_military" name="highlight_military"
+               value="1" {% if settings.highlight_military %}checked{% endif %}>
+        Highlight military traffic
+      </label>
+    </div>
+    <div class="form-group">
+      <label for="only_highlighted">
+        <input type="checkbox" id="only_highlighted" name="only_highlighted"
+               value="1" {% if settings.only_highlighted %}checked{% endif %}>
+        Show only highlighted (emergency/military) traffic
+      </label>
+    </div>
   </div>
 
   <div class="card">
@@ -79,6 +100,11 @@
         RainViewer rain radar overlay (no key required)
       </label>
     </div>
+    <div class="form-group">
+      <label for="map_brightness">Map brightness (%)</label>
+      <input type="range" id="map_brightness" name="map_brightness" min="0" max="100" step="5"
+             value="{{ settings.map_brightness }}">
+    </div>
   </div>
 
   <div class="btn-group">
@@ -88,17 +114,15 @@
 
 <div class="card">
   <h2>Quick Presets</h2>
+  <p style="font-size:13px;color:var(--text-muted);">
+    Same two fixed locations as the on-device Standort menu (Ausbaustufe 2, Schritt 4).
+  </p>
   <div class="preset-grid">
-    <button class="preset-btn" onclick="applyPreset(42.7635, 11.1093, 30, 'Grosseto')">
-      <span class="preset-icon">🇮🇹</span>
-      <span class="preset-name">Grosseto, IT</span>
-      <span class="preset-detail">30 km</span>
+    {% for loc in locations %}
+    <button class="preset-btn" onclick="applyPreset({{ loc.lat }}, {{ loc.lon }})">
+      <span class="preset-name">{{ loc.label }}</span>
     </button>
-    <button class="preset-btn" onclick="applyPreset(50.5840, 8.6784, 30, 'Gießen')">
-      <span class="preset-icon">🇩🇪</span>
-      <span class="preset-name">Gießen, DE</span>
-      <span class="preset-detail">30 km</span>
-    </button>
+    {% endfor %}
   </div>
 </div>
 
@@ -125,16 +149,13 @@
   border-color: var(--accent);
   background: var(--bg-card);
 }
-.preset-icon { font-size: 24px; margin-bottom: 6px; }
 .preset-name { font-size: 14px; font-weight: 600; }
-.preset-detail { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
 </style>
 
 <script>
-function applyPreset(lat, lon, radius, name) {
+function applyPreset(lat, lon) {
   document.getElementById('home_lat').value = lat;
   document.getElementById('home_lon').value = lon;
-  document.getElementById('radius_km').value = radius;
   document.querySelector('form').submit();
 }
 </script>

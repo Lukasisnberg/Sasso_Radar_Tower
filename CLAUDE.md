@@ -118,18 +118,54 @@ Schritte 1–8 aus dem Bauauftrag (Abschnitt 13) sind abgeschlossen:
   (`RadarRenderer.draw_aircraft`). Inter/IBM Plex Sans werden per
   `install.sh` als apt-Pakete bereitgestellt (nicht vendored), mit
   sauberem Fallback auf DejaVu/Noto/System-Sans falls nicht verfügbar.
-  **Wichtig: nur Schritt 1–3 von 5 sind umgesetzt** — der Auftrag
+- **Aircraft-Gleiten** (nicht Teil von `docs/prompt-ausbaustufe-2.md`,
+  separat vom Nutzer angefragt): Flugzeuge springen bei neuen ADS-B-Daten
+  nicht mehr hart auf ihre neue Position, sondern gleiten dorthin
+  (`RadarRenderer._update_motion`/`_interpolated_position` in
+  `flugradar/display/renderer.py`). Interpoliert in Lat/Lon (nicht
+  Bildschirmkoordinaten, bleibt so bei Zoom/Pan korrekt), Gleitdauer passt
+  sich automatisch an das beobachtete Update-Intervall an (im Regelfall
+  der ADS-B-Poll-Interval) statt eine feste Dauer zu raten. Ein
+  unterbrochenes Gleiten (neue Daten treffen mitten in der Bewegung ein)
+  setzt beim aktuell angezeigten Punkt fort statt neu zu springen.
+- **Ausbaustufe 2, Schritt 4** (Abschnitt 15, siehe
+  `docs/prompt-ausbaustufe-2.md`): Einstellungsmenü am Gerät
+  (`flugradar/display/screens/menu.py` — `MenuScreen`), ersetzt das
+  bisherige einfache `SettingsScreen` (gelöscht). Zwei Ebenen (Wurzel:
+  Karte/Standort/Darstellung/Filter/Anzeige/Einheiten/System + je ein
+  Untermenü), Swipe links öffnet, Swipe rechts/Zurück-Pfeil geht eine
+  Ebene zurück. Vier Bedienelement-Typen (Umschalter, Einfachauswahl,
+  Stufenregler, Aktion-mit-Rückfrage), Zeilen folgen der Kreissehne,
+  Haarlinien-Trenner, Bogen-Scrollindikator. Standort auf exakt zwei feste
+  Orte begrenzt (`flugradar/config/locations.py` — Gießen/Sassofortino,
+  Koordinaten mit Quelle im Kommentar). Jede Änderung wird sofort atomar
+  gespeichert (`AppSettings.save_portal_settings()`, jetzt
+  temp-file+rename statt direktem Schreiben — betrifft auch den
+  Web-Portal-Pfad); `AppSettings.mark_portal_synced()` verhindert, dass
+  der eigene Schreibvorgang 2s später über den Live-Reload-Poll nochmal
+  angewendet wird und dabei den Kartenkompositor unnötig neu aufbaut
+  (sichtbares Flackern). Viele neue Einstellungen dazugekommen (Filter-
+  Highlight-Toggles, Kompassrose/Sweep/Beschriftung an/aus,
+  Software-Helligkeit + Nachtmodus-Zeitfenster, Kartenhelligkeit,
+  Temperatur-/Uhrzeit-Einheit) — vollständige Übersichtstabelle
+  (Einstellung → Env-Variable → Portal-Seite → Menüpfad) in
+  `docs/ANFORDERUNGEN.md` Abschnitt 15. Alle auch im Web-Portal nachgezogen
+  (`radar.html`/`display.html`), mit einer Ausnahme laut Spezifikation:
+  API-Keys bleiben portal-only, da das Gerätemenü bewusst keine freien
+  Textfelder erlaubt. Nebenbefund beim Bauen: die alten Portal-„Quick
+  Presets" hatten andere Koordinaten für „Grosseto" als die jetzt
+  recherchierten für Sassofortino — Portal zieht die Presets jetzt aus
+  derselben `LOCATIONS`-Liste wie das Gerätemenü.
+  **Wichtig: nur Schritt 1–4 von 5 sind umgesetzt** — der Auftrag
   verlangt explizit, nach jedem Schritt zu testen/committen und erst nach
   Rückmeldung weiterzumachen, nicht alle fünf am Stück.
 
-271 Tests grün.
+326 Tests grün.
 
 ## Offene Punkte
 
-- **Ausbaustufe 2, Schritte 4–5** (siehe `docs/prompt-ausbaustufe-2.md`):
-  Einstellungsmenü am Gerät (Swipe links, ersetzt das bisherige
-  einfache `SettingsScreen`), Getrackter-Flug-Screen. Reihenfolge ist
-  bewusst so vom Auftrag vorgegeben.
+- **Ausbaustufe 2, Schritt 5** (siehe `docs/prompt-ausbaustufe-2.md`):
+  Getrackter-Flug-Screen. Letzter Schritt des Auftrags.
 - FAA VFR Sectional Charts (Abschnitt 5.3) weiterhin nicht gebaut — kein
   Provider im Code, keine Portal-Option.
 - Live-Reload-Verifikation (Settings-Änderungen im Portal ohne App-Neustart)

@@ -37,6 +37,9 @@ class RadarRenderer:
         ring_count: int = 4,
         distance_unit: str = "km",
         aircraft_icon_set: str = "detailed",
+        show_aircraft_tags: bool = True,
+        highlight_emergency: bool = True,
+        highlight_military: bool = True,
     ) -> None:
         self.size = screen_size
         self.proj = projection
@@ -45,6 +48,9 @@ class RadarRenderer:
         self.ring_count = ring_count
         self.distance_unit = distance_unit
         self.aircraft_icon_set = aircraft_icon_set
+        self.show_aircraft_tags = show_aircraft_tags
+        self.highlight_emergency = highlight_emergency
+        self.highlight_military = highlight_military
         self._sweep_surface = pygame.Surface((screen_size, screen_size), pygame.SRCALPHA)
         self._fade_surface: Optional[pygame.Surface] = None
         self._font_sm: Optional[pygame.font.Font] = None
@@ -59,6 +65,9 @@ class RadarRenderer:
         # kept briefly after an aircraft drops out so it can fade out instead
         # of disappearing hard.
         self._last_drawn: dict[str, tuple[Aircraft, int, int, float]] = {}
+        # icao_hex -> glide state, so a new position fetched from the data
+        # source is approached smoothly instead of teleported to.
+        self._motion: dict[str, dict] = {}
 
     def _ensure_fonts(self) -> None:
         if self._font_sm is None:
@@ -154,10 +163,10 @@ class RadarRenderer:
         surface.blit(self._sweep_surface, (0, 0))
 
     def _flight_icon_color(self, ac: Aircraft, is_selected: bool) -> tuple[int, int, int]:
-        if ac.is_emergency:
+        if ac.is_emergency and self.highlight_emergency:
             t = (time.time() * 4) % 2
             return self.theme.alert_flash_other if t < 1 else self.theme.alert_other
-        if ac.is_military:
+        if ac.is_military and self.highlight_military:
             t = (time.time() * 3) % 2
             return self.theme.alert_flash if t < 1 else self.theme.alert_military
         if is_selected:
@@ -170,6 +179,10 @@ class RadarRenderer:
         ac: Aircraft,
         ix: int, iy: int,
     ) -> pygame.Rect:
+        if not self.show_aircraft_tags:
+            r = scaling.s(14)
+            return pygame.Rect(ix - r, iy - r, r * 2, r * 2)
+
         tag_x = ix + scaling.s(12)
         tag_y = iy - scaling.s(8)
 
@@ -247,6 +260,40 @@ class RadarRenderer:
         scratch.set_alpha(255)
         return hit
 
+    def _interpolated_position(self, m: dict, now: float) -> tuple[float, float]:
+        if m["move_dur"] <= 0:
+            return m["target_lat"], m["target_lon"]
+        t = min(1.0, (now - m["move_start"]) / m["move_dur"])
+        eased = ease_out_cubic(t)
+        lat = m["start_lat"] + (m["target_lat"] - m["start_lat"]) * eased
+        lon = m["start_lon"] + (m["target_lon"] - m["start_lon"]) * eased
+        return lat, lon
+
+    def _update_motion(self, ac: Aircraft, now: float) -> tuple[float, float]:
+        """Glide towards a freshly-fetched position instead of teleporting
+        to it the instant new data arrives. Duration self-adapts to the
+        observed interval between position updates (i.e. roughly the ADS-B
+        poll interval), so it works without knowing that setting here."""
+        m = self._motion.get(ac.icao_hex)
+        if m is None:
+            m = {
+                "start_lat": ac.lat, "start_lon": ac.lon,
+                "target_lat": ac.lat, "target_lon": ac.lon,
+                "move_start": now, "move_dur": 0.0,
+                "last_target_change": now,
+            }
+            self._motion[ac.icao_hex] = m
+        elif (ac.lat, ac.lon) != (m["target_lat"], m["target_lon"]):
+            cur_lat, cur_lon = self._interpolated_position(m, now)
+            dur = now - m["last_target_change"]
+            m["start_lat"], m["start_lon"] = cur_lat, cur_lon
+            m["target_lat"], m["target_lon"] = ac.lat, ac.lon
+            m["move_start"] = now
+            m["move_dur"] = min(max(dur, 0.2), 10.0)
+            m["last_target_change"] = now
+
+        return self._interpolated_position(m, now)
+
     def draw_aircraft(
         self,
         surface: pygame.Surface,
@@ -263,7 +310,8 @@ class RadarRenderer:
         for ac in aircraft:
             if ac.lat is None or ac.lon is None:
                 continue
-            x, y = self.proj.geo_to_screen(ac.lat, ac.lon)
+            disp_lat, disp_lon = self._update_motion(ac, now)
+            x, y = self.proj.geo_to_screen(disp_lat, disp_lon)
             if not self.proj.is_on_screen(x, y):
                 continue
             ix, iy = int(x), int(y)
@@ -284,7 +332,9 @@ class RadarRenderer:
             hit_rects.append((hit, ac))
             self._last_drawn[ac.icao_hex] = (ac, ix, iy, now)
 
-            if ac.is_emergency or ac.is_military:
+            if (ac.is_emergency and self.highlight_emergency) or (
+                ac.is_military and self.highlight_military
+            ):
                 alert_ac = ac
 
         # Aircraft that dropped out this frame keep fading out at their last
@@ -297,6 +347,7 @@ class RadarRenderer:
             if since_gone >= fade_s:
                 del self._last_drawn[hx]
                 self._first_seen.pop(hx, None)
+                self._motion.pop(hx, None)
                 continue
             alpha = int(255 * (1.0 - ease_out_cubic(since_gone / fade_s)))
             if alpha > 0:

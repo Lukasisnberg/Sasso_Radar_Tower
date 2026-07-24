@@ -589,6 +589,99 @@ außerhalb von `theme.py` keine neuen Farbtupel hinzukommen (mit expliziter
 Ausnahmeliste für strukturelle Alpha-Masken-Konstanten, die keine
 Design-Entscheidung sind).
 
+**Update — Ausbaustufe 2, Schritt 4** (siehe `docs/prompt-ausbaustufe-2.md`):
+Einstellungsmenü am Gerät gebaut (`flugradar/display/screens/menu.py`,
+`MenuScreen`), ersetzt das bisherige einfache `SettingsScreen`. Zwei
+Ebenen (Wurzelliste `Karte/Standort/Darstellung/Filter/Anzeige/Einheiten/
+System` + je ein Untermenü), Aufruf per Swipe links vom Radar (oder von der
+Uhr), zurück per Swipe rechts oder Zurück-Pfeil links oben — beides springt
+eine Ebene zurück bzw. von der Wurzel zum Radar. Ebenenwechsel als
+horizontales Schieben über `TOKENS.duration_long_ms`/`ease_out_cubic`.
+Vier Bedienelement-Arten wie in 4.3 gefordert: Umschalter, Einfachauswahl
+(zyklisch bei Tap, Häkchen-Äquivalent als Wertanzeige rechts), Stufenregler
+(Tap-Position auf der Zeile setzt den Wert, gerastert auf `step_v`), Aktion
+mit Rückfrage (Neustart/Herunterfahren — erster Tap zeigt zwei getrennte
+Schaltflächen Bestätigen/Abbrechen, kein versehentliches Auslösen). Zeilen
+folgen der Kreissehne (`scaling.circle_half_width_at_row`), Trennlinien als
+Haarlinien in Sehnenbreite, Scroll-Indikator als dünner Bogen
+(`_draw_scroll_arc`) statt gerader Leiste; sanftes Scrollen mit Nachlauf
+über `nav.ScrollState.kick()`/`current_offset()` (neue, rein additive
+Erweiterung — bestehende `.step()`/`.offset`-Nutzung z. B. in
+`DetailScreen` unverändert).
+
+**Standort**: exakt zwei feste Orte (kein Suchfeld, keine Tastatur), als
+benannte Konstanten in `flugradar/config/locations.py`:
+- Gießen, DE — 50.58727° N, 8.67554° E (Stadtmitte; Quelle: latitude.to,
+  latlong.info, beide übereinstimmend auf 5 Nachkommastellen)
+- Sassofortino (Roccastrada, Provinz Grosseto), IT — 43.02583° N,
+  11.11222° E (Quelle: Wikipedia-Koordinaten-Infobox)
+
+Radius als Presets 25/50/100/150/250 km. Die vorher im Portal
+existierenden „Quick Presets" (`radar.html`) hatten abweichende
+Koordinaten für „Grosseto" (Stadtzentrum statt Sassofortino) — beim Bau
+dieses Schritts entdeckt und korrigiert: das Portal zieht die Presets jetzt
+aus derselben `LOCATIONS`-Liste wie das Gerätemenü, damit beide garantiert
+denselben Stand zeigen.
+
+**Persistenz**: jede Änderung wird sofort über
+`AppSettings.save_portal_settings()` geschrieben (kein Speichern-Knopf),
+atomar (temporäre `.tmp`-Datei, dann `os.replace()` — betrifft jetzt auch
+den Web-Portal-Pfad, der vorher nicht atomar war). Damit das eigene
+Schreiben des Geräts nicht wenig später durch den Live-Reload-Poll
+(`check_portal_reload()`, alle 2 s) redundant nochmal angewendet wird und
+dabei sichtbar flackert (v. a. der Kartenkompositor würde neu aufgebaut),
+markiert `AppSettings.mark_portal_synced()` den Dateistand direkt nach dem
+Schreiben als bereits gesehen; `RadarApp` wendet die Änderung stattdessen
+sofort selbst an (`_apply_live_settings()`, wie beim Portal-Reload, nur
+ohne die 2-Sekunden-Verzögerung).
+
+**Neue Einstellungen** (Filter/Darstellung/Anzeige/Einheiten) — Übersicht
+Einstellung → Env-Variable → Portal-Seite → Menüpfad am Gerät:
+
+| Einstellung | Env-Variable | Portal-Seite | Menüpfad (Gerät) |
+|---|---|---|---|
+| Standort (Lat/Lon) | `FLUGRADAR_HOME_LAT`/`_LON` | Radar | Standort → Ort |
+| Radius | `FLUGRADAR_RADIUS_KM` | Radar | Standort → Radius |
+| Kartenanbieter | `MAP_PROVIDER` | Radar | Karte → Anbieter |
+| openAIP-Overlay | `OPENAIP_OVERLAY_ENABLED` | Radar | Karte → openAIP-Luftraum |
+| Regenradar | `RAINVIEWER_ENABLED` | Radar | Karte → Regenradar |
+| Kartenhelligkeit | `MAP_BRIGHTNESS` | Radar | Karte → Kartenhelligkeit |
+| Distanzeinheit | `FLUGRADAR_DISTANCE_UNIT` | Radar | Einheiten → Distanz |
+| Mindesthöhe | `FLUGRADAR_MIN_ALT_FT` | Radar | Filter → Mindesthöhe |
+| Notfall hervorheben | `FLUGRADAR_HIGHLIGHT_EMERGENCY` | Radar | Filter → Notfall hervorheben |
+| Militär hervorheben | `FLUGRADAR_HIGHLIGHT_MILITARY` | Radar | Filter → Militär hervorheben |
+| Nur Hervorgehobene | `FLUGRADAR_ONLY_HIGHLIGHTED` | Radar | Filter → Nur Hervorgehobene |
+| Theme | `FLUGRADAR_THEME` | Display | Darstellung → Theme |
+| Icon-Set | `FLUGRADAR_AIRCRAFT_ICON_SET` | Display | Darstellung → Icon-Set |
+| Beschriftung | `FLUGRADAR_SHOW_AIRCRAFT_TAGS` | Display | Darstellung → Beschriftung |
+| Kompassrose | `FLUGRADAR_SHOW_COMPASS` | Display | Darstellung → Kompassrose |
+| Sweep | `FLUGRADAR_SHOW_SWEEP` | Display | Darstellung → Sweep |
+| Automatisch zur Uhr | `FLUGRADAR_AUTO_CLOCK_S` | Display | Anzeige → Automatisch zur Uhr |
+| Helligkeit | `FLUGRADAR_BRIGHTNESS` | Display | Anzeige → Helligkeit |
+| Nachtmodus an/aus | `FLUGRADAR_NIGHT_MODE_ENABLED` | Display | Anzeige → Nachtmodus |
+| Nachtmodus ab/bis | `FLUGRADAR_NIGHT_MODE_START`/`_END` | Display | Anzeige → Nachtmodus ab/bis |
+| Nachthelligkeit | `FLUGRADAR_NIGHT_MODE_BRIGHTNESS` | Display | Anzeige → Nachthelligkeit |
+| Temperatureinheit | `FLUGRADAR_TEMPERATURE_UNIT` | Display | Einheiten → Temperatur |
+| Uhrzeitformat | `FLUGRADAR_TIME_FORMAT` | Display | Einheiten → Uhrzeit |
+| API-Keys (FR24/Tomorrow/AirLabs/openAIP) | je `*_API_KEY` | API Keys | — (bewusst kein Gerätepfad: 4.3 verbietet freie Textfelder) |
+| adsbdb an/aus, Enrich-Radius, Fotos | `ADSBDB_*`/`AIRCRAFT_PHOTOS_ENABLED` | API Keys | — (dito) |
+| Version/Hostname/IP/Portal/Quellen | — | About | System → (Info-Zeilen, nur lesend) |
+| Neustart/Herunterfahren | — | System | System → Neustart/Herunterfahren |
+
+„Helligkeit" ist eine **Software-Abdunkelung** (halbtransparentes Overlay
+über dem fertigen Frame, `flugradar/display/brightness.py`), keine echte
+Backlight-/PWM-Ansteuerung — ein Sysfs-Pfad lässt sich nicht für jede
+Panel-/Treiber-Kombination voraussetzen. Funktioniert dadurch garantiert
+auf jeder Pi+Display-Kombination, dimmt aber nicht so tief wie eine echte
+Hintergrundbeleuchtungssteuerung. Nachtmodus setzt in seinem Zeitfenster
+(mit Mitternachts-Wrap, z. B. 22:00–06:00) eine niedrigere Helligkeits-
+Obergrenze, hebt eine ohnehin schon niedrigere manuelle Einstellung aber
+nie an.
+
+**Wichtig: nur Schritt 1–4 von 5 sind umgesetzt** — Schritt 5
+(Getrackter-Flug-Screen) steht noch aus, wie vom Auftrag vorgegeben erst
+nach Rückmeldung vom Gerätetest.
+
 ## 16. Lizenz & Rechtliches
 
 - Eigene Wahl der Lizenz für das neue Repository (z. B. MIT, falls keine

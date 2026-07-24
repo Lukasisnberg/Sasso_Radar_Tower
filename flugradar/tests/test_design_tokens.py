@@ -25,6 +25,7 @@ _ALLOWED = {
     ("display/renderer.py", "self._sweep_surface.fill((0, 0, 0, 0))"),  # clear scratch surface to transparent
     ("display/renderer.py", "scratch.fill((0, 0, 0, 0))"),  # clear scratch surface to transparent
     ("display/mask.py", "mask.fill((0, 0, 0, 255))"),  # opaque stencil, only valid value
+    ("display/screens/menu.py", "self._back_rect = pygame.Rect(0, 0, 0, 0)"),  # rect geometry, not a colour
     ("display/mask.py", "pygame.draw.circle(mask, (0, 0, 0, 0), (size // 2, size // 2), size // 2)"),  # transparent punch
     ("display/aircraft_icons.py", 'tinted.fill((0, 0, 0, 255), special_flags=pygame.BLEND_RGBA_MULT)'),  # tint-recipe constant, not a colour choice
 }

@@ -16,6 +16,7 @@ from flugradar.data_sources.models import Aircraft
 from flugradar.data_sources.projection import ScreenProjection
 from flugradar.data_sources.weather import WeatherClient
 from flugradar.display import scaling
+from flugradar.display.brightness import apply_dim_overlay, effective_brightness
 from flugradar.display.fonts import get_font
 from flugradar.display.gestures import GestureRecogniser, GestureType
 from flugradar.display.mask import CircularViewport
@@ -23,7 +24,7 @@ from flugradar.display.screens.about import AboutScreen
 from flugradar.display.screens.clock import ClockScreen
 from flugradar.display.screens.detail import DetailScreen
 from flugradar.display.screens.radar import RadarScreen
-from flugradar.display.screens.settings_screen import SettingsScreen
+from flugradar.display.screens.menu import MenuScreen
 from flugradar.display.theme import CLASSIC_AMBER, TOKENS, Theme, ease_out_cubic, resolve_theme
 from flugradar.maps.compositor import MapCompositor
 from flugradar.maps.rainviewer import RainViewerClient
@@ -98,18 +99,23 @@ class RadarApp:
             self.screen_size, proj, theme,
             distance_unit=self.settings.distance_unit,
             aircraft_icon_set=self.settings.aircraft_icon_set,
+            show_compass=self.settings.show_compass,
+            show_sweep=self.settings.show_sweep,
+            show_aircraft_tags=self.settings.show_aircraft_tags,
+            highlight_emergency=self.settings.highlight_emergency,
+            highlight_military=self.settings.highlight_military,
         )
         detail = DetailScreen(
             self.screen_size, theme,
             distance_unit=self.settings.distance_unit,
         )
-        clock_scr = ClockScreen(self.screen_size, theme)
+        clock_scr = ClockScreen(self.screen_size, theme, time_format=self.settings.time_format)
         about = AboutScreen(
             self.screen_size, theme,
             openaip_enabled=self._openaip_enabled(),
             rainviewer_enabled=self._rainviewer_enabled(),
         )
-        settings_scr = SettingsScreen(self.screen_size, theme)
+        menu = MenuScreen(self.screen_size, theme, self.settings)
         gestures = GestureRecogniser()
 
         viewport = (
@@ -123,7 +129,10 @@ class RadarApp:
                 self._rainviewer_client = RainViewerClient()
                 base_mgr = self._build_base_tile_manager()
                 overlays = self._build_overlays()
-                map_comp = MapCompositor(base_mgr, proj, overlay_tiles=overlays)
+                map_comp = MapCompositor(
+                    base_mgr, proj, overlay_tiles=overlays,
+                    brightness=self.settings.map_brightness / 100.0,
+                )
             except Exception:
                 log.warning("Map tiles unavailable, running without map background")
 
@@ -178,7 +187,8 @@ class RadarApp:
                     if gesture:
                         self._last_interaction = time.monotonic()
                         self._handle_gesture(
-                            gesture, radar, detail, clock_scr, about, settings_scr, map_comp
+                            gesture, radar, detail, clock_scr, about, menu, map_comp,
+                            proj, viewport,
                         )
 
                 now = time.monotonic()
@@ -188,7 +198,7 @@ class RadarApp:
                     if self.settings.check_portal_reload():
                         self._apply_live_settings(
                             proj, radar, detail, clock_scr, about,
-                            settings_scr, map_comp, viewport,
+                            menu, map_comp, viewport,
                         )
 
                 if (
@@ -204,6 +214,11 @@ class RadarApp:
                         if (ac.altitude_ft or 0) >= self.settings.min_altitude_ft
                         or ac.is_on_ground
                     ]
+                    if self.settings.only_highlighted:
+                        self._aircraft = [
+                            ac for ac in self._aircraft
+                            if ac.is_emergency or ac.is_military
+                        ]
                     if self._flight_enrichment:
                         self._flight_enrichment.poll(
                             self._aircraft, nearest_limit=self.settings.adsbdb_enrich_nearest,
@@ -216,11 +231,12 @@ class RadarApp:
                 if self._weather_client:
                     weather = self._weather_client.get_weather()
                     if weather:
-                        clock_scr.set_weather(weather.temperature_str, weather.condition)
-                        weather_status = weather.temperature_str
+                        temp_str = weather.temperature_str(self.settings.temperature_unit)
+                        clock_scr.set_weather(temp_str, weather.condition)
+                        weather_status = temp_str
 
                 self._render_active_screen(
-                    frame_surface, radar, detail, clock_scr, about, settings_scr,
+                    frame_surface, radar, detail, clock_scr, about, menu,
                     map_comp, weather_status,
                 )
 
@@ -299,7 +315,7 @@ class RadarApp:
                 ac.photo_credit = info.get("credit", "")
 
     def _apply_live_settings(
-        self, proj, radar, detail, clock_scr, about, settings_scr, map_comp,
+        self, proj, radar, detail, clock_scr, about, menu, map_comp,
         viewport=None,
     ) -> None:
         """Hot-apply changed portal settings without restarting."""
@@ -308,13 +324,21 @@ class RadarApp:
         radar.update_theme(theme)
         radar.update_unit(self.settings.distance_unit)
         radar.update_icon_set(self.settings.aircraft_icon_set)
+        radar.update_display_options(
+            self.settings.show_compass, self.settings.show_sweep,
+            self.settings.show_aircraft_tags,
+        )
+        radar.update_highlight_options(
+            self.settings.highlight_emergency, self.settings.highlight_military,
+        )
         detail.theme = theme
         detail.distance_unit = self.settings.distance_unit
         clock_scr.theme = theme
+        clock_scr.time_format = self.settings.time_format
         about.theme = theme
         about.openaip_enabled = self._openaip_enabled()
         about.rainviewer_enabled = self._rainviewer_enabled()
-        settings_scr.theme = theme
+        menu.theme = theme
         if viewport:
             viewport.update_theme(theme)
 
@@ -329,6 +353,7 @@ class RadarApp:
                 overlay.close()
             map_comp.tiles = self._build_base_tile_manager()
             map_comp.overlay_tiles = self._build_overlays()
+            map_comp.brightness = self.settings.map_brightness / 100.0
             map_comp.invalidate()
 
         log.info(
@@ -339,7 +364,7 @@ class RadarApp:
         )
 
     def _render_active_screen(
-        self, target, radar, detail, clock_scr, about, settings_scr,
+        self, target, radar, detail, clock_scr, about, menu,
         map_comp, weather_status,
     ) -> None:
         """Draw whichever screen is active into `target` (not necessarily
@@ -370,7 +395,7 @@ class RadarApp:
         elif self._active == ActiveScreen.ABOUT:
             about.draw(target)
         elif self._active == ActiveScreen.SETTINGS:
-            settings_scr.draw(target)
+            menu.draw(target)
 
     def _compose_frame(self, screen: pygame.Surface, frame: pygame.Surface) -> None:
         """Blit the freshly rendered `frame` onto `screen`, crossfading from
@@ -389,6 +414,8 @@ class RadarApp:
             self._transition_from = None
             screen.blit(frame, (0, 0))
 
+        apply_dim_overlay(screen, effective_brightness(self.settings))
+
     def _draw_attribution(self, surface: pygame.Surface, text: str) -> None:
         font = get_font(scaling.s(TOKENS.font_small))
         theme = self._theme
@@ -399,7 +426,7 @@ class RadarApp:
         surface.blit(txt, (x, y))
 
     def _handle_gesture(
-        self, gesture, radar, detail, clock_scr, about, settings_scr, map_comp
+        self, gesture, radar, detail, clock_scr, about, menu, map_comp, proj, viewport
     ) -> None:
         if self._active == ActiveScreen.RADAR:
             if gesture.type == GestureType.TAP:
@@ -452,13 +479,24 @@ class RadarApp:
 
         elif self._active == ActiveScreen.SETTINGS:
             if gesture.type == GestureType.TAP:
-                result = settings_scr.handle_tap(gesture.x, gesture.y)
-                if result == "back":
+                result = menu.handle_tap(gesture.x, gesture.y)
+                if result == "radar":
                     self._active = ActiveScreen.RADAR
                 elif result == "changed":
-                    new_theme = resolve_theme(settings_scr.selected_theme)
-                    if new_theme:
-                        radar.update_theme(new_theme)
-                    radar.update_unit(settings_scr.selected_unit)
+                    # The menu already wrote settings.json itself (Schritt 4,
+                    # 4.5: saved immediately, no save button). Apply it to
+                    # the live screens right away instead of waiting for the
+                    # 2s portal-reload poll, and mark the file as "already
+                    # seen" so that poll doesn't redundantly re-apply our
+                    # own write a moment later (which would flicker the map).
+                    self.settings.mark_portal_synced()
+                    self._apply_live_settings(
+                        proj, radar, detail, clock_scr, about, menu, map_comp, viewport,
+                    )
             elif gesture.type == GestureType.SWIPE_RIGHT:
-                self._active = ActiveScreen.RADAR
+                if menu.go_back() == "radar":
+                    self._active = ActiveScreen.RADAR
+            elif gesture.type == GestureType.SWIPE_UP:
+                menu.handle_scroll(1)
+            elif gesture.type == GestureType.SWIPE_DOWN:
+                menu.handle_scroll(-1)

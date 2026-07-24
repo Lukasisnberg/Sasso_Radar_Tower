@@ -51,8 +51,9 @@ class WeatherData:
     pressure_hpa: Optional[float] = None
     cloud_cover_pct: Optional[float] = None
 
-    @property
-    def temperature_str(self) -> str:
+    def temperature_str(self, unit: str = "c") -> str:
+        if unit == "f":
+            return f"{self.temperature_c * 9 / 5 + 32:.0f}°F"
         return f"{self.temperature_c:.0f}°C"
 
     @property

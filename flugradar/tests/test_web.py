@@ -119,6 +119,33 @@ class TestRadarPost:
         data = json.loads(portal_file.read_text())
         assert data["rainviewer_enabled"] is False
 
+    def test_map_brightness(self, client, monkeypatch, tmp_path):
+        portal_file = tmp_path / "settings.json"
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
+        r = client.post("/radar", data={"map_brightness": "70"}, follow_redirects=False)
+        assert r.status_code == 302
+        data = json.loads(portal_file.read_text())
+        assert data["map_brightness"] == 70
+
+    def test_highlight_and_only_highlighted_checkboxes(self, client, monkeypatch, tmp_path):
+        portal_file = tmp_path / "settings.json"
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
+        r = client.post(
+            "/radar",
+            data={"highlight_emergency": "1", "only_highlighted": "1"},
+            follow_redirects=False,
+        )
+        assert r.status_code == 302
+        data = json.loads(portal_file.read_text())
+        assert data["highlight_emergency"] is True
+        assert data["highlight_military"] is False  # omitted checkbox -> unchecked
+        assert data["only_highlighted"] is True
+
+    def test_locations_passed_to_template_match_device_menu(self, client):
+        r = client.get("/radar")
+        assert b"Sassofortino" in r.data
+        assert b"Gie\xc3\x9fen" in r.data or b"Gie&#223;en" in r.data or "Gießen".encode() in r.data
+
 
 class TestDisplayPost:
     def test_save_theme(self, client, monkeypatch, tmp_path):
@@ -138,6 +165,51 @@ class TestDisplayPost:
         assert r.status_code == 302
         data = json.loads(portal_file.read_text())
         assert data["aircraft_icon_set"] == "simple"
+
+    def test_radar_element_toggles(self, client, monkeypatch, tmp_path):
+        portal_file = tmp_path / "settings.json"
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
+        r = client.post("/display", data={"show_compass": "1"}, follow_redirects=False)
+        assert r.status_code == 302
+        data = json.loads(portal_file.read_text())
+        assert data["show_compass"] is True
+        assert data["show_sweep"] is False  # omitted checkbox -> unchecked
+        assert data["show_aircraft_tags"] is False
+
+    def test_brightness_and_night_mode(self, client, monkeypatch, tmp_path):
+        portal_file = tmp_path / "settings.json"
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
+        r = client.post(
+            "/display",
+            data={
+                "brightness": "60",
+                "night_mode_enabled": "1",
+                "night_mode_start": "23:00",
+                "night_mode_end": "07:00",
+                "night_mode_brightness": "20",
+            },
+            follow_redirects=False,
+        )
+        assert r.status_code == 302
+        data = json.loads(portal_file.read_text())
+        assert data["brightness"] == 60
+        assert data["night_mode_enabled"] is True
+        assert data["night_mode_start"] == "23:00"
+        assert data["night_mode_end"] == "07:00"
+        assert data["night_mode_brightness"] == 20
+
+    def test_units(self, client, monkeypatch, tmp_path):
+        portal_file = tmp_path / "settings.json"
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
+        r = client.post(
+            "/display",
+            data={"temperature_unit": "f", "time_format": "12h"},
+            follow_redirects=False,
+        )
+        assert r.status_code == 302
+        data = json.loads(portal_file.read_text())
+        assert data["temperature_unit"] == "f"
+        assert data["time_format"] == "12h"
 
 
 class TestApiKeysPost:

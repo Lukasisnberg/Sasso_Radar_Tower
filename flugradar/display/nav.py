@@ -6,20 +6,33 @@ import math
 
 import pygame
 
+import time
+
 from flugradar.display import scaling
 from flugradar.display.draw_helpers import fit_text
 from flugradar.display.fonts import get_font
-from flugradar.display.theme import TOKENS, Theme
+from flugradar.display.theme import TOKENS, Theme, ease_out_cubic
+
+# How long a single momentum-scroll "kick" (nav.ScrollState.kick) takes to
+# settle -- long end of the two animation-duration tokens, since it's a
+# content move rather than tap feedback.
+_COAST_DURATION_S = TOKENS.duration_long_ms / 1000.0
 
 
 class ScrollState:
     def __init__(self) -> None:
         self.offset = 0
         self.max_offset = 0
+        self._anim_from = 0
+        self._anim_to = 0
+        self._anim_start = 0.0
 
     def reset(self) -> None:
         self.offset = 0
         self.max_offset = 0
+        self._anim_from = 0
+        self._anim_to = 0
+        self._anim_start = 0.0
 
     def clamp(self) -> None:
         self.offset = max(0, min(self.offset, self.max_offset))
@@ -27,6 +40,26 @@ class ScrollState:
     def step(self, delta: int) -> None:
         self.offset += delta
         self.clamp()
+
+    def kick(self, delta: int) -> None:
+        """Start an eased coast-to-stop scroll of `delta` px from wherever
+        the view currently is (mid-coast or at rest) -- used by screens
+        that want 'Nachlauf und weiches Abbremsen' from a discrete swipe
+        instead of an instant jump (nav.ScrollState.step)."""
+        self._anim_from = self.current_offset()
+        target = max(0, min(self._anim_from + delta, self.max_offset))
+        self._anim_to = target
+        self._anim_start = time.monotonic()
+
+    def current_offset(self) -> int:
+        if self._anim_from == self._anim_to:
+            return self._anim_to
+        t = (time.monotonic() - self._anim_start) / _COAST_DURATION_S
+        if t >= 1.0:
+            self._anim_from = self._anim_to
+            return self._anim_to
+        eased = ease_out_cubic(t)
+        return int(round(self._anim_from + (self._anim_to - self._anim_from) * eased))
 
 
 def _top_y() -> int:

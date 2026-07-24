@@ -23,9 +23,10 @@ _HERO_TIME_SCALE = 2.6
 class ClockScreen:
     """Full-screen clock with optional weather overlay."""
 
-    def __init__(self, screen_size: int, theme: Theme) -> None:
+    def __init__(self, screen_size: int, theme: Theme, time_format: str = "24h") -> None:
         self.size = screen_size
         self.theme = theme
+        self.time_format = time_format
         self.temperature: Optional[str] = None
         self.condition: Optional[str] = None
         self._fonts_ready = False
@@ -58,8 +59,12 @@ class ClockScreen:
         cy = scaling.center_y()
 
         now = time.localtime()
-        time_str = time.strftime("%H:%M", now)
-        seconds_str = time.strftime(":%S", now)
+        if self.time_format == "12h":
+            time_str = time.strftime("%I:%M", now).lstrip("0") or "0"
+            seconds_str = time.strftime(":%S %p", now)
+        else:
+            time_str = time.strftime("%H:%M", now)
+            seconds_str = time.strftime(":%S", now)
         date_str = time.strftime("%A, %d %B %Y", now)
 
         time_surf = self._font_time.render(time_str, True, self.theme.label)

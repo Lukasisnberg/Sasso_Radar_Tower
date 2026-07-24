@@ -3,13 +3,14 @@
 import json
 import logging
 import os
-import subprocess
 
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 
 from flugradar import __version__
+from flugradar.config.locations import LOCATIONS
 from flugradar.config.settings import AppSettings, PORTAL_SETTINGS_FILE
 from flugradar.data_sources.weather import WeatherClient
+from flugradar.system.actions import system_action
 
 log = logging.getLogger(__name__)
 
@@ -57,9 +58,14 @@ def create_app(settings: AppSettings | None = None) -> Flask:
             updates["rainviewer_enabled"] = (
                 request.form.get("rainviewer_enabled") is not None
             )
+            if (v := request.form.get("map_brightness")) is not None:
+                updates["map_brightness"] = int(v)
+            updates["highlight_emergency"] = request.form.get("highlight_emergency") is not None
+            updates["highlight_military"] = request.form.get("highlight_military") is not None
+            updates["only_highlighted"] = request.form.get("only_highlighted") is not None
             settings.save_portal_settings(updates)
             return redirect(url_for("radar", saved=1))
-        return render_template("radar.html", settings=settings)
+        return render_template("radar.html", settings=settings, locations=LOCATIONS)
 
     @app.route("/display", methods=["GET", "POST"])
     def display():
@@ -71,6 +77,22 @@ def create_app(settings: AppSettings | None = None) -> Flask:
                 updates["aircraft_icon_set"] = icon_set
             if (v := request.form.get("auto_clock_s")) is not None:
                 updates["auto_clock_s"] = int(v)
+            updates["show_compass"] = request.form.get("show_compass") is not None
+            updates["show_sweep"] = request.form.get("show_sweep") is not None
+            updates["show_aircraft_tags"] = request.form.get("show_aircraft_tags") is not None
+            if (v := request.form.get("brightness")) is not None:
+                updates["brightness"] = int(v)
+            updates["night_mode_enabled"] = request.form.get("night_mode_enabled") is not None
+            if v := request.form.get("night_mode_start"):
+                updates["night_mode_start"] = v
+            if v := request.form.get("night_mode_end"):
+                updates["night_mode_end"] = v
+            if (v := request.form.get("night_mode_brightness")) is not None:
+                updates["night_mode_brightness"] = int(v)
+            if v := request.form.get("temperature_unit"):
+                updates["temperature_unit"] = v
+            if v := request.form.get("time_format"):
+                updates["time_format"] = v
             settings.save_portal_settings(updates)
             return redirect(url_for("display", saved=1))
         return render_template("display.html", settings=settings)
@@ -99,10 +121,10 @@ def create_app(settings: AppSettings | None = None) -> Flask:
         message = None
         if action == "restart":
             message = "Restart initiated..."
-            _safe_system_action("reboot")
+            system_action("reboot")
         elif action == "shutdown":
             message = "Shutdown initiated..."
-            _safe_system_action("shutdown")
+            system_action("shutdown")
         return render_template(
             "system.html", settings=settings, version=__version__, message=message
         )
@@ -165,13 +187,3 @@ def create_app(settings: AppSettings | None = None) -> Flask:
         return jsonify({"status": "ok"})
 
     return app
-
-
-def _safe_system_action(action: str) -> None:
-    try:
-        if action == "reboot":
-            subprocess.Popen(["sudo", "reboot"])
-        elif action == "shutdown":
-            subprocess.Popen(["sudo", "shutdown", "-h", "now"])
-    except Exception:
-        log.exception("System action '%s' failed", action)
