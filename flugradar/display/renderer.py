@@ -220,6 +220,7 @@ class RadarRenderer:
             draw_plane_icon(
                 surface, ix, iy, heading, colour,
                 aircraft_type=ac.aircraft_type or "",
+                category=ac.category,
             )
 
             hit = self._draw_aircraft_tag(surface, ac, ix, iy)
