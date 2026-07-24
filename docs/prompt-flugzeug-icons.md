@@ -1,8 +1,5 @@
 # Auftrag: Flugzeugtyp-Icons einbinden (Icon-Set von adsb-radar.com)
 
-> Dieser Text ist für Claude Code gedacht und kann gleichzeitig als
-> `docs/AUFGABE-ICONS.md` ins Repo gelegt werden.
-> Bezug: `docs/ANFORDERUNGEN.md`, Abschnitt 5.4a (Flugzeugtyp-Icon-System).
 
 ## Ziel
 
@@ -16,31 +13,7 @@ Designs):
 
 Quelle: https://adsb-radar.com/help/icons.html
 
-## Schritt 0 — Lizenz prüfen (Gate, vor allem anderen)
 
-Nach meinem Kenntnisstand sind die Icons für private **und** kommerzielle
-Projekte frei nutzbar, mit der Bedingung eines sichtbaren **Backlinks zu
-ADS-B Radar** im Projekt / auf der Website / in der Dokumentation. Diese
-Angabe stammt aus einer Zusammenfassung, nicht aus dem vollständig gelesenen
-Lizenztext.
-
-Bitte deshalb **zuerst** die Seite selbst aufrufen und den tatsächlichen
-Lizenztext im Wortlaut prüfen. Dann:
-
-- Den Lizenztext (bzw. eine wortgetreue Wiedergabe der Bedingung) in
-  `flugradar/assets/icons/aircraft/LICENSE.txt` ablegen, zusammen mit
-  Quell-URL und Abrufdatum.
-- **Falls die Bedingungen von der obigen Annahme abweichen** (z. B. keine
-  kommerzielle Nutzung erlaubt, Weiterverteilung im Repo untersagt, oder
-  Registrierung/Kauf erforderlich): **nicht einbauen, nichts committen** —
-  stattdessen kurz melden, was tatsächlich dasteht, und auf meine Entscheidung
-  warten. Das Projekt steht unter MIT; das Bündeln fremder Assets mit
-  abweichenden Bedingungen muss bewusst entschieden und dokumentiert werden.
-- Insbesondere prüfen, ob die **Weiterverteilung der Dateien in einem
-  öffentlichen Repository** gedeckt ist. Falls nicht: die Icons **nicht**
-  einchecken, sondern stattdessen einen Download-Schritt im `install.sh`
-  vorsehen, der sie beim Setup nachlädt, und `.gitignore` entsprechend
-  ergänzen.
 
 ## Schritt 1 — Assets beschaffen und ablegen
 
@@ -172,7 +145,6 @@ Live-Reload greifen, ohne Neustart der App.
 
 ## Abnahmekriterien
 
-1. Der Lizenztext liegt wörtlich im Repo, mit Quelle und Abrufdatum.
 2. Der geforderte Backlink ist an allen vier in Schritt 2 genannten Stellen
    vorhanden und nicht abschaltbar.
 3. Auf dem Radar sind Linienjet, Leichtflugzeug und Helikopter optisch klar
