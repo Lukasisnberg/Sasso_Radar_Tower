@@ -20,10 +20,9 @@ from flugradar.display.aircraft_icons import (
     format_altitude,
 )
 from flugradar.display.fonts import get_font
-from flugradar.display.theme import Theme
+from flugradar.display.theme import TOKENS, Theme, ease_out_cubic
 
 _TWO_PI = 2 * math.pi
-_STROKE = 2
 
 
 class RadarRenderer:
@@ -47,21 +46,33 @@ class RadarRenderer:
         self.distance_unit = distance_unit
         self.aircraft_icon_set = aircraft_icon_set
         self._sweep_surface = pygame.Surface((screen_size, screen_size), pygame.SRCALPHA)
+        self._fade_surface: Optional[pygame.Surface] = None
         self._font_sm: Optional[pygame.font.Font] = None
-        self._font_md: Optional[pygame.font.Font] = None
         self._font_lg: Optional[pygame.font.Font] = None
         self._font_num: Optional[pygame.font.Font] = None
         self._font_tag: Optional[pygame.font.Font] = None
         self._font_tag_sub: Optional[pygame.font.Font] = None
+        self._font_tag_num: Optional[pygame.font.Font] = None
+        # icao_hex -> monotonic time first drawn, for the fade-in ramp
+        self._first_seen: dict[str, float] = {}
+        # icao_hex -> (aircraft, screen_x, screen_y, monotonic time last drawn),
+        # kept briefly after an aircraft drops out so it can fade out instead
+        # of disappearing hard.
+        self._last_drawn: dict[str, tuple[Aircraft, int, int, float]] = {}
 
     def _ensure_fonts(self) -> None:
         if self._font_sm is None:
-            self._font_sm = get_font(scaling.s(7))
-            self._font_md = get_font(scaling.s(8))
-            self._font_lg = get_font(scaling.s(10), bold=True)
-            self._font_num = get_font(scaling.s(7), mono=True)
-            self._font_tag = get_font(scaling.s(7))
-            self._font_tag_sub = get_font(scaling.s(6))
+            self._font_sm = get_font(scaling.s(TOKENS.font_small))
+            self._font_lg = get_font(scaling.s(TOKENS.font_value), bold=True)
+            self._font_num = get_font(scaling.s(TOKENS.font_small), mono=True)
+            self._font_tag = get_font(scaling.s(TOKENS.font_small), bold=True)
+            self._font_tag_sub = get_font(scaling.s(TOKENS.font_small))
+            self._font_tag_num = get_font(scaling.s(TOKENS.font_small), mono=True)
+
+    def _get_fade_surface(self) -> pygame.Surface:
+        if self._fade_surface is None:
+            self._fade_surface = pygame.Surface((self.size, self.size), pygame.SRCALPHA)
+        return self._fade_surface
 
     def sweep_angle(self) -> float:
         return (time.time() * self.sweep_rpm / 60.0 * _TWO_PI) % _TWO_PI
@@ -107,7 +118,7 @@ class RadarRenderer:
                 surface, self.theme.compass_tick,
                 (int(x_inner), int(y_inner)),
                 (int(x_outer), int(y_outer)),
-                _STROKE,
+                scaling.s(TOKENS.line_stroke),
             )
             if is_cardinal:
                 lbl = self._font_lg.render(cardinals[deg], True, self.theme.compass_text)
@@ -138,7 +149,7 @@ class RadarRenderer:
             y = cy + radius * math.sin(a - math.pi / 2)
             pygame.draw.line(
                 self._sweep_surface, colour,
-                (int(cx), int(cy)), (int(x), int(y)), _STROKE
+                (int(cx), int(cy)), (int(x), int(y)), scaling.s(TOKENS.line_stroke)
             )
         surface.blit(self._sweep_surface, (0, 0))
 
@@ -177,7 +188,9 @@ class RadarRenderer:
         alt_str = format_altitude(ac.altitude_ft)
         if alt_str:
             alt_color = altitude_tag_color(ac.vertical_rate_fpm, self.theme)
-            alt_surf = self._font_tag_sub.render(alt_str, True, alt_color)
+            # Tabular/mono figures so the altitude readout doesn't jitter
+            # horizontally as digits change every update.
+            alt_surf = self._font_tag_num.render(alt_str, True, alt_color)
             surface.blit(alt_surf, (tag_x, tag_y + line_h * 2))
             tag_w = max(tag_w, alt_surf.get_width())
 
@@ -198,6 +211,42 @@ class RadarRenderer:
         pygame.draw.circle(rim_surf, (*color, alpha), (cx, cy), self.size // 2, scaling.s(4))
         surface.blit(rim_surf, (0, 0))
 
+    def _draw_aircraft_unit(
+        self,
+        target: pygame.Surface,
+        ac: Aircraft,
+        ix: int, iy: int,
+        heading: float,
+        colour: tuple[int, int, int],
+    ) -> pygame.Rect:
+        draw_plane_icon(
+            target, ix, iy, heading, colour,
+            aircraft_type=ac.aircraft_type or "",
+            category=ac.category,
+            icon_set=self.aircraft_icon_set,
+        )
+        return self._draw_aircraft_tag(target, ac, ix, iy)
+
+    def _draw_faded(
+        self,
+        surface: pygame.Surface,
+        ac: Aircraft,
+        ix: int, iy: int,
+        heading: float,
+        colour: tuple[int, int, int],
+        alpha: int,
+    ) -> pygame.Rect:
+        """Draw one aircraft (icon + tag) at a partial alpha, for the
+        appear/disappear fade. Full-alpha aircraft skip this and draw
+        straight onto `surface` -- no scratch surface, no extra cost."""
+        scratch = self._get_fade_surface()
+        scratch.fill((0, 0, 0, 0))
+        hit = self._draw_aircraft_unit(scratch, ac, ix, iy, heading, colour)
+        scratch.set_alpha(alpha)
+        surface.blit(scratch, (0, 0))
+        scratch.set_alpha(255)
+        return hit
+
     def draw_aircraft(
         self,
         surface: pygame.Surface,
@@ -207,6 +256,9 @@ class RadarRenderer:
         self._ensure_fonts()
         hit_rects: list[tuple[pygame.Rect, Aircraft]] = []
         alert_ac = None
+        now = time.monotonic()
+        fade_s = TOKENS.duration_short_ms / 1000.0
+        current_hexes: set[str] = set()
 
         for ac in aircraft:
             if ac.lat is None or ac.lon is None:
@@ -215,22 +267,42 @@ class RadarRenderer:
             if not self.proj.is_on_screen(x, y):
                 continue
             ix, iy = int(x), int(y)
+            current_hexes.add(ac.icao_hex)
+
             is_sel = ac.icao_hex == selected_hex
             colour = self._flight_icon_color(ac, is_sel)
-
             heading = ac.track_deg if ac.track_deg is not None else 0.0
-            draw_plane_icon(
-                surface, ix, iy, heading, colour,
-                aircraft_type=ac.aircraft_type or "",
-                category=ac.category,
-                icon_set=self.aircraft_icon_set,
-            )
 
-            hit = self._draw_aircraft_tag(surface, ac, ix, iy)
+            first_seen = self._first_seen.setdefault(ac.icao_hex, now)
+            age = now - first_seen
+            if age >= fade_s:
+                hit = self._draw_aircraft_unit(surface, ac, ix, iy, heading, colour)
+            else:
+                alpha = int(255 * ease_out_cubic(age / fade_s))
+                hit = self._draw_faded(surface, ac, ix, iy, heading, colour, alpha)
+
             hit_rects.append((hit, ac))
+            self._last_drawn[ac.icao_hex] = (ac, ix, iy, now)
 
             if ac.is_emergency or ac.is_military:
                 alert_ac = ac
+
+        # Aircraft that dropped out this frame keep fading out at their last
+        # known position instead of disappearing hard.
+        for hx in list(self._last_drawn):
+            if hx in current_hexes:
+                continue
+            ac, ix, iy, last_seen = self._last_drawn[hx]
+            since_gone = now - last_seen
+            if since_gone >= fade_s:
+                del self._last_drawn[hx]
+                self._first_seen.pop(hx, None)
+                continue
+            alpha = int(255 * (1.0 - ease_out_cubic(since_gone / fade_s)))
+            if alpha > 0:
+                heading = ac.track_deg if ac.track_deg is not None else 0.0
+                colour = self._flight_icon_color(ac, False)
+                self._draw_faded(surface, ac, ix, iy, heading, colour, alpha)
 
         if alert_ac:
             self._draw_alert_rim(surface, alert_ac)

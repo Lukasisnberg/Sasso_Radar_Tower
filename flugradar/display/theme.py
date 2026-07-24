@@ -32,6 +32,11 @@ def _lighten(base: tuple[int, int, int], factor: float) -> tuple[int, int, int]:
     return tuple(_clamp(int(round(c + (255 - c) * factor))) for c in base)
 
 
+def _blend(a: tuple[int, int, int], b: tuple[int, int, int], t: float) -> tuple[int, int, int]:
+    """Linear-interpolate from `a` (t=0) to `b` (t=1)."""
+    return tuple(_clamp(int(round(a[i] + (b[i] - a[i]) * t))) for i in range(3))
+
+
 @dataclass
 class Theme:
     # --- core radar chrome ---
@@ -70,6 +75,9 @@ class Theme:
     route: tuple[int, int, int] = (100, 220, 255)
     page_dot_inactive: tuple[int, int, int] = (30, 40, 35)
     label: tuple[int, int, int] = (255, 255, 255)
+    # --- raised-panel fills (footer buttons, cards) ---
+    surface: tuple[int, int, int] = (18, 21, 24)
+    surface_accent: tuple[int, int, int] = (22, 27, 26)
     name: str = "amber"
 
 
@@ -84,8 +92,9 @@ def _theme_from_accent(accent: tuple[int, int, int], name: str) -> Theme:
     """
     grid = _scale_color(accent, 0.55)
     trail = _scale_color(accent, 0.28)
+    background = (11, 13, 15)
     return Theme(
-        background=(11, 13, 15),
+        background=background,
         radar_ring=grid,
         sweep_colour=accent,
         sweep_trail=trail,
@@ -106,6 +115,8 @@ def _theme_from_accent(accent: tuple[int, int, int], name: str) -> Theme:
         route=accent,
         page_dot_inactive=_scale_color(grid, 0.5),
         label=(235, 235, 233),
+        surface=_lighten(background, 0.06),
+        surface_accent=_blend(background, trail, 0.55),
         name=name,
     )
 

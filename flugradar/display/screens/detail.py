@@ -13,7 +13,7 @@ from flugradar.display import nav, scaling
 from flugradar.display.aircraft_icons import format_altitude, altitude_tag_color
 from flugradar.display.draw_helpers import draw_center_text, fit_text
 from flugradar.display.fonts import get_font
-from flugradar.display.theme import Theme
+from flugradar.display.theme import TOKENS, Theme
 
 _FOOTER_BUTTONS = ["prev", "next", "radar"]
 _FOOTER_SINGLE = ["radar"]
@@ -34,12 +34,16 @@ class DetailScreen:
         self._title_font: Optional[pygame.font.Font] = None
         self._body_font: Optional[pygame.font.Font] = None
         self._detail_font: Optional[pygame.font.Font] = None
+        self._num_font: Optional[pygame.font.Font] = None
 
     def _ensure_fonts(self) -> None:
         if not self._fonts_ready:
-            self._title_font = get_font(scaling.s(12), bold=True)
-            self._body_font = get_font(scaling.s(9))
-            self._detail_font = get_font(scaling.s(8))
+            self._title_font = get_font(scaling.s(TOKENS.font_title), bold=True)
+            self._body_font = get_font(scaling.s(TOKENS.font_standard))
+            self._detail_font = get_font(scaling.s(TOKENS.font_small))
+            # Tabular figures for rows carrying a changing measurement
+            # (distance, altitude, speed, heading, V/S) so digits don't jitter.
+            self._num_font = get_font(scaling.s(TOKENS.font_small), mono=True)
             self._fonts_ready = True
 
     def set_aircraft(self, ac: Aircraft) -> None:
@@ -102,7 +106,7 @@ class DetailScreen:
             d = km_to_unit(ac.distance_km, self.distance_unit)
             meta_parts.append(f"{d:.1f} {unit_label(self.distance_unit)}")
         if meta_parts:
-            rows.append((" · ".join(meta_parts), self._detail_font, self.theme.muted))
+            rows.append((" · ".join(meta_parts), self._num_font, self.theme.muted))
 
         telemetry = []
         alt_str = format_altitude(ac.altitude_ft)
@@ -113,11 +117,11 @@ class DetailScreen:
         if ac.track_deg is not None:
             telemetry.append(f"HDG {ac.track_deg:.0f}°")
         if telemetry:
-            rows.append((" · ".join(telemetry), self._detail_font, self.theme.info_text))
+            rows.append((" · ".join(telemetry), self._num_font, self.theme.info_text))
 
         if ac.vertical_rate_fpm:
             vr_color = altitude_tag_color(ac.vertical_rate_fpm, self.theme)
-            rows.append((f"V/S {ac.vertical_rate_fpm:+,} fpm", self._detail_font, vr_color))
+            rows.append((f"V/S {ac.vertical_rate_fpm:+,} fpm", self._num_font, vr_color))
 
         if ac.squawk:
             sq_color = self.theme.emergency if ac.is_emergency else self.theme.muted

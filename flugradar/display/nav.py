@@ -9,7 +9,7 @@ import pygame
 from flugradar.display import scaling
 from flugradar.display.draw_helpers import fit_text
 from flugradar.display.fonts import get_font
-from flugradar.display.theme import Theme
+from flugradar.display.theme import TOKENS, Theme
 
 
 class ScrollState:
@@ -76,7 +76,7 @@ def draw_breadcrumb(
 ) -> None:
     if not parts:
         return
-    font = get_font(scaling.s(14))
+    font = get_font(scaling.s(TOKENS.font_title))
     sep_str = " › "
     sep_surf = font.render(sep_str, True, theme.hint)
     y = _top_y()
@@ -179,14 +179,15 @@ def _draw_radar_icon(
     cx, cy = center
     r = max(4, radius)
     grid_color = theme.radar_ring
-    pygame.draw.circle(surface, color, (cx, cy), r, max(1, scaling.s(2)))
+    stroke = max(1, scaling.s(TOKENS.line_stroke))
+    pygame.draw.circle(surface, color, (cx, cy), r, stroke)
     pygame.draw.circle(surface, grid_color, (cx, cy), max(2, r * 2 // 3), 1)
     pygame.draw.line(surface, grid_color, (cx - r, cy), (cx + r, cy), 1)
     pygame.draw.line(surface, grid_color, (cx, cy - r), (cx, cy + r), 1)
     sweep_rad = math.radians(-35)
     sx = cx + int(r * math.cos(sweep_rad))
     sy = cy + int(r * math.sin(sweep_rad))
-    pygame.draw.line(surface, theme.sweep_colour, (cx, cy), (sx, sy), max(2, scaling.s(2)))
+    pygame.draw.line(surface, theme.sweep_colour, (cx, cy), (sx, sy), stroke)
     pygame.draw.circle(surface, theme.aircraft_dot, (cx + r // 3, cy - r // 4), max(2, scaling.s(3)))
 
 
@@ -198,8 +199,8 @@ def draw_footer_buttons(
     if not kinds:
         return
     rects = footer_button_rects(len(kinds))
-    btn_fill = (8, 38, 14)
-    btn_fill_accent = (12, 52, 22)
+    btn_fill = theme.surface
+    btn_fill_accent = theme.surface_accent
     btn_border = theme.radar_ring
     btn_border_accent = theme.sweep_colour
 
@@ -208,7 +209,7 @@ def draw_footer_buttons(
         fill = btn_fill_accent if accent else btn_fill
         border = btn_border_accent if accent else btn_border
         radius = max(scaling.s(8), rect.height // 4)
-        width = max(1, scaling.s(2) if accent else scaling.s(1))
+        width = max(1, scaling.s(TOKENS.line_stroke) if accent else scaling.s(TOKENS.line_stroke // 2))
 
         pygame.draw.rect(surface, fill, rect, border_radius=radius)
         pygame.draw.rect(surface, border, rect, width=width, border_radius=radius)
@@ -226,7 +227,7 @@ def draw_footer_buttons(
 
         labels = {"prev": "PREV", "next": "NEXT", "radar": "RADAR"}
         label = labels.get(kind, kind.upper())
-        label_font = get_font(scaling.s(11))
+        label_font = get_font(scaling.s(TOKENS.font_value))
         label_color = theme.sweep_colour if accent else theme.hint
         text = fit_text(label, label_font, rect.width - scaling.s(6))
         rendered = label_font.render(text, True, label_color)

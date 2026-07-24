@@ -11,7 +11,13 @@ import pygame
 from flugradar.display import nav, scaling
 from flugradar.display.draw_helpers import draw_center_text
 from flugradar.display.fonts import get_font
-from flugradar.display.theme import Theme
+from flugradar.display.theme import TOKENS, Theme
+
+# The digital time readout is the sole focal element of this screen, so it
+# intentionally exceeds the 4 UI font tiers -- but as a documented multiple
+# of font_title rather than a free-floating literal, so it still tracks the
+# token module if that base size ever changes.
+_HERO_TIME_SCALE = 2.6
 
 
 class ClockScreen:
@@ -31,11 +37,13 @@ class ClockScreen:
 
     def _ensure_fonts(self) -> None:
         if not self._fonts_ready:
-            self._font_time = get_font(scaling.s(36), bold=True, mono=True)
-            self._font_sec = get_font(scaling.s(14), mono=True)
-            self._font_date = get_font(scaling.s(10))
-            self._font_weather = get_font(scaling.s(12))
-            self._font_hint = get_font(scaling.s(7))
+            self._font_time = get_font(
+                scaling.s(TOKENS.font_title * _HERO_TIME_SCALE), bold=True, mono=True
+            )
+            self._font_sec = get_font(scaling.s(TOKENS.font_value), mono=True)
+            self._font_date = get_font(scaling.s(TOKENS.font_standard))
+            self._font_weather = get_font(scaling.s(TOKENS.font_value))
+            self._font_hint = get_font(scaling.s(TOKENS.font_small))
             self._fonts_ready = True
 
     def set_weather(self, temperature: str, condition: str) -> None:

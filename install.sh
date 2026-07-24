@@ -44,6 +44,15 @@ apt-get install -y -qq \
     python3-pil \
     git
 
+# UI typeface (Ausbaustufe 2, Schritt 3 -- docs/prompt-ausbaustufe-2.md):
+# Inter / IBM Plex Sans, both OFL-licensed. Shipped via apt package rather
+# than vendored binaries. Older Raspbian releases may not carry these
+# packages -- not fatal, flugradar/display/fonts.py falls back through
+# DejaVu/Noto/system sans (installed above) if neither is present.
+if ! apt-get install -y -qq fonts-inter fonts-ibm-plex; then
+    warn "fonts-inter/fonts-ibm-plex not available in this repo -- falling back to DejaVu"
+fi
+
 # --- Copy project ---
 info "Setting up project in ${INSTALL_DIR}..."
 if [[ "${REPO_DIR}" != "${INSTALL_DIR}" ]]; then

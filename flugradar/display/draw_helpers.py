@@ -1,13 +1,10 @@
 """Shared drawing helpers for the round radar display."""
 
 import math
-from typing import Optional
 
 import pygame
 
 from flugradar.display import scaling
-from flugradar.display.fonts import get_font
-from flugradar.display.theme import Theme
 
 
 def fit_text(text: str, font: pygame.font.Font, max_width: int) -> str:
@@ -73,21 +70,3 @@ def draw_dashed_circle(
             flush()
         arc_pos += arc_step
     flush()
-
-
-_bezel_overlay: Optional[pygame.Surface] = None
-_bezel_key: Optional[tuple] = None
-
-
-def apply_round_bezel(surface: pygame.Surface, theme: Theme) -> None:
-    global _bezel_overlay, _bezel_key
-    size = surface.get_size()
-    cx, cy = scaling.center_x(), scaling.center_y()
-    vr = scaling.visible_radius()
-    key = (size, cx, cy, vr, theme.background)
-    if _bezel_overlay is None or _bezel_key != key:
-        _bezel_overlay = pygame.Surface(size, pygame.SRCALPHA)
-        _bezel_overlay.fill((*theme.background, 255))
-        pygame.draw.circle(_bezel_overlay, (0, 0, 0, 0), (cx, cy), vr)
-        _bezel_key = key
-    surface.blit(_bezel_overlay, (0, 0))

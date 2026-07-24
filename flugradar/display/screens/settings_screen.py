@@ -10,7 +10,7 @@ import pygame
 from flugradar.display import nav, scaling
 from flugradar.display.draw_helpers import draw_center_text, fit_text
 from flugradar.display.fonts import get_font
-from flugradar.display.theme import Theme, THEMES
+from flugradar.display.theme import TOKENS, Theme, THEMES
 
 
 class SettingsScreen:
@@ -31,8 +31,8 @@ class SettingsScreen:
 
     def _ensure_fonts(self) -> None:
         if not self._fonts_ready:
-            self._font_label = get_font(scaling.s(9), bold=True)
-            self._font_option = get_font(scaling.s(8))
+            self._font_label = get_font(scaling.s(TOKENS.font_standard), bold=True)
+            self._font_option = get_font(scaling.s(TOKENS.font_small))
             self._fonts_ready = True
 
     @property

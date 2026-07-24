@@ -16,6 +16,7 @@ from flugradar.data_sources.models import Aircraft
 from flugradar.data_sources.projection import ScreenProjection
 from flugradar.data_sources.weather import WeatherClient
 from flugradar.display import scaling
+from flugradar.display.fonts import get_font
 from flugradar.display.gestures import GestureRecogniser, GestureType
 from flugradar.display.mask import CircularViewport
 from flugradar.display.screens.about import AboutScreen
@@ -23,7 +24,7 @@ from flugradar.display.screens.clock import ClockScreen
 from flugradar.display.screens.detail import DetailScreen
 from flugradar.display.screens.radar import RadarScreen
 from flugradar.display.screens.settings_screen import SettingsScreen
-from flugradar.display.theme import resolve_theme
+from flugradar.display.theme import CLASSIC_AMBER, TOKENS, Theme, ease_out_cubic, resolve_theme
 from flugradar.maps.compositor import MapCompositor
 from flugradar.maps.rainviewer import RainViewerClient
 from flugradar.maps.tiles import TileManager, resolve_provider_key
@@ -66,6 +67,10 @@ class RadarApp:
         self._rainviewer_client: RainViewerClient | None = None
         self._last_interaction: float = 0.0
         self._last_reload_check: float = 0.0
+        self._theme: Theme | None = None
+        self._prev_frame_copy: pygame.Surface | None = None
+        self._transition_from: pygame.Surface | None = None
+        self._transition_start: float = 0.0
 
     def run(self) -> None:
         pygame.init()
@@ -80,6 +85,7 @@ class RadarApp:
         clock = pygame.time.Clock()
 
         theme = resolve_theme(getattr(self.settings, "theme", "amber"))
+        self._theme = theme
 
         proj = ScreenProjection(
             home_lat=self.settings.home.lat,
@@ -106,7 +112,10 @@ class RadarApp:
         settings_scr = SettingsScreen(self.screen_size, theme)
         gestures = GestureRecogniser()
 
-        viewport = CircularViewport(self.screen_size, self.rotation_deg) if self.round_mask else None
+        viewport = (
+            CircularViewport(self.screen_size, self.rotation_deg, theme=theme)
+            if self.round_mask else None
+        )
 
         map_comp = None
         if self.enable_map:
@@ -139,6 +148,8 @@ class RadarApp:
                 adsbdb_enricher=AdsbdbEnricher(AdsbdbClient()),
             )
 
+        frame_surface = pygame.Surface((self.screen_size, self.screen_size))
+
         self._last_interaction = time.monotonic()
         self.running = True
         log.info(
@@ -149,6 +160,7 @@ class RadarApp:
 
         try:
             while self.running:
+                active_before = self._active
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
                         self.running = False
@@ -176,7 +188,7 @@ class RadarApp:
                     if self.settings.check_portal_reload():
                         self._apply_live_settings(
                             proj, radar, detail, clock_scr, about,
-                            settings_scr, map_comp,
+                            settings_scr, map_comp, viewport,
                         )
 
                 if (
@@ -207,33 +219,17 @@ class RadarApp:
                         clock_scr.set_weather(weather.temperature_str, weather.condition)
                         weather_status = weather.temperature_str
 
-                if self._active == ActiveScreen.RADAR:
-                    has_map_bg = map_comp is not None and (
-                        map_comp.tiles is not None or map_comp.overlay_tiles
-                    )
-                    if map_comp and has_map_bg:
-                        map_comp.render(screen)
-                    radar.draw(
-                        screen, self._aircraft,
-                        has_map_bg=has_map_bg,
-                        weather_str=weather_status,
-                    )
-                    if has_map_bg:
-                        self._draw_attribution(screen, map_comp.attribution)
-                elif self._active == ActiveScreen.DETAIL:
-                    detail.set_aircraft_list(self._aircraft)
-                    if detail.aircraft:
-                        for ac in self._aircraft:
-                            if ac.icao_hex == detail.aircraft.icao_hex:
-                                detail.set_aircraft(ac)
-                                break
-                    detail.draw(screen)
-                elif self._active == ActiveScreen.CLOCK:
-                    clock_scr.draw(screen)
-                elif self._active == ActiveScreen.ABOUT:
-                    about.draw(screen)
-                elif self._active == ActiveScreen.SETTINGS:
-                    settings_scr.draw(screen)
+                self._render_active_screen(
+                    frame_surface, radar, detail, clock_scr, about, settings_scr,
+                    map_comp, weather_status,
+                )
+
+                if self._active != active_before:
+                    self._transition_from = self._prev_frame_copy
+                    self._transition_start = now
+
+                self._compose_frame(screen, frame_surface)
+                self._prev_frame_copy = frame_surface.copy()
 
                 if viewport:
                     viewport.apply(screen)
@@ -304,9 +300,11 @@ class RadarApp:
 
     def _apply_live_settings(
         self, proj, radar, detail, clock_scr, about, settings_scr, map_comp,
+        viewport=None,
     ) -> None:
         """Hot-apply changed portal settings without restarting."""
         theme = resolve_theme(self.settings.theme)
+        self._theme = theme
         radar.update_theme(theme)
         radar.update_unit(self.settings.distance_unit)
         radar.update_icon_set(self.settings.aircraft_icon_set)
@@ -317,6 +315,8 @@ class RadarApp:
         about.openaip_enabled = self._openaip_enabled()
         about.rainviewer_enabled = self._rainviewer_enabled()
         settings_scr.theme = theme
+        if viewport:
+            viewport.update_theme(theme)
 
         proj.home_lat = self.settings.home.lat
         proj.home_lon = self.settings.home.lon
@@ -338,9 +338,62 @@ class RadarApp:
             self.settings.home.radius_km,
         )
 
+    def _render_active_screen(
+        self, target, radar, detail, clock_scr, about, settings_scr,
+        map_comp, weather_status,
+    ) -> None:
+        """Draw whichever screen is active into `target` (not necessarily
+        the visible display surface -- see `_compose_frame`)."""
+        if self._active == ActiveScreen.RADAR:
+            has_map_bg = map_comp is not None and (
+                map_comp.tiles is not None or map_comp.overlay_tiles
+            )
+            if map_comp and has_map_bg:
+                map_comp.render(target)
+            radar.draw(
+                target, self._aircraft,
+                has_map_bg=has_map_bg,
+                weather_str=weather_status,
+            )
+            if has_map_bg:
+                self._draw_attribution(target, map_comp.attribution)
+        elif self._active == ActiveScreen.DETAIL:
+            detail.set_aircraft_list(self._aircraft)
+            if detail.aircraft:
+                for ac in self._aircraft:
+                    if ac.icao_hex == detail.aircraft.icao_hex:
+                        detail.set_aircraft(ac)
+                        break
+            detail.draw(target)
+        elif self._active == ActiveScreen.CLOCK:
+            clock_scr.draw(target)
+        elif self._active == ActiveScreen.ABOUT:
+            about.draw(target)
+        elif self._active == ActiveScreen.SETTINGS:
+            settings_scr.draw(target)
+
+    def _compose_frame(self, screen: pygame.Surface, frame: pygame.Surface) -> None:
+        """Blit the freshly rendered `frame` onto `screen`, crossfading from
+        the previous screen's last frame if a screen change just happened
+        (Ausbaustufe 2 Schritt 3: all screen transitions share one duration
+        and easing curve, taken from TOKENS)."""
+        duration_s = TOKENS.duration_long_ms / 1000.0
+        elapsed = time.monotonic() - self._transition_start
+        if self._transition_from is not None and elapsed < duration_s:
+            t = ease_out_cubic(elapsed / duration_s)
+            screen.blit(self._transition_from, (0, 0))
+            frame.set_alpha(int(255 * t))
+            screen.blit(frame, (0, 0))
+            frame.set_alpha(255)
+        else:
+            self._transition_from = None
+            screen.blit(frame, (0, 0))
+
     def _draw_attribution(self, surface: pygame.Surface, text: str) -> None:
-        font = pygame.font.SysFont("sans", 11)
-        txt = font.render(text, True, (100, 100, 100))
+        font = get_font(scaling.s(TOKENS.font_small))
+        theme = self._theme
+        colour = theme.hint if theme is not None else CLASSIC_AMBER.hint
+        txt = font.render(text, True, colour)
         x = self.screen_size - txt.get_width() - 8
         y = self.screen_size - txt.get_height() - 6
         surface.blit(txt, (x, y))

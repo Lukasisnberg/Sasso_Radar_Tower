@@ -97,20 +97,39 @@ Schritte 1–8 aus dem Bauauftrag (Abschnitt 13) sind abgeschlossen:
   optional gar keine Basiskarte (`tiles: Optional[TileManager]`).
   Kartenaufbau läuft jetzt in einem Hintergrund-Thread (`render()` zeigt
   weiter das letzte fertige Bild, bis der Rebuild fertig ist), damit ein
-  Anbieterwechsel die Sweep-Animation nicht blockiert. **Wichtig: nur
-  Schritt 1+2 von 5 sind umgesetzt** — der Auftrag verlangt explizit,
-  nach jedem Schritt zu testen/committen und erst nach Rückmeldung
-  weiterzumachen, nicht alle fünf am Stück.
+  Anbieterwechsel die Sweep-Animation nicht blockiert.
+- **Ausbaustufe 2, Schritt 3** (Abschnitt 15, siehe
+  `docs/prompt-ausbaustufe-2.md`): Politur-Durchgang. Alle Screens
+  (Radar, Detail, Uhr, About, Settings, Nav-Chrome) beziehen Schriftgrößen
+  jetzt aus `TOKENS.font_title/value/standard/small`
+  (`flugradar/display/theme.py`) statt aus verstreuten Literalen; einzige
+  bewusste Ausnahme ist die große Uhrzeit auf dem Uhr-Screen, als
+  dokumentiertes Vielfaches von `font_title`. Sich ändernde Zahlenwerte
+  (Höhe, Geschwindigkeit, Entfernung, V/S, Uhrzeit) laufen durchgängig
+  über die Mono-Schriftvariante für tabellarische Ziffern. Einheitliche
+  Strichstärke über `TOKENS.line_stroke`; echte 1px-Haarlinien bleiben
+  bewusst unskaliert. Neue Theme-Felder `surface`/`surface_accent` lösen
+  hartcodierte Button-Farben in `nav.py` ab; der Rundbezel (`mask.py`)
+  ist jetzt themenabhängig inkl. Live-Reload. Screen-Wechsel blenden über
+  `TOKENS.duration_long_ms`/`ease_out_cubic` weich über
+  (`flugradar/display/app.py` — `_compose_frame`); neu
+  erscheinende/verschwindende Flugzeuge blenden über
+  `TOKENS.duration_short_ms` sanft ein/aus
+  (`RadarRenderer.draw_aircraft`). Inter/IBM Plex Sans werden per
+  `install.sh` als apt-Pakete bereitgestellt (nicht vendored), mit
+  sauberem Fallback auf DejaVu/Noto/System-Sans falls nicht verfügbar.
+  **Wichtig: nur Schritt 1–3 von 5 sind umgesetzt** — der Auftrag
+  verlangt explizit, nach jedem Schritt zu testen/committen und erst nach
+  Rückmeldung weiterzumachen, nicht alle fünf am Stück.
 
-266 Tests grün.
+271 Tests grün.
 
 ## Offene Punkte
 
-- **Ausbaustufe 2, Schritte 3–5** (siehe `docs/prompt-ausbaustufe-2.md`):
-  Politur-Durchgang nach Abschnitt 15 (Tokens aus Schritt 1 tatsächlich in
-  allen Screens verwenden), Einstellungsmenü am Gerät (Swipe links),
-  Getrackter-Flug-Screen. Reihenfolge ist bewusst so vom Auftrag
-  vorgegeben.
+- **Ausbaustufe 2, Schritte 4–5** (siehe `docs/prompt-ausbaustufe-2.md`):
+  Einstellungsmenü am Gerät (Swipe links, ersetzt das bisherige
+  einfache `SettingsScreen`), Getrackter-Flug-Screen. Reihenfolge ist
+  bewusst so vom Auftrag vorgegeben.
 - FAA VFR Sectional Charts (Abschnitt 5.3) weiterhin nicht gebaut — kein
   Provider im Code, keine Portal-Option.
 - Live-Reload-Verifikation (Settings-Änderungen im Portal ohne App-Neustart)

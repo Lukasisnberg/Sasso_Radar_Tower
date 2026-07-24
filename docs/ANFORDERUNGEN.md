@@ -561,6 +561,34 @@ gemeinsame Easing-Kurve (`ease_out_cubic`). Die Tokens sind angelegt,
 aber noch **nicht** flächendeckend in den Screens verdrahtet — das ist
 Aufgabe des Politur-Durchgangs in Schritt 3.
 
+**Update — Ausbaustufe 2, Schritt 3** (siehe `docs/prompt-ausbaustufe-2.md`):
+Politur-Durchgang abgeschlossen. Alle sechs Screens (Radar, Detail, Uhr,
+About, Settings, plus die Nav-Chrome in `nav.py`) beziehen Schriftgrößen
+jetzt aus `TOKENS.font_title/value/standard/small` statt aus verstreuten
+Literalen; einzige bewusste Ausnahme ist die große Uhrzeit auf dem
+Uhr-Screen (`ClockScreen._HERO_TIME_SCALE`), als dokumentiertes Vielfaches
+von `font_title`, nicht als freistehende Zahl. Sich ändernde Zahlenwerte
+(Höhe, Geschwindigkeit, Entfernung, V/S, Uhrzeit) laufen durchgängig über
+die Mono-Schriftvariante (`get_font(..., mono=True)`) für tabellarische
+Ziffern. Einheitliche Strichstärke über `TOKENS.line_stroke` (Kompass,
+Sweep, Footer-Icons); echte 1px-Haarlinien (Entfernungsringe,
+Mittelpunkt-Fadenkreuz) bleiben bewusst unskaliert. Zwei neue Theme-Felder
+(`surface`, `surface_accent`) lösen die zuvor hartcodierten grünen
+Footer-Button-Farben in `nav.py` ab; der Rundbezel (`mask.py`) ist jetzt
+themenabhängig und reagiert auf Live-Reload. Screen-Wechsel blenden über
+`TOKENS.duration_long_ms`/`ease_out_cubic` weich über (statt hart
+umzuschalten); neu erscheinende/verschwindende Flugzeuge blenden über
+`TOKENS.duration_short_ms` sanft ein bzw. aus (`RadarRenderer.draw_aircraft`
+in `flugradar/display/renderer.py`). Typografie: Inter/IBM Plex Sans werden
+per `install.sh` als apt-Pakete bereitgestellt (beide OFL-lizenziert, kein
+Vendoring von Font-Binaries nötig); fehlen sie auf älteren
+Raspbian-Versionen, fällt `flugradar/display/fonts.py` sauber auf
+DejaVu/Noto/System-Sans zurück (kein Absturz, per Test abgesichert). Ein
+Regressionstest (`flugradar/tests/test_design_tokens.py`) prüft, dass
+außerhalb von `theme.py` keine neuen Farbtupel hinzukommen (mit expliziter
+Ausnahmeliste für strukturelle Alpha-Masken-Konstanten, die keine
+Design-Entscheidung sind).
+
 ## 16. Lizenz & Rechtliches
 
 - Eigene Wahl der Lizenz für das neue Repository (z. B. MIT, falls keine
