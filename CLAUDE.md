@@ -71,13 +71,31 @@ Schritte 1–8 aus dem Bauauftrag (Abschnitt 13) sind abgeschlossen:
   (nicht-kommerziell). Kachel-Cache läuft über den bestehenden
   `TileCache`-Mechanismus, eigener `"openaip"`-Unterordner, keine
   Vermischung mit CARTO/OSM.
+- Doku-Bereinigung: `LICENSE` (MIT) ergänzt, README.md komplett
+  überarbeitet (Web-Portal-Sektion, Pi-Deployment-Sektion, korrigierte
+  Projektstruktur), `.env.example` um alle seither hinzugekommenen
+  Variablen ergänzt, `docs/prompt-adsbdb-openaip (1).md` in den sauberen
+  Dateinamen umbenannt.
+- **Ausbaustufe 2, Schritt 1** (Abschnitt 15, siehe
+  `docs/prompt-ausbaustufe-2.md`): Themes von sechs auf zwei reduziert
+  (`amber`/`mono`, `flugradar/display/theme.py`), zentrale
+  `DesignTokens`/`TOKENS` (Abstandsraster, 4 Schriftgrößen, Linienstärke,
+  2 Animationsdauern, 1 Easing-Kurve) angelegt. `resolve_theme()` fängt
+  alte/entfernte Theme-Namen ab (Fallback `amber`, kein Fehler). **Wichtig:
+  nur Schritt 1 von 5 ist umgesetzt** — der Auftrag verlangt explizit,
+  nach jedem Schritt zu testen/committen und erst nach Rückmeldung
+  weiterzumachen, nicht alle fünf am Stück.
 
-214 Tests grün.
+237 Tests grün.
 
 ## Offene Punkte
 
+- **Ausbaustufe 2, Schritte 2–5** (siehe `docs/prompt-ausbaustufe-2.md`):
+  Kartenanbieter im Portal auswählbar machen, Politur-Durchgang nach
+  Abschnitt 15 (Tokens aus Schritt 1 tatsächlich in allen Screens
+  verwenden), Einstellungsmenü am Gerät (Swipe links), Getrackter-Flug-
+  Screen. Reihenfolge ist bewusst so vom Auftrag vorgegeben.
 - Live-Reload-Verifikation (Settings-Änderungen im Portal ohne App-Neustart)
-- Design-Sprache-Umsetzung (Abschnitt 15): Dieter-Rams-Prinzipien durchgängig anwenden
 - Kein dediziertes Drohnen-/UAV-Icon im lizenzierten "detailed"-Set
   (ADS-B-Kategorie B6 fällt dort auf das generische Icon zurück; die
   `simple`-Silhouette deckt Drohnen weiterhin ab)

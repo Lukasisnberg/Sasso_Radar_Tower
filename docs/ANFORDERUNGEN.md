@@ -522,6 +522,21 @@ formuliert, nicht als Code oder exakte Pixel-Vorlage einer bestehenden
 Anwendung — die konkrete Umsetzung (genaue Farbwerte, Layout-Code,
 Animationskurven) soll eigenständig entwickelt werden.
 
+**Update — Ausbaustufe 2, Schritt 1** (siehe `docs/prompt-ausbaustufe-2.md`):
+Die Themes wurden von sechs auf genau zwei reduziert — `amber` (Standard,
+gedämpftes Gold) und `mono` (neutrales Off-White) — beide mit identischem
+dunklem Anthrazit-Grundton, unterschieden ausschließlich durch die
+Akzentfarbe (`flugradar/display/theme.py`, `_theme_from_accent()`, damit
+beide Themes strukturell nicht auseinanderlaufen können). Alte
+Theme-Namen (`dark`/`green`/`red`/`yellow`/`white`) in einer bestehenden
+`settings.json` fallen über `resolve_theme()` still auf `amber` zurück,
+ohne Fehler. Zusätzlich zentrale Design-Tokens (`DesignTokens`/`TOKENS`
+im selben Modul): Abstandsraster, vier Schriftgrößen-Stufen,
+Linienstärke, zwei Animationsdauern (150 ms / 350 ms) und eine
+gemeinsame Easing-Kurve (`ease_out_cubic`). Die Tokens sind angelegt,
+aber noch **nicht** flächendeckend in den Screens verdrahtet — das ist
+Aufgabe des Politur-Durchgangs in Schritt 3.
+
 ## 16. Lizenz & Rechtliches
 
 - Eigene Wahl der Lizenz für das neue Repository (z. B. MIT, falls keine

@@ -101,9 +101,9 @@ class TestPortalSettings:
         portal_file = tmp_path / "settings.json"
         monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
         s = AppSettings()
-        assert s.theme == "dark"
-        s.save_portal_settings({"theme": "amber"})
         assert s.theme == "amber"
+        s.save_portal_settings({"theme": "mono"})
+        assert s.theme == "mono"
         assert s.home.lat == pytest.approx(47.3769)
 
     def test_save_updates_aircraft_icon_set_in_memory(self, monkeypatch, tmp_path):
@@ -160,14 +160,14 @@ class TestPortalSettings:
 class TestLiveReload:
     def test_no_change_returns_false(self, monkeypatch, tmp_path):
         portal_file = tmp_path / "settings.json"
-        portal_file.write_text(json.dumps({"theme": "dark"}))
+        portal_file.write_text(json.dumps({"theme": "amber"}))
         monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
         s = AppSettings()
         assert s.check_portal_reload() is False
 
     def test_file_change_returns_true(self, monkeypatch, tmp_path):
         portal_file = tmp_path / "settings.json"
-        portal_file.write_text(json.dumps({"theme": "dark"}))
+        portal_file.write_text(json.dumps({"theme": "mono"}))
         monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
         s = AppSettings()
 
@@ -241,18 +241,18 @@ class TestLiveReload:
 
     def test_reload_missing_file(self, monkeypatch, tmp_path):
         portal_file = tmp_path / "settings.json"
-        portal_file.write_text(json.dumps({"theme": "amber"}))
+        portal_file.write_text(json.dumps({"theme": "mono"}))
         monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
         s = AppSettings()
-        assert s.theme == "amber"
+        assert s.theme == "mono"
 
         portal_file.unlink()
         assert s.check_portal_reload() is True
-        assert s.theme == "dark"
+        assert s.theme == "amber"
 
     def test_no_reload_when_mtime_unchanged(self, monkeypatch, tmp_path):
         portal_file = tmp_path / "settings.json"
-        portal_file.write_text(json.dumps({"theme": "dark"}))
+        portal_file.write_text(json.dumps({"theme": "amber"}))
         monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
         s = AppSettings()
         assert s.check_portal_reload() is False

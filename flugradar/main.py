@@ -22,7 +22,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--radius", type=float, help="Scan radius in km")
     p.add_argument("--size", type=int, default=720, help="Window size in pixels")
     p.add_argument("--unit", choices=("km", "sm", "nm"), help="Distance unit")
-    p.add_argument("--theme", choices=("dark", "amber"), default=None, help="Colour theme")
+    p.add_argument("--theme", choices=("amber", "mono"), default=None, help="Colour theme")
     p.add_argument("--demo", action="store_true", help="Use simulated aircraft (no network)")
     p.add_argument("--no-map", action="store_true", help="Disable map tile background")
     p.add_argument("--no-mask", action="store_true", help="Disable circular mask (square window)")

@@ -23,7 +23,7 @@ from flugradar.display.screens.clock import ClockScreen
 from flugradar.display.screens.detail import DetailScreen
 from flugradar.display.screens.radar import RadarScreen
 from flugradar.display.screens.settings_screen import SettingsScreen
-from flugradar.display.theme import THEMES
+from flugradar.display.theme import resolve_theme
 from flugradar.maps.compositor import MapCompositor
 from flugradar.maps.tiles import TileManager
 
@@ -77,9 +77,7 @@ class RadarApp:
         )
         clock = pygame.time.Clock()
 
-        theme = THEMES.get(
-            getattr(self.settings, "theme", "dark"), THEMES["dark"]
-        )
+        theme = resolve_theme(getattr(self.settings, "theme", "amber"))
 
         proj = ScreenProjection(
             home_lat=self.settings.home.lat,
@@ -278,7 +276,7 @@ class RadarApp:
         self, proj, radar, detail, clock_scr, about, settings_scr, map_comp,
     ) -> None:
         """Hot-apply changed portal settings without restarting."""
-        theme = THEMES.get(self.settings.theme, THEMES["dark"])
+        theme = resolve_theme(self.settings.theme)
         radar.update_theme(theme)
         radar.update_unit(self.settings.distance_unit)
         radar.update_icon_set(self.settings.aircraft_icon_set)
@@ -371,7 +369,7 @@ class RadarApp:
                 if result == "back":
                     self._active = ActiveScreen.RADAR
                 elif result == "changed":
-                    new_theme = THEMES.get(settings_scr.selected_theme)
+                    new_theme = resolve_theme(settings_scr.selected_theme)
                     if new_theme:
                         radar.update_theme(new_theme)
                     radar.update_unit(settings_scr.selected_unit)

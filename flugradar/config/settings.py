@@ -40,7 +40,7 @@ class AppSettings:
     home: HomeLocation = field(default_factory=HomeLocation)
     adsb: AdsbConfig = field(default_factory=AdsbConfig)
     distance_unit: str = "km"  # km | sm | nm
-    theme: str = "dark"  # dark | amber
+    theme: str = "amber"  # amber | mono
     aircraft_icon_set: str = "detailed"  # detailed | simple
     min_altitude_ft: int = 0
     auto_clock_s: int = 300
@@ -163,7 +163,7 @@ class AppSettings:
         self.home.lon = defaults.lon
         self.home.radius_km = defaults.radius_km
         self.distance_unit = "km"
-        self.theme = "dark"
+        self.theme = "amber"
         self.aircraft_icon_set = "detailed"
         self.min_altitude_ft = 0
         self.auto_clock_s = 300
