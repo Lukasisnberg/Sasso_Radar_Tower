@@ -49,6 +49,14 @@ def create_app(settings: AppSettings | None = None) -> Flask:
                 updates["distance_unit"] = unit
             if alt := request.form.get("min_altitude_ft"):
                 updates["min_altitude_ft"] = int(alt)
+            if provider := request.form.get("map_provider"):
+                updates["map_provider"] = provider
+            updates["openaip_overlay_enabled"] = (
+                request.form.get("openaip_overlay_enabled") is not None
+            )
+            updates["rainviewer_enabled"] = (
+                request.form.get("rainviewer_enabled") is not None
+            )
             settings.save_portal_settings(updates)
             return redirect(url_for("radar", saved=1))
         return render_template("radar.html", settings=settings)
@@ -61,9 +69,6 @@ def create_app(settings: AppSettings | None = None) -> Flask:
                 updates["theme"] = theme
             if icon_set := request.form.get("aircraft_icon_set"):
                 updates["aircraft_icon_set"] = icon_set
-            updates["openaip_overlay_enabled"] = (
-                request.form.get("openaip_overlay_enabled") is not None
-            )
             if (v := request.form.get("auto_clock_s")) is not None:
                 updates["auto_clock_s"] = int(v)
             settings.save_portal_settings(updates)
@@ -149,6 +154,8 @@ def create_app(settings: AppSettings | None = None) -> Flask:
             "adsbdb_enrich_nearest": settings.adsbdb_enrich_nearest,
             "aircraft_photos_enabled": settings.aircraft_photos_enabled,
             "openaip_overlay_enabled": settings.openaip_overlay_enabled,
+            "map_provider": settings.map_provider,
+            "rainviewer_enabled": settings.rainviewer_enabled,
         })
 
     @app.route("/api/settings", methods=["POST"])

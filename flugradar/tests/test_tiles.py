@@ -1,5 +1,6 @@
 """Unit tests for tile coordinate math, caching, and compositing."""
 
+import time
 from io import BytesIO
 from unittest.mock import MagicMock, patch
 
@@ -10,6 +11,7 @@ from flugradar.maps.tiles import (
     lat_lon_to_tile,
     tile_to_lat_lon,
     zoom_for_radius,
+    resolve_provider_key,
     PROVIDERS,
     TileCache,
     TileManager,
@@ -22,6 +24,15 @@ def init_pygame():
     pygame.display.set_mode((1, 1), pygame.NOFRAME)
     yield
     pygame.quit()
+
+
+def _wait_for(predicate, timeout=2.0, interval=0.02):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if predicate():
+            return True
+        time.sleep(interval)
+    return predicate()
 
 
 class TestTileCoords:
@@ -162,6 +173,7 @@ class TestCompositorSmoothscale:
             compositor = MapCompositor(tile_mgr, proj)
             target = pygame.Surface((200, 200))
             compositor.render(target)
+            assert _wait_for(lambda: compositor._cached_key is not None)
 
 
 class TestOverlayCompositing:
@@ -184,9 +196,32 @@ class TestOverlayCompositing:
         overlay = TileManager(provider_key="openaip", api_key="k")
         with patch.object(base, "fetch_region", return_value=fake_tiles), \
              patch.object(overlay, "fetch_region", return_value=fake_tiles):
-            compositor = MapCompositor(base, proj, overlay_tiles=overlay)
+            compositor = MapCompositor(base, proj, overlay_tiles=[overlay])
             target = pygame.Surface((200, 200))
             compositor.render(target)  # must not raise
+            assert _wait_for(lambda: compositor._cached_key is not None)
+
+    def test_multiple_overlays_active_simultaneously(self):
+        from flugradar.data_sources.projection import ScreenProjection
+        from flugradar.maps.compositor import MapCompositor
+
+        proj = ScreenProjection(home_lat=47.3769, home_lon=8.5417, radius_km=50.0, screen_size=200)
+        tile_bytes = self._make_png_tile_bytes()
+        fake_tiles = [(10, 536, 360, tile_bytes)]
+
+        base = TileManager(provider_key="carto_dark")
+        openaip = TileManager(provider_key="openaip", api_key="k")
+        rainviewer = TileManager(provider_key="rainviewer", frame_path_provider=lambda: "")
+        with patch.object(base, "fetch_region", return_value=fake_tiles), \
+             patch.object(openaip, "fetch_region", return_value=fake_tiles), \
+             patch.object(rainviewer, "fetch_region", return_value=fake_tiles):
+            compositor = MapCompositor(base, proj, overlay_tiles=[openaip, rainviewer])
+            assert len(compositor.overlay_tiles) == 2
+            target = pygame.Surface((200, 200))
+            compositor.render(target)
+            assert _wait_for(lambda: compositor._cached_key is not None)
+            assert "openAIP" in compositor.attribution
+            assert "RainViewer" in compositor.attribution
 
     def test_attribution_combines_base_and_overlay(self):
         from flugradar.data_sources.projection import ScreenProjection
@@ -198,7 +233,7 @@ class TestOverlayCompositing:
         assert "openAIP" not in compositor_no_overlay.attribution
 
         overlay = TileManager(provider_key="openaip", api_key="k")
-        compositor_with_overlay = MapCompositor(base, proj, overlay_tiles=overlay)
+        compositor_with_overlay = MapCompositor(base, proj, overlay_tiles=[overlay])
         assert "openAIP" in compositor_with_overlay.attribution
         assert "CARTO" in compositor_with_overlay.attribution
 
@@ -209,7 +244,134 @@ class TestOverlayCompositing:
         proj = ScreenProjection(home_lat=47.3769, home_lon=8.5417, radius_km=50.0, screen_size=200)
         base = TileManager(provider_key="carto_dark")
         with patch.object(base, "fetch_region", return_value=[]):
-            compositor = MapCompositor(base, proj)  # overlay_tiles=None
+            compositor = MapCompositor(base, proj)  # overlay_tiles defaults to []
             target = pygame.Surface((200, 200))
             compositor.render(target)
-        assert compositor.overlay_tiles is None
+            assert _wait_for(lambda: compositor._cached_key is not None)
+        assert compositor.overlay_tiles == []
+
+    def test_no_base_map_only_overlay(self):
+        """map_provider == 'none': tiles is None, only overlays render."""
+        from flugradar.data_sources.projection import ScreenProjection
+        from flugradar.maps.compositor import MapCompositor
+
+        proj = ScreenProjection(home_lat=47.3769, home_lon=8.5417, radius_km=50.0, screen_size=200)
+        overlay = TileManager(provider_key="openaip", api_key="k")
+        with patch.object(overlay, "fetch_region", return_value=[]):
+            compositor = MapCompositor(None, proj, overlay_tiles=[overlay])
+            assert compositor.attribution == "© openAIP (CC BY-NC 4.0)"
+            target = pygame.Surface((200, 200))
+            compositor.render(target)  # must not raise despite tiles=None
+            assert _wait_for(lambda: compositor._cached_key is not None)
+
+    def test_render_does_not_block_on_slow_fetch(self):
+        """A provider switch (or first-ever build) must not stall the
+        caller -- render() returns immediately even while a slow tile
+        fetch is still in flight on the background thread."""
+        import threading
+
+        from flugradar.data_sources.projection import ScreenProjection
+        from flugradar.maps.compositor import MapCompositor
+
+        proj = ScreenProjection(home_lat=47.3769, home_lon=8.5417, radius_km=50.0, screen_size=200)
+        base = TileManager(provider_key="carto_dark")
+        release = threading.Event()
+
+        def slow_fetch_region(*args, **kwargs):
+            release.wait(timeout=2.0)
+            return []
+
+        with patch.object(base, "fetch_region", side_effect=slow_fetch_region):
+            compositor = MapCompositor(base, proj)
+            target = pygame.Surface((200, 200))
+            start = time.monotonic()
+            compositor.render(target)
+            elapsed = time.monotonic() - start
+            assert elapsed < 0.5  # returned long before the fetch unblocks
+            release.set()  # let the background thread finish so it doesn't linger
+
+
+class TestResolveProviderKey:
+    def test_known_base_providers_pass_through(self):
+        assert resolve_provider_key("carto_dark") == "carto_dark"
+        assert resolve_provider_key("carto_light") == "carto_light"
+        assert resolve_provider_key("osm") == "osm"
+
+    def test_none_sentinel_passes_through(self):
+        assert resolve_provider_key("none") == "none"
+
+    def test_unknown_falls_back_to_carto_dark(self):
+        assert resolve_provider_key("bogus") == "carto_dark"
+        assert resolve_provider_key("") == "carto_dark"
+
+    def test_overlay_only_keys_are_not_valid_base_providers(self):
+        assert resolve_provider_key("openaip") == "carto_dark"
+        assert resolve_provider_key("rainviewer") == "carto_dark"
+
+
+class TestRainViewerProvider:
+    def test_provider_entry_exists(self):
+        assert "rainviewer" in PROVIDERS
+        assert "{frame_path}" in PROVIDERS["rainviewer"].url_template
+
+    def test_frame_path_substituted_into_url(self, tmp_path):
+        tm = TileManager(
+            provider_key="rainviewer",
+            cache=TileCache(tmp_path / "tiles"),
+            frame_path_provider=lambda: "https://tilecache.rainviewer.com/v2/radar/abc123",
+        )
+        with patch.object(tm, "_session") as mock_session:
+            resp = MagicMock(status_code=200, content=b"png-bytes")
+            resp.raise_for_status = MagicMock()
+            mock_session.get.return_value = resp
+            tm.fetch_tile(6, 1, 1)
+
+        called_url = mock_session.get.call_args[0][0]
+        assert called_url.startswith("https://tilecache.rainviewer.com/v2/radar/abc123/256/6/1/1/")
+        tm.close()
+
+    def test_frame_change_clears_old_cache(self, tmp_path):
+        cache = TileCache(tmp_path / "tiles")
+        frames = ["https://x/v2/radar/frame1"]
+        tm = TileManager(
+            provider_key="rainviewer", cache=cache,
+            frame_path_provider=lambda: frames[0],
+        )
+        with patch.object(tm, "_session") as mock_session:
+            resp = MagicMock(status_code=200, content=b"tile-a")
+            resp.raise_for_status = MagicMock()
+            mock_session.get.return_value = resp
+            tm.fetch_tile(6, 1, 1)
+
+        assert cache.get("rainviewer", 6, 1, 1) == b"tile-a"
+
+        frames[0] = "https://x/v2/radar/frame2"  # simulate a new radar frame
+        with patch.object(tm, "_session") as mock_session:
+            resp = MagicMock(status_code=200, content=b"tile-b")
+            resp.raise_for_status = MagicMock()
+            mock_session.get.return_value = resp
+            tm.fetch_tile(6, 1, 1)
+
+        assert cache.get("rainviewer", 6, 1, 1) == b"tile-b"  # not the stale frame-1 tile
+        tm.close()
+
+    def test_no_frame_path_provider_leaves_placeholder_empty(self, tmp_path):
+        tm = TileManager(provider_key="rainviewer", cache=TileCache(tmp_path / "tiles"))
+        assert tm._resolve_frame_path() == ""
+        tm.close()
+
+
+class TestTileCacheClearProvider:
+    def test_clears_only_the_named_provider(self, tmp_path):
+        cache = TileCache(tmp_path / "tiles")
+        cache.put("rainviewer", 6, 1, 1, b"rain")
+        cache.put("carto_dark", 6, 1, 1, b"dark")
+
+        cache.clear_provider("rainviewer")
+
+        assert cache.get("rainviewer", 6, 1, 1) is None
+        assert cache.get("carto_dark", 6, 1, 1) == b"dark"
+
+    def test_clearing_nonexistent_provider_does_not_raise(self, tmp_path):
+        cache = TileCache(tmp_path / "tiles")
+        cache.clear_provider("never_used")  # must not raise

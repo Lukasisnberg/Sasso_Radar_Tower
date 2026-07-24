@@ -48,6 +48,39 @@
     </div>
   </div>
 
+  <div class="card">
+    <h2>Karte</h2>
+    <div class="form-group">
+      <label for="map_provider">Base map</label>
+      <select id="map_provider" name="map_provider">
+        <option value="carto_dark" {% if settings.map_provider == 'carto_dark' %}selected{% endif %}>CARTO Dark</option>
+        <option value="carto_light" {% if settings.map_provider == 'carto_light' %}selected{% endif %}>CARTO Light</option>
+        <option value="osm" {% if settings.map_provider == 'osm' %}selected{% endif %}>OpenStreetMap</option>
+        <option value="none" {% if settings.map_provider == 'none' %}selected{% endif %}>No map</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="openaip_overlay_enabled" {% if not settings.openaip_api_key %}style="color:var(--text-muted)"{% endif %}>
+        <input type="checkbox" id="openaip_overlay_enabled" name="openaip_overlay_enabled"
+               value="1" {% if settings.openaip_overlay_enabled %}checked{% endif %}
+               {% if not settings.openaip_api_key %}disabled{% endif %}>
+        openAIP aviation overlay (airspaces/airports/navaids)
+      </label>
+      {% if not settings.openaip_api_key %}
+      <p style="font-size:13px;color:var(--text-muted);">
+        Needs an API key — set one under <a href="{{ url_for('api_keys') }}">API Keys</a> first.
+      </p>
+      {% endif %}
+    </div>
+    <div class="form-group">
+      <label for="rainviewer_enabled">
+        <input type="checkbox" id="rainviewer_enabled" name="rainviewer_enabled"
+               value="1" {% if settings.rainviewer_enabled %}checked{% endif %}>
+        RainViewer rain radar overlay (no key required)
+      </label>
+    </div>
+  </div>
+
   <div class="btn-group">
     <button type="submit" class="btn">Save</button>
   </div>

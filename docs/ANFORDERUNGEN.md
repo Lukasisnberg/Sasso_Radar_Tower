@@ -105,6 +105,16 @@ Datenschicht auch ohne laufendes Display per CLI getestet werden kann.
   nötig (kostenlose Weather-Maps-API, für persönliche/edukative Nutzung
   gemäß deren Nutzungsbedingungen — bitte deren aktuelle ToS und
   Attributionspflichten selbst prüfen und einhalten).
+  **Update (Ausbaustufe 2, Schritt 2)**: umgesetzt in
+  `flugradar/maps/rainviewer.py`. Geprüft am 2026-07-24 direkt gegen
+  `https://api.rainviewer.com/public/weather-maps.json` (kein Key,
+  Attributionspflicht als Link auf rainviewer.com, "personal or
+  educational use only" laut deren eigener API-Doku). Kachel-Basis-URL
+  ändert sich mit jedem neuen Radar-Frame (~alle 5 Minuten) — der
+  Kachel-Cache wird deshalb pro Frame geführt und beim Frame-Wechsel für
+  den alten Frame automatisch geleert (`TileCache.clear_provider()`),
+  sonst würden veraltete Regendaten unbegrenzt auf der SD-Karte
+  liegen bleiben.
 
 ### 5.3 Kartenkacheln
 
@@ -135,6 +145,20 @@ Anforderungen an die Kartenlogik:
   Genehmigung vor
 - Konfigurierbar: Kartenhintergrund ganz abschaltbar (nur Radar ohne
   Kartenkacheln)
+
+**Update — Ausbaustufe 2, Schritt 2** (siehe `docs/prompt-ausbaustufe-2.md`):
+Basiskarten-Auswahl (`map_provider`: `carto_dark`/`carto_light`/`osm`/
+`none`) ist jetzt live im Web-Portal einstellbar (Bereich Radar → Karte),
+Env > Portal > Default, live-reload-fähig. openAIP- und
+RainViewer-Overlay sind unabhängig voneinander und vom Basisanbieter
+schaltbar und können gleichzeitig aktiv sein — `MapCompositor` unterstützt
+dafür jetzt eine Liste von Overlays statt nur eines einzelnen
+(`flugradar/maps/compositor.py`). FAA-VFR-Charts wurden **nicht** gebaut
+(im Code weiterhin nicht vorhanden, siehe Abschnitt 16); die
+Portal-Auswahl beschränkt sich auf die tatsächlich vorhandenen Anbieter.
+Der Kartenaufbau läuft jetzt in einem Hintergrund-Thread: `render()`
+zeigt beim Anbieterwechsel weiter das zuletzt fertige Bild, bis das neue
+fertig ist, statt die Sweep-Animation zu blockieren.
 
 ### 5.4a Flugzeugtyp-Icon-System (Radar-Ansicht)
 

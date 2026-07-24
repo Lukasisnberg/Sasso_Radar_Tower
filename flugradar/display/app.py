@@ -25,7 +25,8 @@ from flugradar.display.screens.radar import RadarScreen
 from flugradar.display.screens.settings_screen import SettingsScreen
 from flugradar.display.theme import resolve_theme
 from flugradar.maps.compositor import MapCompositor
-from flugradar.maps.tiles import TileManager
+from flugradar.maps.rainviewer import RainViewerClient
+from flugradar.maps.tiles import TileManager, resolve_provider_key
 
 log = logging.getLogger(__name__)
 
@@ -62,6 +63,7 @@ class RadarApp:
         self._last_fetch: float = 0.0
         self._weather_client: WeatherClient | None = None
         self._flight_enrichment: FlightEnrichment | None = None
+        self._rainviewer_client: RainViewerClient | None = None
         self._last_interaction: float = 0.0
         self._last_reload_check: float = 0.0
 
@@ -96,7 +98,11 @@ class RadarApp:
             distance_unit=self.settings.distance_unit,
         )
         clock_scr = ClockScreen(self.screen_size, theme)
-        about = AboutScreen(self.screen_size, theme, openaip_enabled=self._openaip_enabled())
+        about = AboutScreen(
+            self.screen_size, theme,
+            openaip_enabled=self._openaip_enabled(),
+            rainviewer_enabled=self._rainviewer_enabled(),
+        )
         settings_scr = SettingsScreen(self.screen_size, theme)
         gestures = GestureRecogniser()
 
@@ -105,9 +111,10 @@ class RadarApp:
         map_comp = None
         if self.enable_map:
             try:
-                tile_mgr = TileManager(provider_key="carto_dark")
-                overlay_mgr = self._build_openaip_overlay()
-                map_comp = MapCompositor(tile_mgr, proj, overlay_tiles=overlay_mgr)
+                self._rainviewer_client = RainViewerClient()
+                base_mgr = self._build_base_tile_manager()
+                overlays = self._build_overlays()
+                map_comp = MapCompositor(base_mgr, proj, overlay_tiles=overlays)
             except Exception:
                 log.warning("Map tiles unavailable, running without map background")
 
@@ -201,14 +208,17 @@ class RadarApp:
                         weather_status = weather.temperature_str
 
                 if self._active == ActiveScreen.RADAR:
-                    if map_comp:
+                    has_map_bg = map_comp is not None and (
+                        map_comp.tiles is not None or map_comp.overlay_tiles
+                    )
+                    if map_comp and has_map_bg:
                         map_comp.render(screen)
                     radar.draw(
                         screen, self._aircraft,
-                        has_map_bg=map_comp is not None,
+                        has_map_bg=has_map_bg,
                         weather_str=weather_status,
                     )
-                    if map_comp:
+                    if has_map_bg:
                         self._draw_attribution(screen, map_comp.attribution)
                 elif self._active == ActiveScreen.DETAIL:
                     detail.set_aircraft_list(self._aircraft)
@@ -240,16 +250,36 @@ class RadarApp:
             if self._weather_client:
                 self._weather_client.close()
             if map_comp:
-                map_comp.tiles.close()
+                if map_comp.tiles is not None:
+                    map_comp.tiles.close()
+                for overlay in map_comp.overlay_tiles:
+                    overlay.close()
+            if self._rainviewer_client:
+                self._rainviewer_client.close()
             pygame.quit()
 
     def _openaip_enabled(self) -> bool:
         return bool(self.settings.openaip_api_key and self.settings.openaip_overlay_enabled)
 
-    def _build_openaip_overlay(self) -> TileManager | None:
-        if not self._openaip_enabled():
+    def _rainviewer_enabled(self) -> bool:
+        return bool(self.settings.rainviewer_enabled)
+
+    def _build_base_tile_manager(self) -> TileManager | None:
+        provider_key = resolve_provider_key(self.settings.map_provider)
+        if provider_key == "none":
             return None
-        return TileManager(provider_key="openaip", api_key=self.settings.openaip_api_key)
+        return TileManager(provider_key=provider_key)
+
+    def _build_overlays(self) -> list[TileManager]:
+        overlays: list[TileManager] = []
+        if self._openaip_enabled():
+            overlays.append(TileManager(provider_key="openaip", api_key=self.settings.openaip_api_key))
+        if self._rainviewer_enabled() and self._rainviewer_client:
+            overlays.append(TileManager(
+                provider_key="rainviewer",
+                frame_path_provider=self._rainviewer_client.latest_frame_path,
+            ))
+        return overlays
 
     def _request_photos(self, aircraft: list[Aircraft]) -> None:
         for ac in aircraft:
@@ -285,6 +315,7 @@ class RadarApp:
         clock_scr.theme = theme
         about.theme = theme
         about.openaip_enabled = self._openaip_enabled()
+        about.rainviewer_enabled = self._rainviewer_enabled()
         settings_scr.theme = theme
 
         proj.home_lat = self.settings.home.lat
@@ -292,9 +323,12 @@ class RadarApp:
         proj.radius_km = self.settings.home.radius_km
 
         if map_comp:
-            if map_comp.overlay_tiles is not None:
-                map_comp.overlay_tiles.close()
-            map_comp.overlay_tiles = self._build_openaip_overlay()
+            if map_comp.tiles is not None:
+                map_comp.tiles.close()
+            for overlay in map_comp.overlay_tiles:
+                overlay.close()
+            map_comp.tiles = self._build_base_tile_manager()
+            map_comp.overlay_tiles = self._build_overlays()
             map_comp.invalidate()
 
         log.info(

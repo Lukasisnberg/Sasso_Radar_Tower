@@ -77,6 +77,48 @@ class TestRadarPost:
         assert data["home_lat"] == 48.8566
         assert data["distance_unit"] == "nm"
 
+    def test_save_map_provider(self, client, monkeypatch, tmp_path):
+        portal_file = tmp_path / "settings.json"
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
+        r = client.post("/radar", data={"map_provider": "osm"}, follow_redirects=False)
+        assert r.status_code == 302
+        data = json.loads(portal_file.read_text())
+        assert data["map_provider"] == "osm"
+
+    def test_openaip_overlay_checkbox_present(self, client, monkeypatch, tmp_path):
+        portal_file = tmp_path / "settings.json"
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
+        r = client.post(
+            "/radar", data={"openaip_overlay_enabled": "1"}, follow_redirects=False
+        )
+        assert r.status_code == 302
+        data = json.loads(portal_file.read_text())
+        assert data["openaip_overlay_enabled"] is True
+
+    def test_openaip_overlay_checkbox_absent_means_disabled(self, client, monkeypatch, tmp_path):
+        portal_file = tmp_path / "settings.json"
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
+        r = client.post("/radar", data={}, follow_redirects=False)
+        assert r.status_code == 302
+        data = json.loads(portal_file.read_text())
+        assert data["openaip_overlay_enabled"] is False
+
+    def test_rainviewer_checkbox_present(self, client, monkeypatch, tmp_path):
+        portal_file = tmp_path / "settings.json"
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
+        r = client.post("/radar", data={"rainviewer_enabled": "1"}, follow_redirects=False)
+        assert r.status_code == 302
+        data = json.loads(portal_file.read_text())
+        assert data["rainviewer_enabled"] is True
+
+    def test_rainviewer_checkbox_absent_means_disabled(self, client, monkeypatch, tmp_path):
+        portal_file = tmp_path / "settings.json"
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
+        r = client.post("/radar", data={}, follow_redirects=False)
+        assert r.status_code == 302
+        data = json.loads(portal_file.read_text())
+        assert data["rainviewer_enabled"] is False
+
 
 class TestDisplayPost:
     def test_save_theme(self, client, monkeypatch, tmp_path):
@@ -96,24 +138,6 @@ class TestDisplayPost:
         assert r.status_code == 302
         data = json.loads(portal_file.read_text())
         assert data["aircraft_icon_set"] == "simple"
-
-    def test_openaip_overlay_checkbox_present(self, client, monkeypatch, tmp_path):
-        portal_file = tmp_path / "settings.json"
-        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
-        r = client.post(
-            "/display", data={"openaip_overlay_enabled": "1"}, follow_redirects=False
-        )
-        assert r.status_code == 302
-        data = json.loads(portal_file.read_text())
-        assert data["openaip_overlay_enabled"] is True
-
-    def test_openaip_overlay_checkbox_absent_means_disabled(self, client, monkeypatch, tmp_path):
-        portal_file = tmp_path / "settings.json"
-        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
-        r = client.post("/display", data={}, follow_redirects=False)
-        assert r.status_code == 302
-        data = json.loads(portal_file.read_text())
-        assert data["openaip_overlay_enabled"] is False
 
 
 class TestApiKeysPost:

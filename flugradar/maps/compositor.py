@@ -1,6 +1,16 @@
-"""Composites map tiles onto a pygame surface with colour grading."""
+"""Composites map tiles onto a pygame surface with colour grading.
+
+Supports an optional base layer (or none, for "no map") plus any number
+of independently-togglable transparent overlays (openAIP, RainViewer).
+Rebuilding the composited surface (base + overlays) happens on a
+background thread: render() always blits whatever was last built
+immediately and never blocks the caller, so switching providers/toggling
+an overlay can never stall the sweep animation -- the old image just
+keeps showing until the new one is ready.
+"""
 
 import math
+import threading
 from io import BytesIO
 from typing import Optional
 
@@ -15,63 +25,80 @@ class MapCompositor:
 
     def __init__(
         self,
-        tile_manager: TileManager,
+        tile_manager: Optional[TileManager],
         projection: ScreenProjection,
         brightness: float = 0.4,
         contrast: float = 0.8,
-        overlay_tiles: Optional[TileManager] = None,
+        overlay_tiles: Optional[list[TileManager]] = None,
     ) -> None:
         self.tiles = tile_manager
-        self.overlay_tiles = overlay_tiles
+        self.overlay_tiles: list[TileManager] = list(overlay_tiles or [])
         self.proj = projection
         self.brightness = brightness
         self.contrast = contrast
+        self._lock = threading.Lock()
         self._cached_surface: Optional[pygame.Surface] = None
         self._cached_key: Optional[tuple] = None
+        self._pending_key: Optional[tuple] = None
+        self._generation = 0
 
     @property
     def attribution(self) -> str:
-        parts = [self.tiles.attribution]
-        if self.overlay_tiles is not None:
-            parts.append(self.overlay_tiles.attribution)
+        parts = []
+        if self.tiles is not None:
+            parts.append(self.tiles.attribution)
+        parts.extend(o.attribution for o in self.overlay_tiles)
         return " · ".join(parts)
 
     def render(self, target: pygame.Surface) -> None:
-        cache_key = (
-            round(self.proj.home_lat, 4),
-            round(self.proj.home_lon, 4),
-            round(self.proj.radius_km, 1),
-            self.proj.screen_size,
-            self.overlay_tiles is not None,
-        )
-        if self._cached_key == cache_key and self._cached_surface is not None:
-            target.blit(self._cached_surface, (0, 0))
-            return
+        with self._lock:
+            cache_key = (
+                round(self.proj.home_lat, 4),
+                round(self.proj.home_lon, 4),
+                round(self.proj.radius_km, 1),
+                self.proj.screen_size,
+                self._generation,
+            )
+            show_surface = self._cached_surface
+            need_build = self._pending_key != cache_key
+            if need_build:
+                self._pending_key = cache_key
 
+        if need_build:
+            threading.Thread(target=self._build_surface, args=(cache_key,), daemon=True).start()
+
+        if show_surface is not None:
+            target.blit(show_surface, (0, 0))
+        else:
+            target.fill((10, 15, 10))
+
+    def _build_surface(self, cache_key: tuple) -> None:
         size = self.proj.screen_size
         map_surf = pygame.Surface((size, size))
         map_surf.fill((10, 15, 10))
 
-        tile_data = self.tiles.fetch_region(
-            self.proj.home_lat, self.proj.home_lon,
-            self.proj.radius_km, size,
-        )
-        for z, tx, ty, png_data in tile_data:
-            self._blit_tile(map_surf, z, tx, ty, png_data, grade=True)
+        if self.tiles is not None:
+            tile_data = self.tiles.fetch_region(
+                self.proj.home_lat, self.proj.home_lon,
+                self.proj.radius_km, size,
+            )
+            for z, tx, ty, png_data in tile_data:
+                self._blit_tile(map_surf, z, tx, ty, png_data, grade=True)
 
-        if self.overlay_tiles is not None:
-            overlay_data = self.overlay_tiles.fetch_region(
+        for overlay in self.overlay_tiles:
+            overlay_data = overlay.fetch_region(
                 self.proj.home_lat, self.proj.home_lon,
                 self.proj.radius_km, size,
             )
             for z, tx, ty, png_data in overlay_data:
-                # Aviation symbology (airspaces, airports, navaids) must
-                # stay legible/colour-accurate -- no dark-theme grading.
+                # Overlay symbology (airspace boundaries, rain intensity)
+                # must stay legible/colour-accurate -- no dark-theme grading.
                 self._blit_tile(map_surf, z, tx, ty, png_data, grade=False)
 
-        self._cached_surface = map_surf
-        self._cached_key = cache_key
-        target.blit(map_surf, (0, 0))
+        with self._lock:
+            if self._pending_key == cache_key:
+                self._cached_surface = map_surf
+                self._cached_key = cache_key
 
     def _blit_tile(
         self,
@@ -103,8 +130,14 @@ class MapCompositor:
         map_surf.blit(tile_surf, (int(sx), int(sy)))
 
     def invalidate(self) -> None:
-        self._cached_surface = None
-        self._cached_key = None
+        """Force a rebuild on the next render() call.
+
+        Does *not* clear the currently-shown surface -- render() keeps
+        blitting the old one (better than a blank frame) until the
+        background rebuild finishes.
+        """
+        with self._lock:
+            self._generation += 1
 
     def _colour_grade(self, surface: pygame.Surface) -> None:
         """Darken and desaturate tiles to match the radar aesthetic."""

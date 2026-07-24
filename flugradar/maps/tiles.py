@@ -1,6 +1,7 @@
 """Slippy-map tile downloader with disk cache and colour post-processing.
 
-Supports multiple tile providers (CARTO, OSM, FAA VFR).
+Supports multiple tile providers: CARTO/OSM as selectable base layers,
+openAIP and RainViewer as independently togglable transparent overlays.
 Downloads are parallelised with a thread pool.
 """
 
@@ -8,11 +9,12 @@ import hashlib
 import logging
 import math
 import os
+import shutil
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 import requests
 
@@ -63,7 +65,37 @@ PROVIDERS: dict[str, TileProvider] = {
         attribution="© openAIP (CC BY-NC 4.0)",
         max_zoom=14,
     ),
+    # Rain radar overlay, no key required. {frame_path} is resolved at
+    # fetch time from flugradar.maps.rainviewer.RainViewerClient (it
+    # changes roughly every 5 minutes, unlike every other provider's
+    # static URL) -- see TileManager's frame_path_provider. Verified live
+    # against https://api.rainviewer.com/public/weather-maps.json on
+    # 2026-07-24; free for personal/educational use only, attribution
+    # must link to https://www.rainviewer.com/.
+    "rainviewer": TileProvider(
+        name="RainViewer (rain radar overlay)",
+        url_template="{frame_path}/256/{z}/{x}/{y}/2/1_1.png",
+        attribution="© RainViewer",
+        max_zoom=7,
+    ),
 }
+
+
+# Selectable base-map providers, i.e. valid values for the `map_provider`
+# setting alongside the "none" sentinel (no base map at all -- not a
+# PROVIDERS key, handled specially by callers). openaip/rainviewer are
+# overlay-only and deliberately excluded from this set.
+BASE_PROVIDER_KEYS = frozenset({"carto_dark", "carto_light", "osm"})
+
+
+def resolve_provider_key(name: str) -> str:
+    """Validate a base-map provider setting, falling back to the default
+    for unknown/removed names -- same fallback spirit as
+    flugradar.display.theme.resolve_theme(). "none" always passes through
+    unchanged (it's a valid choice, just not a PROVIDERS key)."""
+    if name == "none" or name in BASE_PROVIDER_KEYS:
+        return name
+    return "carto_dark"
 
 
 def lat_lon_to_tile(lat: float, lon: float, zoom: int) -> tuple[int, int]:
@@ -120,6 +152,17 @@ class TileCache:
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_bytes(data)
 
+    def clear_provider(self, provider: str) -> None:
+        """Remove every cached tile for one provider key.
+
+        Used for time-series providers (e.g. rainviewer) whose tile
+        *content* changes at the same z/x/y over time -- once a newer
+        frame is available, the old frame's cached files are not just
+        stale but actively wrong, and are never going to be requested
+        again, so there's no reason to keep them on disk.
+        """
+        shutil.rmtree(self.cache_dir / provider, ignore_errors=True)
+
 
 class TileManager:
     """Downloads, caches, and composites map tiles."""
@@ -130,10 +173,13 @@ class TileManager:
         cache: Optional[TileCache] = None,
         max_workers: int = 4,
         api_key: str = "",
+        frame_path_provider: Optional[Callable[[], str]] = None,
     ) -> None:
         self.provider = PROVIDERS[provider_key]
         self.provider_key = provider_key
         self._api_key = api_key
+        self._frame_path_provider = frame_path_provider
+        self._last_frame_path: Optional[str] = None
         self.cache = cache or TileCache()
         self._session = requests.Session()
         if self.provider.headers:
@@ -146,11 +192,28 @@ class TileManager:
     def attribution(self) -> str:
         return self.provider.attribution
 
-    def fetch_tile(self, z: int, x: int, y: int) -> Optional[bytes]:
+    def _resolve_frame_path(self) -> str:
+        """For time-series providers (rainviewer): resolve the current
+        frame path, wiping this provider's cache the moment the frame
+        actually changes so a stale tile can never be served."""
+        if not self._frame_path_provider:
+            return ""
+        frame_path = self._frame_path_provider()
+        if frame_path and self._last_frame_path is not None and frame_path != self._last_frame_path:
+            self.cache.clear_provider(self.provider_key)
+        if frame_path:
+            self._last_frame_path = frame_path
+        return frame_path
+
+    def fetch_tile(self, z: int, x: int, y: int, frame_path: Optional[str] = None) -> Optional[bytes]:
+        if frame_path is None:
+            frame_path = self._resolve_frame_path()
         cached = self.cache.get(self.provider_key, z, x, y)
         if cached:
             return cached
-        url = self.provider.url_template.format(z=z, x=x, y=y, api_key=self._api_key)
+        url = self.provider.url_template.format(
+            z=z, x=x, y=y, api_key=self._api_key, frame_path=frame_path,
+        )
         try:
             resp = self._session.get(url, timeout=10)
             if resp.status_code == 204:
@@ -174,6 +237,7 @@ class TileManager:
         screen_size: int,
     ) -> list[tuple[int, int, int, bytes]]:
         """Fetch all tiles covering the visible area. Returns (z, x, y, png_data)."""
+        frame_path = self._resolve_frame_path()
         zoom = zoom_for_radius(radius_km, centre_lat, screen_size)
         zoom = min(zoom, self.provider.max_zoom)
 
@@ -194,7 +258,7 @@ class TileManager:
 
         results: list[tuple[int, int, int, bytes]] = []
         futures = {
-            self._pool.submit(self.fetch_tile, z, x, y): (z, x, y)
+            self._pool.submit(self.fetch_tile, z, x, y, frame_path): (z, x, y)
             for z, x, y in coords
         }
         for future in as_completed(futures):

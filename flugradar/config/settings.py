@@ -52,6 +52,8 @@ class AppSettings:
     aircraft_photos_enabled: bool = False
     openaip_api_key: str = ""
     openaip_overlay_enabled: bool = True  # only takes effect if a key is set
+    map_provider: str = "carto_dark"  # carto_dark | carto_light | osm | none
+    rainviewer_enabled: bool = True  # no key needed
 
     _portal_mtime: Optional[float] = field(default=None, repr=False)
 
@@ -95,6 +97,10 @@ class AppSettings:
             self.openaip_api_key = v
         if v := os.environ.get("OPENAIP_OVERLAY_ENABLED"):
             self.openaip_overlay_enabled = _parse_bool(v)
+        if v := os.environ.get("MAP_PROVIDER"):
+            self.map_provider = v
+        if v := os.environ.get("RAINVIEWER_ENABLED"):
+            self.rainviewer_enabled = _parse_bool(v)
 
     def _apply_portal_settings(self) -> None:
         if not PORTAL_SETTINGS_FILE.exists():
@@ -132,6 +138,10 @@ class AppSettings:
             self.openaip_api_key = data["openaip_api_key"]
         if "openaip_overlay_enabled" in data:
             self.openaip_overlay_enabled = _parse_bool(data["openaip_overlay_enabled"])
+        if "map_provider" in data:
+            self.map_provider = data["map_provider"]
+        if "rainviewer_enabled" in data:
+            self.rainviewer_enabled = _parse_bool(data["rainviewer_enabled"])
 
     def _get_portal_mtime(self) -> Optional[float]:
         try:
@@ -157,6 +167,8 @@ class AppSettings:
         old_adsbdb_nearest = self.adsbdb_enrich_nearest
         old_photos_enabled = self.aircraft_photos_enabled
         old_openaip_overlay = self.openaip_overlay_enabled
+        old_map_provider = self.map_provider
+        old_rainviewer_enabled = self.rainviewer_enabled
 
         defaults = HomeLocation()
         self.home.lat = defaults.lat
@@ -171,6 +183,8 @@ class AppSettings:
         self.adsbdb_enrich_nearest = 10
         self.aircraft_photos_enabled = False
         self.openaip_overlay_enabled = True
+        self.map_provider = "carto_dark"
+        self.rainviewer_enabled = True
         self._apply_portal_settings()
         self._apply_env()
 
@@ -187,6 +201,8 @@ class AppSettings:
             or self.adsbdb_enrich_nearest != old_adsbdb_nearest
             or self.aircraft_photos_enabled != old_photos_enabled
             or self.openaip_overlay_enabled != old_openaip_overlay
+            or self.map_provider != old_map_provider
+            or self.rainviewer_enabled != old_rainviewer_enabled
         )
 
     def save_portal_settings(self, updates: dict) -> None:

@@ -58,6 +58,16 @@ class TestEnvOverrides:
         s = AppSettings()
         assert s.openaip_overlay_enabled is False
 
+    def test_map_provider_from_env(self, monkeypatch):
+        monkeypatch.setenv("MAP_PROVIDER", "osm")
+        s = AppSettings()
+        assert s.map_provider == "osm"
+
+    def test_rainviewer_enabled_from_env(self, monkeypatch):
+        monkeypatch.setenv("RAINVIEWER_ENABLED", "false")
+        s = AppSettings()
+        assert s.rainviewer_enabled is False
+
 
 class TestPortalSettings:
     def test_portal_overrides_defaults(self, monkeypatch, tmp_path):
@@ -147,6 +157,20 @@ class TestPortalSettings:
         s.save_portal_settings({"openaip_api_key": "xyz", "openaip_overlay_enabled": False})
         assert s.openaip_api_key == "xyz"
         assert s.openaip_overlay_enabled is False
+
+    def test_map_provider_defaults(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", tmp_path / "nonexistent.json")
+        s = AppSettings()
+        assert s.map_provider == "carto_dark"
+        assert s.rainviewer_enabled is True
+
+    def test_save_updates_map_settings_in_memory(self, monkeypatch, tmp_path):
+        portal_file = tmp_path / "settings.json"
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
+        s = AppSettings()
+        s.save_portal_settings({"map_provider": "none", "rainviewer_enabled": False})
+        assert s.map_provider == "none"
+        assert s.rainviewer_enabled is False
 
     def test_save_updates_home_location_in_memory(self, monkeypatch, tmp_path):
         portal_file = tmp_path / "settings.json"
@@ -238,6 +262,19 @@ class TestLiveReload:
         portal_file.write_text(json.dumps({"openaip_overlay_enabled": False}))
         assert s.check_portal_reload() is True
         assert s.openaip_overlay_enabled is False
+
+    def test_reload_applies_map_provider(self, monkeypatch, tmp_path):
+        portal_file = tmp_path / "settings.json"
+        portal_file.write_text(json.dumps({"map_provider": "carto_dark"}))
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
+        s = AppSettings()
+        assert s.map_provider == "carto_dark"
+
+        os.utime(portal_file, (0, 0))
+        portal_file.write_text(json.dumps({"map_provider": "none", "rainviewer_enabled": False}))
+        assert s.check_portal_reload() is True
+        assert s.map_provider == "none"
+        assert s.rainviewer_enabled is False
 
     def test_reload_missing_file(self, monkeypatch, tmp_path):
         portal_file = tmp_path / "settings.json"

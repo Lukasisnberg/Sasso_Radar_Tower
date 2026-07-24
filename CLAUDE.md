@@ -18,14 +18,17 @@ nur ein ungenutzter Einstellungs-Slot. Bei Änderungen an der
 Quellenpriorität ("kostenpflichtig vs. kostenlos") ist AirLabs gemeint,
 nicht FR24.
 
-**Weitere Doku-vs-Code-Lücken (Kartenlogik)**: `docs/ANFORDERUNGEN.md`
-Abschnitt 5.2 erwähnt ein RainViewer-Regenradar-Overlay, Abschnitt 5.3
-eine Auswahl zwischen mehreren Kartenanbietern (CARTO/OSM/FAA VFR) — keins
-von beidem existiert im Code. `flugradar/display/app.py` verwendet fest
-`provider_key="carto_dark"`, ohne Einstellung/UI zum Wechseln. Das
-openAIP-Overlay (Teil B) ist deshalb die **erste** Overlay-Implementierung
-überhaupt (`MapCompositor.overlay_tiles`), nicht "analog zu RainViewer"
-wie ursprünglich angenommen.
+**Kartenlogik-Historie**: `docs/ANFORDERUNGEN.md` Abschnitt 5.2/5.3 hatte
+ursprünglich ein RainViewer-Regenradar-Overlay und eine Auswahl zwischen
+mehreren Kartenanbietern (CARTO/OSM/FAA VFR) vorgesehen, aber bis
+Ausbaustufe 2 existierte im Code keins von beidem (`app.py` verwendete
+fest `provider_key="carto_dark"`). Das openAIP-Overlay (Teil B) war
+deshalb die erste Overlay-Implementierung überhaupt, nicht "analog zu
+RainViewer" wie ursprünglich angenommen. **Beide Lücken sind inzwischen
+geschlossen** (Ausbaustufe 2, Schritt 2, siehe unten): RainViewer-Overlay
+existiert jetzt (`flugradar/maps/rainviewer.py`), Kartenanbieter ist im
+Portal live wählbar. FAA-VFR-Charts bleiben weiterhin ungebaut (siehe
+Offene Punkte).
 
 ## Anforderungen
 
@@ -81,20 +84,35 @@ Schritte 1–8 aus dem Bauauftrag (Abschnitt 13) sind abgeschlossen:
   (`amber`/`mono`, `flugradar/display/theme.py`), zentrale
   `DesignTokens`/`TOKENS` (Abstandsraster, 4 Schriftgrößen, Linienstärke,
   2 Animationsdauern, 1 Easing-Kurve) angelegt. `resolve_theme()` fängt
-  alte/entfernte Theme-Namen ab (Fallback `amber`, kein Fehler). **Wichtig:
-  nur Schritt 1 von 5 ist umgesetzt** — der Auftrag verlangt explizit,
+  alte/entfernte Theme-Namen ab (Fallback `amber`, kein Fehler).
+- **Ausbaustufe 2, Schritt 2** (Abschnitt 5.3, siehe
+  `docs/prompt-ausbaustufe-2.md`): Kartenanbieter (`map_provider`:
+  carto_dark/carto_light/osm/none) live im Portal wählbar
+  (`flugradar/web/templates/radar.html`, Bereich „Karte"). Neu gebaut:
+  RainViewer-Regenradar-Overlay von Grund auf
+  (`flugradar/maps/rainviewer.py`, kein Key nötig, Kachel-Cache pro
+  Radar-Frame mit automatischer Bereinigung des Vorgänger-Frames beim
+  Wechsel). `MapCompositor` unterstützt jetzt mehrere gleichzeitig aktive
+  Overlays (`overlay_tiles: list[TileManager]`) statt nur eines, sowie
+  optional gar keine Basiskarte (`tiles: Optional[TileManager]`).
+  Kartenaufbau läuft jetzt in einem Hintergrund-Thread (`render()` zeigt
+  weiter das letzte fertige Bild, bis der Rebuild fertig ist), damit ein
+  Anbieterwechsel die Sweep-Animation nicht blockiert. **Wichtig: nur
+  Schritt 1+2 von 5 sind umgesetzt** — der Auftrag verlangt explizit,
   nach jedem Schritt zu testen/committen und erst nach Rückmeldung
   weiterzumachen, nicht alle fünf am Stück.
 
-237 Tests grün.
+266 Tests grün.
 
 ## Offene Punkte
 
-- **Ausbaustufe 2, Schritte 2–5** (siehe `docs/prompt-ausbaustufe-2.md`):
-  Kartenanbieter im Portal auswählbar machen, Politur-Durchgang nach
-  Abschnitt 15 (Tokens aus Schritt 1 tatsächlich in allen Screens
-  verwenden), Einstellungsmenü am Gerät (Swipe links), Getrackter-Flug-
-  Screen. Reihenfolge ist bewusst so vom Auftrag vorgegeben.
+- **Ausbaustufe 2, Schritte 3–5** (siehe `docs/prompt-ausbaustufe-2.md`):
+  Politur-Durchgang nach Abschnitt 15 (Tokens aus Schritt 1 tatsächlich in
+  allen Screens verwenden), Einstellungsmenü am Gerät (Swipe links),
+  Getrackter-Flug-Screen. Reihenfolge ist bewusst so vom Auftrag
+  vorgegeben.
+- FAA VFR Sectional Charts (Abschnitt 5.3) weiterhin nicht gebaut — kein
+  Provider im Code, keine Portal-Option.
 - Live-Reload-Verifikation (Settings-Änderungen im Portal ohne App-Neustart)
 - Kein dediziertes Drohnen-/UAV-Icon im lizenzierten "detailed"-Set
   (ADS-B-Kategorie B6 fällt dort auf das generische Icon zurück; die

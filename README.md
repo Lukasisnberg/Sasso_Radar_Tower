@@ -93,7 +93,8 @@ flugradar/
   config/            # Env handling, portal settings file, priority logic
   data_sources/       # adsb.fi, adsbdb, AirLabs, Tomorrow.io, aircraft
                        # photos, airline branding, airport name lookup
-  maps/                # Tile download/cache (CARTO/OSM/openAIP), compositing
+  maps/                # Tile download/cache, base map + overlay compositing
+                         # (CARTO/OSM base, openAIP/RainViewer overlays)
   display/              # pygame app, screens/, gestures, theme, icon set
   web/                   # Flask portal: routes, templates, static
   system/                 # systemd unit templates, boot splash
@@ -128,6 +129,9 @@ docs/ANFORDERUNGEN.md           # Full project specification
   (attribution required, **non-commercial use only**)
 - **[planespotters.net](https://www.planespotters.net/)** — aircraft
   photos in the detail view, with photographer attribution when available
+- **[RainViewer](https://www.rainviewer.com/)** — optional rain radar
+  overlay on top of the map background, no key required. Free for
+  personal/educational use only
 
 ## License
 
