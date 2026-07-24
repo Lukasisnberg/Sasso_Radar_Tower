@@ -114,6 +114,14 @@ Konfigurierbarer Kartenhintergrund mit mehreren Anbietern zur Auswahl:
 - **OpenStreetMap** Standard-Kacheln als Alternative
 - **FAA VFR Sectional Charts** als optionale Zusatzkarte für US-Standorte
   (public domain)
+- **openAIP** (siehe `docs/prompt-adsbdb-openaip.md`, Teil B, und Abschnitt
+  16 für die vollständigen Lizenzdetails): transparentes Overlay
+  (Lufträume, Flugplätze, Navaids) über der Basiskarte, kein eigenständiger
+  Kartenhintergrund. Erfordert einen kostenlosen openAIP-Account samt
+  API-Key (`OPENAIP_API_KEY`); ohne Key wird das Overlay gar nicht erst
+  angeboten. Per Einstellung ein-/ausschaltbar
+  (`openaip_overlay_enabled`), live-reload-fähig. CC BY-NC 4.0 — nur
+  nicht-kommerzielle Nutzung.
 
 Anforderungen an die Kartenlogik:
 - Kachel-Download parallelisiert, mit lokalem Disk-Cache (Kacheln nicht bei
@@ -538,6 +546,46 @@ Animationskurven) soll eigenständig entwickelt werden.
   Pro-Bild-Fotografen-/Urheberangabe, nur einen pauschalen
   „airport-data.com“-Hinweis — entsprechend generisch ist auch die im UI
   gezeigte Quellenangabe
+- **openAIP** (siehe `docs/prompt-adsbdb-openaip.md`, Teil B): eigenständig
+  geprüft (2026-07-24, per Tiles-API-OpenAPI-Schema unter
+  `https://api.tiles.openaip.net/api/system/specs/v1/schema.json`, direkt
+  von openAIP selbst, nicht von Dritt-Blogs):
+  - **Lizenz**: Attribution-NonCommercial 4.0 International (CC BY-NC 4.0),
+    https://creativecommons.org/licenses/by-nc/4.0/ — **nur nicht-kommerzielle
+    Nutzung**, passt zu diesem privaten Hobby-Projekt, aber wichtig bei
+    jeder Weitergabe/Veröffentlichung des Codes zu erwähnen
+  - **Attributionspflicht** (Zitat aus dem Schema): „Please add a proper
+    attribution link to OpenAIP (https://www.openaip.net) as data source
+    within your application!“ — umgesetzt als Link im On-Device-About-Screen
+    und der Portal-About-Seite, aber **nur wenn ein Key hinterlegt ist**
+    (sonst wird das Feature gar nicht genutzt)
+  - **Kein eigenständiger Kartenhintergrund, sondern transparentes
+    Overlay**: Der `openaip`-PNG-Tile-Layer zeigt nur Luftraum-/Flugplatz-
+    /Navaid-Symbolik mit transparentem Hintergrund, kein Terrain/Straßen —
+    ist zum Überlagern über eine Basiskarte gedacht (bestätigt durch
+    Community-Implementierungen, die ihn explizit mit `transparent: true`
+    einbinden). Deshalb als Overlay über der bestehenden CARTO/OSM-Karte
+    umgesetzt, nicht als eigene Auswahl in der Basiskarten-Liste
+  - **Key erforderlich**: kostenloser openAIP-Account, API-Client-Key über
+    das eigene Profil („API Clients“-Seite)
+  - **Rate-Limits**: vorhanden, aber ohne genaue Zahl dokumentiert — openAIP
+    empfiehlt eigenes Caching, was der bestehende Kachel-Cache-Mechanismus
+    bereits erfüllt
+  - **Zoom-Bereich**: 2 (Weltansicht) bis „unlimited“ laut Doku; Anfragen
+    außerhalb des unterstützten Bereichs liefern HTTP 204 (kein Fehler,
+    einfach keine Kachel)
+  - **Wichtiger Befund**: Der Auftrag geht von einem bereits bestehenden
+    Regenradar-Overlay (RainViewer) aus, „analog“ dazu soll openAIP gebaut
+    werden — ein solches Overlay existiert im Code aber **nicht**. Die
+    Overlay-Logik in `flugradar/maps/compositor.py` (`MapCompositor.
+    overlay_tiles`) ist daher komplett neu, nicht von einem bestehenden
+    Muster abgeleitet. Ebenso gibt es (trotz `PROVIDERS`-Dict mit
+    carto_dark/carto_light/osm) **keine** Laufzeit-Auswahl zwischen
+    Basiskarten-Anbietern — nur `carto_dark` ist tatsächlich fest verdrahtet
+    in `flugradar/display/app.py`. Das war für Teil B nicht blockierend, da
+    ein Overlay unabhängig von der (nicht vorhandenen) Basiskarten-Auswahl
+    per eigenem Ein/Aus-Schalter funktioniert — wird hier aber als Lücke
+    zur bestehenden Spezifikation (Abschnitt 5.3) festgehalten
 - Kein Quelltext, keine Asset-Dateien (Icons, Layout-Dateien, Fonts) aus
   bestehenden Drittprojekten übernehmen — nur die hier beschriebene
   Funktionsliste und die öffentlichen API-Dokumentationen als Grundlage

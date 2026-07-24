@@ -1,7 +1,7 @@
 """Unit tests for tile coordinate math, caching, and compositing."""
 
 from io import BytesIO
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pygame
 import pytest
@@ -10,7 +10,9 @@ from flugradar.maps.tiles import (
     lat_lon_to_tile,
     tile_to_lat_lon,
     zoom_for_radius,
+    PROVIDERS,
     TileCache,
+    TileManager,
 )
 
 
@@ -74,6 +76,65 @@ class TestTileCache:
         assert cache.get("carto_dark", 10, 100, 200) == b"dark"
         assert cache.get("osm", 10, 100, 200) == b"osm"
 
+    def test_openaip_does_not_mix_with_base_providers(self, tmp_path):
+        cache = TileCache(tmp_path / "tiles")
+        cache.put("carto_dark", 10, 100, 200, b"dark")
+        cache.put("osm", 10, 100, 200, b"osm")
+        cache.put("openaip", 10, 100, 200, b"openaip-overlay")
+        assert cache.get("carto_dark", 10, 100, 200) == b"dark"
+        assert cache.get("osm", 10, 100, 200) == b"osm"
+        assert cache.get("openaip", 10, 100, 200) == b"openaip-overlay"
+
+
+class TestOpenAipProvider:
+    def test_provider_entry_exists(self):
+        assert "openaip" in PROVIDERS
+        assert "{api_key}" in PROVIDERS["openaip"].url_template
+
+    def test_api_key_substituted_into_url(self, tmp_path):
+        tm = TileManager(
+            provider_key="openaip", api_key="secret123",
+            cache=TileCache(tmp_path / "tiles"),
+        )
+        with patch.object(tm, "_session") as mock_session:
+            resp = MagicMock(status_code=200, content=b"png-bytes")
+            resp.raise_for_status = MagicMock()
+            mock_session.get.return_value = resp
+            tm.fetch_tile(8, 1, 1)
+
+        called_url = mock_session.get.call_args[0][0]
+        assert "apiKey=secret123" in called_url
+        tm.close()
+
+    def test_no_key_still_makes_a_request_without_crashing(self, tmp_path):
+        """Verified live: a missing/invalid key returns HTTP 403/404, not a
+        crash. fetch_tile must handle that gracefully (returns None)."""
+        tm = TileManager(
+            provider_key="openaip", api_key="",
+            cache=TileCache(tmp_path / "tiles"),
+        )
+        with patch.object(tm, "_session") as mock_session:
+            import requests
+            resp = MagicMock(status_code=403)
+            resp.raise_for_status.side_effect = requests.HTTPError("403")
+            mock_session.get.return_value = resp
+            result = tm.fetch_tile(8, 1, 1)
+
+        assert result is None
+        tm.close()
+
+    def test_204_out_of_zoom_range_is_not_cached_as_a_tile(self, tmp_path):
+        cache = TileCache(tmp_path / "tiles")
+        tm = TileManager(provider_key="openaip", api_key="k", cache=cache)
+        with patch.object(tm, "_session") as mock_session:
+            resp = MagicMock(status_code=204)
+            mock_session.get.return_value = resp
+            result = tm.fetch_tile(1, 0, 0)
+
+        assert result is None
+        assert cache.get("openaip", 1, 0, 0) is None
+        tm.close()
+
 
 class TestCompositorSmoothscale:
     """Ensure tiles with unusual pixel formats don't crash smoothscale."""
@@ -101,3 +162,54 @@ class TestCompositorSmoothscale:
             compositor = MapCompositor(tile_mgr, proj)
             target = pygame.Surface((200, 200))
             compositor.render(target)
+
+
+class TestOverlayCompositing:
+    def _make_png_tile_bytes(self) -> bytes:
+        surf = pygame.Surface((256, 256), pygame.SRCALPHA)
+        surf.fill((255, 0, 0, 128))
+        buf = BytesIO()
+        pygame.image.save(surf, buf, "PNG")
+        return buf.getvalue()
+
+    def test_renders_with_overlay_without_crashing(self):
+        from flugradar.data_sources.projection import ScreenProjection
+        from flugradar.maps.compositor import MapCompositor
+
+        proj = ScreenProjection(home_lat=47.3769, home_lon=8.5417, radius_km=50.0, screen_size=200)
+        tile_bytes = self._make_png_tile_bytes()
+        fake_tiles = [(10, 536, 360, tile_bytes)]
+
+        base = TileManager(provider_key="carto_dark")
+        overlay = TileManager(provider_key="openaip", api_key="k")
+        with patch.object(base, "fetch_region", return_value=fake_tiles), \
+             patch.object(overlay, "fetch_region", return_value=fake_tiles):
+            compositor = MapCompositor(base, proj, overlay_tiles=overlay)
+            target = pygame.Surface((200, 200))
+            compositor.render(target)  # must not raise
+
+    def test_attribution_combines_base_and_overlay(self):
+        from flugradar.data_sources.projection import ScreenProjection
+        from flugradar.maps.compositor import MapCompositor
+
+        proj = ScreenProjection(home_lat=47.3769, home_lon=8.5417, radius_km=50.0, screen_size=200)
+        base = TileManager(provider_key="carto_dark")
+        compositor_no_overlay = MapCompositor(base, proj)
+        assert "openAIP" not in compositor_no_overlay.attribution
+
+        overlay = TileManager(provider_key="openaip", api_key="k")
+        compositor_with_overlay = MapCompositor(base, proj, overlay_tiles=overlay)
+        assert "openAIP" in compositor_with_overlay.attribution
+        assert "CARTO" in compositor_with_overlay.attribution
+
+    def test_no_overlay_does_not_fetch_overlay_tiles(self):
+        from flugradar.data_sources.projection import ScreenProjection
+        from flugradar.maps.compositor import MapCompositor
+
+        proj = ScreenProjection(home_lat=47.3769, home_lon=8.5417, radius_km=50.0, screen_size=200)
+        base = TileManager(provider_key="carto_dark")
+        with patch.object(base, "fetch_region", return_value=[]):
+            compositor = MapCompositor(base, proj)  # overlay_tiles=None
+            target = pygame.Surface((200, 200))
+            compositor.render(target)
+        assert compositor.overlay_tiles is None

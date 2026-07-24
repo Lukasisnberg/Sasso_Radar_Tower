@@ -35,6 +35,22 @@
   </div>
 
   <div class="card">
+    <h2>Map Overlay</h2>
+    <div class="form-group">
+      <label for="openaip_overlay_enabled">
+        <input type="checkbox" id="openaip_overlay_enabled" name="openaip_overlay_enabled"
+               value="1" {% if settings.openaip_overlay_enabled %}checked{% endif %}>
+        Show openAIP aviation overlay (airspaces/airports/navaids)
+      </label>
+      {% if not settings.openaip_api_key %}
+      <p style="font-size:13px;color:var(--text-muted);">
+        Needs an API key — set one under <a href="{{ url_for('api_keys') }}">API Keys</a> first.
+      </p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card">
     <h2>Idle Behaviour</h2>
     <div class="form-group">
       <label for="auto_clock_s">Auto-return to clock (seconds, 0 = off)</label>

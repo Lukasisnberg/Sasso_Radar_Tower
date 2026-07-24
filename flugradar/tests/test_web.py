@@ -97,6 +97,24 @@ class TestDisplayPost:
         data = json.loads(portal_file.read_text())
         assert data["aircraft_icon_set"] == "simple"
 
+    def test_openaip_overlay_checkbox_present(self, client, monkeypatch, tmp_path):
+        portal_file = tmp_path / "settings.json"
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
+        r = client.post(
+            "/display", data={"openaip_overlay_enabled": "1"}, follow_redirects=False
+        )
+        assert r.status_code == 302
+        data = json.loads(portal_file.read_text())
+        assert data["openaip_overlay_enabled"] is True
+
+    def test_openaip_overlay_checkbox_absent_means_disabled(self, client, monkeypatch, tmp_path):
+        portal_file = tmp_path / "settings.json"
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
+        r = client.post("/display", data={}, follow_redirects=False)
+        assert r.status_code == 302
+        data = json.loads(portal_file.read_text())
+        assert data["openaip_overlay_enabled"] is False
+
 
 class TestApiKeysPost:
     def test_save_adsbdb_settings(self, client, monkeypatch, tmp_path):
@@ -122,6 +140,16 @@ class TestApiKeysPost:
         assert r.status_code == 302
         data = json.loads(portal_file.read_text())
         assert data["adsbdb_enabled"] is True
+
+    def test_save_openaip_api_key(self, client, monkeypatch, tmp_path):
+        portal_file = tmp_path / "settings.json"
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
+        r = client.post(
+            "/api-keys", data={"openaip_api_key": "my-openaip-key"}, follow_redirects=False,
+        )
+        assert r.status_code == 302
+        data = json.loads(portal_file.read_text())
+        assert data["openaip_api_key"] == "my-openaip-key"
 
 
 class TestRestApi:

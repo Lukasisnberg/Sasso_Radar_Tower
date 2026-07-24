@@ -98,7 +98,7 @@ class RadarApp:
             distance_unit=self.settings.distance_unit,
         )
         clock_scr = ClockScreen(self.screen_size, theme)
-        about = AboutScreen(self.screen_size, theme)
+        about = AboutScreen(self.screen_size, theme, openaip_enabled=self._openaip_enabled())
         settings_scr = SettingsScreen(self.screen_size, theme)
         gestures = GestureRecogniser()
 
@@ -108,7 +108,8 @@ class RadarApp:
         if self.enable_map:
             try:
                 tile_mgr = TileManager(provider_key="carto_dark")
-                map_comp = MapCompositor(tile_mgr, proj)
+                overlay_mgr = self._build_openaip_overlay()
+                map_comp = MapCompositor(tile_mgr, proj, overlay_tiles=overlay_mgr)
             except Exception:
                 log.warning("Map tiles unavailable, running without map background")
 
@@ -210,7 +211,7 @@ class RadarApp:
                         weather_str=weather_status,
                     )
                     if map_comp:
-                        self._draw_attribution(screen, map_comp.tiles.attribution)
+                        self._draw_attribution(screen, map_comp.attribution)
                 elif self._active == ActiveScreen.DETAIL:
                     detail.set_aircraft_list(self._aircraft)
                     if detail.aircraft:
@@ -243,6 +244,14 @@ class RadarApp:
             if map_comp:
                 map_comp.tiles.close()
             pygame.quit()
+
+    def _openaip_enabled(self) -> bool:
+        return bool(self.settings.openaip_api_key and self.settings.openaip_overlay_enabled)
+
+    def _build_openaip_overlay(self) -> TileManager | None:
+        if not self._openaip_enabled():
+            return None
+        return TileManager(provider_key="openaip", api_key=self.settings.openaip_api_key)
 
     def _request_photos(self, aircraft: list[Aircraft]) -> None:
         for ac in aircraft:
@@ -277,6 +286,7 @@ class RadarApp:
         detail.distance_unit = self.settings.distance_unit
         clock_scr.theme = theme
         about.theme = theme
+        about.openaip_enabled = self._openaip_enabled()
         settings_scr.theme = theme
 
         proj.home_lat = self.settings.home.lat
@@ -284,6 +294,9 @@ class RadarApp:
         proj.radius_km = self.settings.home.radius_km
 
         if map_comp:
+            if map_comp.overlay_tiles is not None:
+                map_comp.overlay_tiles.close()
+            map_comp.overlay_tiles = self._build_openaip_overlay()
             map_comp.invalidate()
 
         log.info(

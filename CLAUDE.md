@@ -18,6 +18,15 @@ nur ein ungenutzter Einstellungs-Slot. Bei Änderungen an der
 Quellenpriorität ("kostenpflichtig vs. kostenlos") ist AirLabs gemeint,
 nicht FR24.
 
+**Weitere Doku-vs-Code-Lücken (Kartenlogik)**: `docs/ANFORDERUNGEN.md`
+Abschnitt 5.2 erwähnt ein RainViewer-Regenradar-Overlay, Abschnitt 5.3
+eine Auswahl zwischen mehreren Kartenanbietern (CARTO/OSM/FAA VFR) — keins
+von beidem existiert im Code. `flugradar/display/app.py` verwendet fest
+`provider_key="carto_dark"`, ohne Einstellung/UI zum Wechseln. Das
+openAIP-Overlay (Teil B) ist deshalb die **erste** Overlay-Implementierung
+überhaupt (`MapCompositor.overlay_tiles`), nicht "analog zu RainViewer"
+wie ursprünglich angenommen.
+
 ## Anforderungen
 
 Vollständige Anforderungen: siehe `docs/ANFORDERUNGEN.md` — bei jeder neuen
@@ -53,14 +62,20 @@ Schritte 1–8 aus dem Bauauftrag (Abschnitt 13) sind abgeschlossen:
   `FlightEnrichment`), Priorität AirLabs > adsbdb > keine, nebenläufiger
   gedrosselter Hintergrund-Worker + Vorrang für die offene Detailansicht,
   Routendaten ausschließlich im RAM (Lizenzauflage)
+- openAIP-Luftraum-Overlay (Abschnitt 5.3/16, siehe
+  `docs/prompt-adsbdb-openaip.md`, Teil B): transparentes PNG-Tile-Overlay
+  über der bestehenden CARTO/OSM-Karte (`flugradar/maps/tiles.py` —
+  `PROVIDERS["openaip"]`, `flugradar/maps/compositor.py` —
+  `MapCompositor.overlay_tiles`), nur aktiv wenn `openaip_api_key`
+  hinterlegt UND `openaip_overlay_enabled` an ist. Lizenz CC BY-NC 4.0
+  (nicht-kommerziell). Kachel-Cache läuft über den bestehenden
+  `TileCache`-Mechanismus, eigener `"openaip"`-Unterordner, keine
+  Vermischung mit CARTO/OSM.
 
-198 Tests grün.
+214 Tests grün.
 
 ## Offene Punkte
 
-- **Teil B aus `docs/prompt-adsbdb-openaip.md`** (openAIP als Luftfahrt-
-  Kartenebene) — laut Auftrag erst nach Teil A (adsbdb) und dessen Push zu
-  beginnen; noch nicht begonnen
 - Live-Reload-Verifikation (Settings-Änderungen im Portal ohne App-Neustart)
 - Design-Sprache-Umsetzung (Abschnitt 15): Dieter-Rams-Prinzipien durchgängig anwenden
 - Kein dediziertes Drohnen-/UAV-Icon im lizenzierten "detailed"-Set

@@ -64,6 +64,11 @@ flugradar/
   SVG icons used by the "detailed" icon set
   (free for personal/commercial use, backlink required — see
   `flugradar/assets/icons/aircraft/LICENSE.txt`)
+- **[openAIP](https://www.openaip.net/)** — optional aviation overlay
+  (airspaces/airports/navaids) on top of the map background, requires a
+  free account and API key. Data licensed
+  [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/)
+  (attribution required, **non-commercial use only**)
 
 ## License
 

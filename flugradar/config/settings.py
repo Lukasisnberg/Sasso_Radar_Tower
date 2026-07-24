@@ -50,6 +50,8 @@ class AppSettings:
     adsbdb_enabled: bool = True  # no key needed; free enrichment fallback
     adsbdb_enrich_nearest: int = 10
     aircraft_photos_enabled: bool = False
+    openaip_api_key: str = ""
+    openaip_overlay_enabled: bool = True  # only takes effect if a key is set
 
     _portal_mtime: Optional[float] = field(default=None, repr=False)
 
@@ -89,6 +91,10 @@ class AppSettings:
             self.adsbdb_enrich_nearest = int(v)
         if v := os.environ.get("AIRCRAFT_PHOTOS_ENABLED"):
             self.aircraft_photos_enabled = _parse_bool(v)
+        if v := os.environ.get("OPENAIP_API_KEY"):
+            self.openaip_api_key = v
+        if v := os.environ.get("OPENAIP_OVERLAY_ENABLED"):
+            self.openaip_overlay_enabled = _parse_bool(v)
 
     def _apply_portal_settings(self) -> None:
         if not PORTAL_SETTINGS_FILE.exists():
@@ -122,6 +128,10 @@ class AppSettings:
             self.adsbdb_enrich_nearest = int(data["adsbdb_enrich_nearest"])
         if "aircraft_photos_enabled" in data:
             self.aircraft_photos_enabled = _parse_bool(data["aircraft_photos_enabled"])
+        if "openaip_api_key" in data:
+            self.openaip_api_key = data["openaip_api_key"]
+        if "openaip_overlay_enabled" in data:
+            self.openaip_overlay_enabled = _parse_bool(data["openaip_overlay_enabled"])
 
     def _get_portal_mtime(self) -> Optional[float]:
         try:
@@ -146,6 +156,7 @@ class AppSettings:
         old_adsbdb_enabled = self.adsbdb_enabled
         old_adsbdb_nearest = self.adsbdb_enrich_nearest
         old_photos_enabled = self.aircraft_photos_enabled
+        old_openaip_overlay = self.openaip_overlay_enabled
 
         defaults = HomeLocation()
         self.home.lat = defaults.lat
@@ -159,6 +170,7 @@ class AppSettings:
         self.adsbdb_enabled = True
         self.adsbdb_enrich_nearest = 10
         self.aircraft_photos_enabled = False
+        self.openaip_overlay_enabled = True
         self._apply_portal_settings()
         self._apply_env()
 
@@ -174,6 +186,7 @@ class AppSettings:
             or self.adsbdb_enabled != old_adsbdb_enabled
             or self.adsbdb_enrich_nearest != old_adsbdb_nearest
             or self.aircraft_photos_enabled != old_photos_enabled
+            or self.openaip_overlay_enabled != old_openaip_overlay
         )
 
     def save_portal_settings(self, updates: dict) -> None:

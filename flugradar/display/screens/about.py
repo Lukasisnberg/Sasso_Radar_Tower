@@ -18,9 +18,10 @@ from flugradar.display.theme import Theme
 class AboutScreen:
     """Displays version info, network status, and web portal URL."""
 
-    def __init__(self, screen_size: int, theme: Theme) -> None:
+    def __init__(self, screen_size: int, theme: Theme, openaip_enabled: bool = False) -> None:
         self.size = screen_size
         self.theme = theme
+        self.openaip_enabled = openaip_enabled
         self._fonts_ready = False
         self._title_font: Optional[pygame.font.Font] = None
         self._detail_font: Optional[pygame.font.Font] = None
@@ -57,6 +58,8 @@ class AboutScreen:
             "Photos: planespotters.net",
             "Icons: adsb-radar.com",
         ]
+        if self.openaip_enabled:
+            lines.append("Aviation overlay: openAIP.net (CC BY-NC 4.0)")
 
         for line in lines:
             if not line:

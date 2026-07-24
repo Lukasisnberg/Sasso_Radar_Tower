@@ -50,6 +50,19 @@ PROVIDERS: dict[str, TileProvider] = {
         max_zoom=19,
         headers={"User-Agent": "SassoRadarTower/0.1"},
     ),
+    # Transparent aviation overlay (airspaces, airports, navaids, reporting
+    # points), not a standalone basemap -- meant to be layered on top of
+    # carto_dark/osm/etc. Requires a free openAIP account + API client key
+    # (see https://www.openaip.net -> profile -> API Clients). Data is
+    # licensed CC BY-NC 4.0 (non-commercial, attribution required) --
+    # https://creativecommons.org/licenses/by-nc/4.0/. Verified against the
+    # live Tiles API OpenAPI schema on 2026-07-24.
+    "openaip": TileProvider(
+        name="openAIP (aviation overlay)",
+        url_template="https://api.tiles.openaip.net/api/data/openaip/{z}/{x}/{y}.png?apiKey={api_key}",
+        attribution="© openAIP (CC BY-NC 4.0)",
+        max_zoom=14,
+    ),
 }
 
 
@@ -116,9 +129,11 @@ class TileManager:
         provider_key: str = "carto_dark",
         cache: Optional[TileCache] = None,
         max_workers: int = 4,
+        api_key: str = "",
     ) -> None:
         self.provider = PROVIDERS[provider_key]
         self.provider_key = provider_key
+        self._api_key = api_key
         self.cache = cache or TileCache()
         self._session = requests.Session()
         if self.provider.headers:
@@ -135,9 +150,14 @@ class TileManager:
         cached = self.cache.get(self.provider_key, z, x, y)
         if cached:
             return cached
-        url = self.provider.url_template.format(z=z, x=x, y=y)
+        url = self.provider.url_template.format(z=z, x=x, y=y, api_key=self._api_key)
         try:
             resp = self._session.get(url, timeout=10)
+            if resp.status_code == 204:
+                # Zoom level outside the provider's supported range (e.g.
+                # openAIP's Tiles API). Not an error, just no tile here --
+                # don't cache an empty response as if it were real data.
+                return None
             resp.raise_for_status()
             data = resp.content
             self.cache.put(self.provider_key, z, x, y, data)

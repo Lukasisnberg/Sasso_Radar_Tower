@@ -71,6 +71,24 @@
     </div>
   </div>
 
+  <div class="card">
+    <h2>openAIP (aviation map overlay)</h2>
+    <div class="alert alert-info">
+      Adds airspaces/airports/navaids as a transparent overlay on top of
+      the map background. Requires a free openAIP account — get a client
+      key at <a href="https://www.openaip.net" target="_blank">openaip.net</a>
+      (profile → API Clients). Data is licensed
+      <a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a>
+      — non-commercial use only.
+    </div>
+    <div class="form-group">
+      <label for="openaip_api_key">openAIP API Key</label>
+      <input type="password" id="openaip_api_key" name="openaip_api_key"
+             value="{{ settings.openaip_api_key }}"
+             placeholder="required for the overlay">
+    </div>
+  </div>
+
   <div class="btn-group">
     <button type="submit" class="btn">Save</button>
   </div>

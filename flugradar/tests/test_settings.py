@@ -48,6 +48,16 @@ class TestEnvOverrides:
         s = AppSettings()
         assert s.aircraft_photos_enabled is True
 
+    def test_openaip_api_key_from_env(self, monkeypatch):
+        monkeypatch.setenv("OPENAIP_API_KEY", "abc123")
+        s = AppSettings()
+        assert s.openaip_api_key == "abc123"
+
+    def test_openaip_overlay_enabled_from_env(self, monkeypatch):
+        monkeypatch.setenv("OPENAIP_OVERLAY_ENABLED", "false")
+        s = AppSettings()
+        assert s.openaip_overlay_enabled is False
+
 
 class TestPortalSettings:
     def test_portal_overrides_defaults(self, monkeypatch, tmp_path):
@@ -123,6 +133,20 @@ class TestPortalSettings:
         assert s.adsbdb_enabled is False
         assert s.adsbdb_enrich_nearest == 3
         assert s.aircraft_photos_enabled is True
+
+    def test_openaip_defaults(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", tmp_path / "nonexistent.json")
+        s = AppSettings()
+        assert s.openaip_api_key == ""
+        assert s.openaip_overlay_enabled is True
+
+    def test_save_updates_openaip_settings_in_memory(self, monkeypatch, tmp_path):
+        portal_file = tmp_path / "settings.json"
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
+        s = AppSettings()
+        s.save_portal_settings({"openaip_api_key": "xyz", "openaip_overlay_enabled": False})
+        assert s.openaip_api_key == "xyz"
+        assert s.openaip_overlay_enabled is False
 
     def test_save_updates_home_location_in_memory(self, monkeypatch, tmp_path):
         portal_file = tmp_path / "settings.json"
@@ -202,6 +226,18 @@ class TestLiveReload:
         assert s.check_portal_reload() is True
         assert s.adsbdb_enabled is False
         assert s.adsbdb_enrich_nearest == 2
+
+    def test_reload_applies_openaip_overlay_toggle(self, monkeypatch, tmp_path):
+        portal_file = tmp_path / "settings.json"
+        portal_file.write_text(json.dumps({"openaip_overlay_enabled": True}))
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
+        s = AppSettings()
+        assert s.openaip_overlay_enabled is True
+
+        os.utime(portal_file, (0, 0))
+        portal_file.write_text(json.dumps({"openaip_overlay_enabled": False}))
+        assert s.check_portal_reload() is True
+        assert s.openaip_overlay_enabled is False
 
     def test_reload_missing_file(self, monkeypatch, tmp_path):
         portal_file = tmp_path / "settings.json"

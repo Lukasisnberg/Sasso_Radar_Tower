@@ -61,6 +61,9 @@ def create_app(settings: AppSettings | None = None) -> Flask:
                 updates["theme"] = theme
             if icon_set := request.form.get("aircraft_icon_set"):
                 updates["aircraft_icon_set"] = icon_set
+            updates["openaip_overlay_enabled"] = (
+                request.form.get("openaip_overlay_enabled") is not None
+            )
             if (v := request.form.get("auto_clock_s")) is not None:
                 updates["auto_clock_s"] = int(v)
             settings.save_portal_settings(updates)
@@ -71,7 +74,7 @@ def create_app(settings: AppSettings | None = None) -> Flask:
     def api_keys():
         if request.method == "POST":
             updates = {}
-            for key in ("fr24_api_key", "tomorrow_api_key", "airlabs_api_key"):
+            for key in ("fr24_api_key", "tomorrow_api_key", "airlabs_api_key", "openaip_api_key"):
                 val = request.form.get(key, "").strip()
                 if val:
                     updates[key] = val
@@ -111,7 +114,7 @@ def create_app(settings: AppSettings | None = None) -> Flask:
 
     @app.route("/about")
     def about():
-        return render_template("about.html", version=__version__)
+        return render_template("about.html", version=__version__, settings=settings)
 
     @app.route("/api/weather", methods=["GET"])
     def api_weather():
@@ -145,6 +148,7 @@ def create_app(settings: AppSettings | None = None) -> Flask:
             "adsbdb_enabled": settings.adsbdb_enabled,
             "adsbdb_enrich_nearest": settings.adsbdb_enrich_nearest,
             "aircraft_photos_enabled": settings.aircraft_photos_enabled,
+            "openaip_overlay_enabled": settings.openaip_overlay_enabled,
         })
 
     @app.route("/api/settings", methods=["POST"])
