@@ -14,6 +14,12 @@ _SETTINGS_DIR = Path(os.environ.get(
 PORTAL_SETTINGS_FILE = _SETTINGS_DIR / "settings.json"
 
 
+def _parse_bool(value) -> bool:
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in ("1", "true", "yes", "on")
+
+
 @dataclass
 class HomeLocation:
     lat: float = 47.3769  # Zurich default
@@ -41,6 +47,9 @@ class AppSettings:
     fr24_api_key: str = ""
     tomorrow_api_key: str = ""
     airlabs_api_key: str = ""
+    adsbdb_enabled: bool = True  # no key needed; free enrichment fallback
+    adsbdb_enrich_nearest: int = 10
+    aircraft_photos_enabled: bool = False
 
     _portal_mtime: Optional[float] = field(default=None, repr=False)
 
@@ -74,6 +83,12 @@ class AppSettings:
             self.tomorrow_api_key = v
         if v := os.environ.get("AIRLABS_API_KEY"):
             self.airlabs_api_key = v
+        if v := os.environ.get("ADSBDB_ENABLED"):
+            self.adsbdb_enabled = _parse_bool(v)
+        if v := os.environ.get("ADSBDB_ENRICH_NEAREST"):
+            self.adsbdb_enrich_nearest = int(v)
+        if v := os.environ.get("AIRCRAFT_PHOTOS_ENABLED"):
+            self.aircraft_photos_enabled = _parse_bool(v)
 
     def _apply_portal_settings(self) -> None:
         if not PORTAL_SETTINGS_FILE.exists():
@@ -101,6 +116,12 @@ class AppSettings:
             self.min_altitude_ft = int(data["min_altitude_ft"])
         if "auto_clock_s" in data:
             self.auto_clock_s = int(data["auto_clock_s"])
+        if "adsbdb_enabled" in data:
+            self.adsbdb_enabled = _parse_bool(data["adsbdb_enabled"])
+        if "adsbdb_enrich_nearest" in data:
+            self.adsbdb_enrich_nearest = int(data["adsbdb_enrich_nearest"])
+        if "aircraft_photos_enabled" in data:
+            self.aircraft_photos_enabled = _parse_bool(data["aircraft_photos_enabled"])
 
     def _get_portal_mtime(self) -> Optional[float]:
         try:
@@ -122,6 +143,9 @@ class AppSettings:
         old_radius = self.home.radius_km
         old_min_alt = self.min_altitude_ft
         old_auto_clock = self.auto_clock_s
+        old_adsbdb_enabled = self.adsbdb_enabled
+        old_adsbdb_nearest = self.adsbdb_enrich_nearest
+        old_photos_enabled = self.aircraft_photos_enabled
 
         defaults = HomeLocation()
         self.home.lat = defaults.lat
@@ -132,6 +156,9 @@ class AppSettings:
         self.aircraft_icon_set = "detailed"
         self.min_altitude_ft = 0
         self.auto_clock_s = 300
+        self.adsbdb_enabled = True
+        self.adsbdb_enrich_nearest = 10
+        self.aircraft_photos_enabled = False
         self._apply_portal_settings()
         self._apply_env()
 
@@ -144,6 +171,9 @@ class AppSettings:
             or self.home.radius_km != old_radius
             or self.min_altitude_ft != old_min_alt
             or self.auto_clock_s != old_auto_clock
+            or self.adsbdb_enabled != old_adsbdb_enabled
+            or self.adsbdb_enrich_nearest != old_adsbdb_nearest
+            or self.aircraft_photos_enabled != old_photos_enabled
         )
 
     def save_portal_settings(self, updates: dict) -> None:

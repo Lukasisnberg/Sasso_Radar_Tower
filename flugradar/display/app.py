@@ -8,9 +8,10 @@ import pygame
 
 from flugradar.config.settings import AppSettings
 from flugradar.data_sources.adsb_fi import AdsbFiClient
-from flugradar.data_sources.aircraft_photo import request_photo
+from flugradar.data_sources.adsbdb import AdsbdbClient
+from flugradar.data_sources.aircraft_photo import request_adsbdb_photo, request_photo
 from flugradar.data_sources.demo import DemoSource
-from flugradar.data_sources.enrichment import EnrichmentClient
+from flugradar.data_sources.enrichment import AdsbdbEnricher, EnrichmentClient, FlightEnrichment
 from flugradar.data_sources.models import Aircraft
 from flugradar.data_sources.projection import ScreenProjection
 from flugradar.data_sources.weather import WeatherClient
@@ -60,7 +61,7 @@ class RadarApp:
         self._aircraft: list[Aircraft] = []
         self._last_fetch: float = 0.0
         self._weather_client: WeatherClient | None = None
-        self._enrichment_client: EnrichmentClient | None = None
+        self._flight_enrichment: FlightEnrichment | None = None
         self._last_interaction: float = 0.0
         self._last_reload_check: float = 0.0
 
@@ -124,8 +125,12 @@ class RadarApp:
             )
 
         if self.settings.airlabs_api_key:
-            self._enrichment_client = EnrichmentClient(
-                api_key=self.settings.airlabs_api_key,
+            self._flight_enrichment = FlightEnrichment(
+                airlabs_client=EnrichmentClient(api_key=self.settings.airlabs_api_key),
+            )
+        elif self.settings.adsbdb_enabled:
+            self._flight_enrichment = FlightEnrichment(
+                adsbdb_enricher=AdsbdbEnricher(AdsbdbClient()),
             )
 
         self._last_interaction = time.monotonic()
@@ -181,8 +186,10 @@ class RadarApp:
                         if (ac.altitude_ft or 0) >= self.settings.min_altitude_ft
                         or ac.is_on_ground
                     ]
-                    if self._enrichment_client:
-                        self._enrichment_client.enrich(self._aircraft)
+                    if self._flight_enrichment:
+                        self._flight_enrichment.poll(
+                            self._aircraft, nearest_limit=self.settings.adsbdb_enrich_nearest,
+                        )
                     self._request_photos(self._aircraft)
                     self._update_photo_fields(self._aircraft)
                     self._last_fetch = now
@@ -229,8 +236,8 @@ class RadarApp:
             pass
         finally:
             client.close()
-            if self._enrichment_client:
-                self._enrichment_client.close()
+            if self._flight_enrichment:
+                self._flight_enrichment.close()
             if self._weather_client:
                 self._weather_client.close()
             if map_comp:
@@ -240,6 +247,15 @@ class RadarApp:
     def _request_photos(self, aircraft: list[Aircraft]) -> None:
         for ac in aircraft:
             request_photo(ac.icao_hex, ac.registration or "")
+            if (
+                self.settings.aircraft_photos_enabled
+                and self._flight_enrichment
+                and self._flight_enrichment.using_adsbdb
+            ):
+                urls = self._flight_enrichment.get_adsbdb_photo_urls(ac.icao_hex)
+                if urls:
+                    thumb, full = urls
+                    request_adsbdb_photo(ac.icao_hex, thumb, full)
 
     def _update_photo_fields(self, aircraft: list[Aircraft]) -> None:
         from flugradar.data_sources.aircraft_photo import get_photo_info
@@ -294,6 +310,8 @@ class RadarApp:
                     detail.set_aircraft(ac)
                     detail.set_aircraft_list(self._aircraft)
                     self._active = ActiveScreen.DETAIL
+                    if self._flight_enrichment:
+                        self._flight_enrichment.enrich_now(ac)
             elif gesture.type == GestureType.ZOOM_IN:
                 radar.zoom(0.8)
                 if map_comp:

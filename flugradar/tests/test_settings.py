@@ -33,6 +33,21 @@ class TestEnvOverrides:
         s = AppSettings()
         assert s.aircraft_icon_set == "simple"
 
+    def test_adsbdb_enabled_from_env(self, monkeypatch):
+        monkeypatch.setenv("ADSBDB_ENABLED", "false")
+        s = AppSettings()
+        assert s.adsbdb_enabled is False
+
+    def test_adsbdb_enrich_nearest_from_env(self, monkeypatch):
+        monkeypatch.setenv("ADSBDB_ENRICH_NEAREST", "25")
+        s = AppSettings()
+        assert s.adsbdb_enrich_nearest == 25
+
+    def test_aircraft_photos_enabled_from_env(self, monkeypatch):
+        monkeypatch.setenv("AIRCRAFT_PHOTOS_ENABLED", "true")
+        s = AppSettings()
+        assert s.aircraft_photos_enabled is True
+
 
 class TestPortalSettings:
     def test_portal_overrides_defaults(self, monkeypatch, tmp_path):
@@ -88,6 +103,26 @@ class TestPortalSettings:
         assert s.aircraft_icon_set == "detailed"
         s.save_portal_settings({"aircraft_icon_set": "simple"})
         assert s.aircraft_icon_set == "simple"
+
+    def test_adsbdb_defaults(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", tmp_path / "nonexistent.json")
+        s = AppSettings()
+        assert s.adsbdb_enabled is True
+        assert s.adsbdb_enrich_nearest == 10
+        assert s.aircraft_photos_enabled is False
+
+    def test_save_updates_adsbdb_settings_in_memory(self, monkeypatch, tmp_path):
+        portal_file = tmp_path / "settings.json"
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
+        s = AppSettings()
+        s.save_portal_settings({
+            "adsbdb_enabled": False,
+            "adsbdb_enrich_nearest": 3,
+            "aircraft_photos_enabled": True,
+        })
+        assert s.adsbdb_enabled is False
+        assert s.adsbdb_enrich_nearest == 3
+        assert s.aircraft_photos_enabled is True
 
     def test_save_updates_home_location_in_memory(self, monkeypatch, tmp_path):
         portal_file = tmp_path / "settings.json"
@@ -154,6 +189,19 @@ class TestLiveReload:
         portal_file.write_text(json.dumps({"aircraft_icon_set": "simple"}))
         assert s.check_portal_reload() is True
         assert s.aircraft_icon_set == "simple"
+
+    def test_reload_applies_adsbdb_settings(self, monkeypatch, tmp_path):
+        portal_file = tmp_path / "settings.json"
+        portal_file.write_text(json.dumps({"adsbdb_enabled": True}))
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
+        s = AppSettings()
+        assert s.adsbdb_enabled is True
+
+        os.utime(portal_file, (0, 0))
+        portal_file.write_text(json.dumps({"adsbdb_enabled": False, "adsbdb_enrich_nearest": 2}))
+        assert s.check_portal_reload() is True
+        assert s.adsbdb_enabled is False
+        assert s.adsbdb_enrich_nearest == 2
 
     def test_reload_missing_file(self, monkeypatch, tmp_path):
         portal_file = tmp_path / "settings.json"

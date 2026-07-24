@@ -98,6 +98,32 @@ class TestDisplayPost:
         assert data["aircraft_icon_set"] == "simple"
 
 
+class TestApiKeysPost:
+    def test_save_adsbdb_settings(self, client, monkeypatch, tmp_path):
+        portal_file = tmp_path / "settings.json"
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
+        r = client.post(
+            "/api-keys",
+            data={"adsbdb_enrich_nearest": "5", "aircraft_photos_enabled": "1"},
+            follow_redirects=False,
+        )
+        assert r.status_code == 302
+        data = json.loads(portal_file.read_text())
+        assert data["adsbdb_enrich_nearest"] == 5
+        assert data["aircraft_photos_enabled"] is True
+        assert data["adsbdb_enabled"] is False  # checkbox omitted => unchecked
+
+    def test_adsbdb_enabled_checkbox_present(self, client, monkeypatch, tmp_path):
+        portal_file = tmp_path / "settings.json"
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
+        r = client.post(
+            "/api-keys", data={"adsbdb_enabled": "1"}, follow_redirects=False,
+        )
+        assert r.status_code == 302
+        data = json.loads(portal_file.read_text())
+        assert data["adsbdb_enabled"] is True
+
+
 class TestRestApi:
     def test_get_settings(self, client):
         r = client.get("/api/settings")

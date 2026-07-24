@@ -52,6 +52,12 @@ flugradar/
 
 - **[adsb.fi](https://adsb.fi/)** — live ADS-B aircraft positions
   (free open-data API, no key required)
+- **[adsbdb.com](https://www.adsbdb.com/)** — free aircraft/route/airline
+  enrichment, no key required (default enrichment source; AirLabs is used
+  instead if a key is configured). Flight route data is the work of David
+  Taylor, Edinburgh and Jim Mason, Glasgow, and may not be copied,
+  published, or incorporated into other databases without their explicit
+  permission — route data is therefore cached only in RAM, never on disk.
 - **CARTO / OpenStreetMap** — map tile backgrounds
   (© CARTO, © OpenStreetMap contributors)
 - **[ADS-B Radar for macOS](https://adsb-radar.com/)** — aircraft type

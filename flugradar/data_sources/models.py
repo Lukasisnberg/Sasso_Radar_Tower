@@ -22,11 +22,12 @@ class Aircraft:
     distance_km: Optional[float] = None
     bearing_deg: Optional[float] = None
     category: Optional[str] = None
-    # enriched fields (from FR24 / AirLabs)
+    # enriched fields (from FR24 / AirLabs / adsbdb)
     airline: Optional[str] = None
     origin: Optional[str] = None
     destination: Optional[str] = None
     flight_number: Optional[str] = None
+    registered_owner: Optional[str] = None
     tags: list[str] = field(default_factory=list)
     # photo fields (populated by aircraft_photo background thread)
     photo_path: Optional[str] = None

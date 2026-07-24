@@ -1,11 +1,22 @@
 # Sasso Radar Tower
 
 Eigenständiges ADS-B-Flugradar für Raspberry Pi 4 mit rundem 4"-Touch-Display
-(Waveshare 720×720 DSI LCD). Eigenständige Implementierung; eine Ausnahme:
+(Waveshare 720×720 DSI LCD). Eigenständige Implementierung; Ausnahmen:
 das "detailed" Flugzeug-Icon-Set ist ein lizenziertes Drittanbieter-SVG-Set
 (adsb-radar.com, Backlink-Pflicht erfüllt — siehe
-`flugradar/assets/icons/aircraft/LICENSE.txt`). Die ursprünglich
-eigengezeichneten Icon-Silhouetten existieren weiterhin als "simple"-Modus.
+`flugradar/assets/icons/aircraft/LICENSE.txt`), und die Anreicherungsdaten
+(Route/Airline/Halter/Foto) kommen optional von adsbdb.com bzw. AirLabs.
+Die ursprünglich eigengezeichneten Icon-Silhouetten existieren weiterhin
+als "simple"-Modus. **adsb.fi bleibt in jedem Fall die alleinige,
+unveränderte Positionsquelle.**
+
+**Wichtiger Hinweis zu FR24 vs. AirLabs**: `docs/ANFORDERUNGEN.md` (Abschnitt
+5.1) beschreibt FR24 als die kostenpflichtige Anreicherungsquelle. Es gibt
+im Code aber **keinen FR24-Client** — diese Rolle übernimmt tatsächlich
+**AirLabs** (`flugradar/data_sources/enrichment.py`). `fr24_api_key` ist
+nur ein ungenutzter Einstellungs-Slot. Bei Änderungen an der
+Quellenpriorität ("kostenpflichtig vs. kostenlos") ist AirLabs gemeint,
+nicht FR24.
 
 ## Anforderungen
 
@@ -29,13 +40,28 @@ Schritte 1–8 aus dem Bauauftrag (Abschnitt 13) sind abgeschlossen:
   ICAO-Typcode- und ADS-B-Kategorie-Auflösung (`flugradar/display/icon_mapping.py`),
   plus die ursprünglichen eigengezeichneten Polygon-Silhouetten als
   `AIRCRAFT_ICON_SET=simple`-Alternative
+- Foto-/Logo-Anreicherung (Abschnitt 5.4b): Planespotters-Integration mit
+  Fotografen-Attribution (`flugradar/data_sources/aircraft_photo.py`) ist
+  fertig; adsbdb/airport-data.com als zweiter Fallback (nur bei explizit
+  aktiviertem `AIRCRAFT_PHOTOS_ENABLED`, generische Quellenangabe statt
+  Fotografen-Name) ist dazugekommen. Gemeinsamer Foto-Cache jetzt
+  größenbegrenzt (`FLUGRADAR_PHOTO_CACHE_MAX_MB`, Default 200 MB)
+- adsbdb-Anreicherung (Abschnitt 5.1/5.5, siehe
+  `docs/prompt-adsbdb-openaip.md`, Teil A): kostenlose Route-/Airline-/
+  Halter-Anreicherung ohne Key (`flugradar/data_sources/adsbdb.py`,
+  `flugradar/data_sources/enrichment.py` — `AdsbdbEnricher`,
+  `FlightEnrichment`), Priorität AirLabs > adsbdb > keine, nebenläufiger
+  gedrosselter Hintergrund-Worker + Vorrang für die offene Detailansicht,
+  Routendaten ausschließlich im RAM (Lizenzauflage)
 
-165 Tests grün.
+198 Tests grün.
 
 ## Offene Punkte
 
+- **Teil B aus `docs/prompt-adsbdb-openaip.md`** (openAIP als Luftfahrt-
+  Kartenebene) — laut Auftrag erst nach Teil A (adsbdb) und dessen Push zu
+  beginnen; noch nicht begonnen
 - Live-Reload-Verifikation (Settings-Änderungen im Portal ohne App-Neustart)
-- Foto-/Logo-Anreicherung (Abschnitt 5.4b): Planespotters-Integration mit Fotografen-Attribution
 - Design-Sprache-Umsetzung (Abschnitt 15): Dieter-Rams-Prinzipien durchgängig anwenden
 - Kein dediziertes Drohnen-/UAV-Icon im lizenzierten "detailed"-Set
   (ADS-B-Kategorie B6 fällt dort auf das generische Icon zurück; die

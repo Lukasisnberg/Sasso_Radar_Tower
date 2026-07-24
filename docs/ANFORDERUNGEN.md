@@ -76,12 +76,26 @@ Datenschicht auch ohne laufendes Display per CLI getestet werden kann.
   kein eigener Empfänger/Dongle nötig. Soll die **Standard-Datenquelle** sein,
   die ohne jeden bezahlten Key funktioniert.
 - **FlightRadar24 (FR24) API** — optional, erfordert ein kostenpflichtiges
-  Abo. Liefert zusätzlich Airline, Route, angereicherte Flugdetails. Soll
-  adsb.fi ergänzen bzw. ersetzen, wenn ein gültiger Key hinterlegt ist.
-  Fallback-Logik: ohne FR24-Key läuft die App ausschließlich mit adsb.fi
-  weiter (nur Positionen, keine Routen/Airline-Details).
-- **AirLabs** — optional, für Abflugplandaten, wenn ein getrackter Flug noch
-  nicht in der Luft ist.
+  Abo. Der `fr24_api_key`-Einstellungsslot existiert (Portal, Env), es gibt
+  aber **keinen echten FR24-Client** im Code — diese Rolle (Airline/Route/
+  angereicherte Flugdetails) übernimmt in der tatsächlichen Umsetzung
+  **AirLabs** (`flugradar/data_sources/enrichment.py`, `EnrichmentClient`).
+  Wer hier tatsächlich Vorrang hat, ist also AirLabs, nicht FR24 — bitte bei
+  zukünftigen Änderungen an dieser Priorität von AirLabs als der
+  "kostenpflichtigen, optionalen" Quelle ausgehen, nicht von FR24.
+- **AirLabs** — optional (Key im Portal), liefert Airline/Route/
+  Flugnummer. Hat Vorrang, wenn ein Key hinterlegt ist.
+- **adsbdb.com** (siehe `docs/prompt-adsbdb-openaip.md`, Teil A) — kostenlose
+  Anreicherung ohne Key: Flugzeugstammdaten (Typ, Halter, Registrierung,
+  Foto-URL), Route (Airline, Start-/Zielflughafen) für ein von adsb.fi
+  bereits gemeldetes Hex/Callsign. **Reine Ergänzungsschicht, niemals
+  Positionsquelle** — adsb.fi bleibt exklusiv und unverändert die
+  Positionsquelle. Priorität: AirLabs falls Key vorhanden, sonst adsbdb
+  (Standard), sonst keine Anreicherung. Läuft nebenläufig (eigener
+  Hintergrund-Worker-Thread, gedrosselt auf einen Request nach dem
+  anderen) mit Vorrang für das gerade in der Detailansicht geöffnete
+  Flugzeug. Routendaten ausschließlich im Arbeitsspeicher mit TTL
+  gecacht, nie auf Platte (Lizenzauflage, siehe Abschnitt 16).
 
 ### 5.2 Wetter
 
@@ -194,6 +208,17 @@ Silhouette im "simple"-Pfad deckt diesen Fall weiterhin ab.
   Fotografen/Künstlers aus den Metadaten der Quelle mit anzeigen (z. B.
   "© Max Mustermann"), da das die übliche Attributionspflicht solcher
   Foto-Communities ist
+- **adsbdb (airport-data.com) als zweiter Fallback** — nur wenn Planespotters
+  nichts liefert **und** `AIRCRAFT_PHOTOS_ENABLED` explizit aktiviert ist
+  (Default **aus**, siehe unten). Grund: Die adsbdb-API liefert pro Foto
+  **keine** Fotografen-/Urheberangabe, nur einen pauschalen
+  „airport-data.com"-Hinweis in der Projekt-README — deshalb bewusst kein
+  automatisches Default-an, bis das geklärt ist (jetzt geklärt: es bleibt
+  bei der pauschalen Quellenangabe, nicht pro Bild)
+- **Cache-Größenbegrenzung**: Der gemeinsame Foto-Cache-Ordner (Planespotters
+  + adsbdb) wird auf eine konfigurierbare Obergrenze begrenzt
+  (Default 200 MB, `FLUGRADAR_PHOTO_CACHE_MAX_MB`); älteste Bilder werden
+  zuerst entfernt, wenn die Grenze überschritten wird
 - **Qualitätsfilter bei automatischer Bildauswahl**: Ergebnisse aussortieren,
   die keine echten Flugzeugfotos sind — z. B. Cartoons, Clipart, SVG-Grafiken,
   Flottenlisten-Thumbnails, Infobox-Bilder. Eine automatisch gewählte
@@ -212,6 +237,18 @@ Silhouette im "simple"-Pfad deckt diesen Fall weiterhin ab.
 - Live-Positionen: alle 1–3 Sekunden neu abfragen
 - Angereicherte Flugdetails (Route/Airline): deutlich seltener cachen
   (Minuten), da diese sich pro Flug kaum ändern
+- **adsbdb-Anreicherung** (siehe `docs/prompt-adsbdb-openaip.md`):
+  Flugzeugstammdaten lange im RAM cachen (Stunden, ändern sich praktisch
+  nie während eines Fluges), Route mittel (30–60 Minuten). Negativ-Cache
+  (kürzere TTL) für „nicht gefunden", damit ein Hex/Callsign nicht bei
+  jedem Zyklus erneut angefragt wird. **Routendaten ausschließlich im
+  Arbeitsspeicher** — keine Persistenz auf Platte, keine eigene
+  Routentabelle über die Zeit (Lizenzauflage der Routendaten, siehe
+  Abschnitt 16). Abfragestrategie höflich gegenüber dem Dienst: nur die
+  nächstgelegenen N Flugzeuge im Hintergrund (konfigurierbar,
+  `ADSBDB_ENRICH_NEAREST`), gedrosselt auf einen Request nach dem anderen,
+  mit Vorrang für das gerade angetippte/in der Detailansicht offene
+  Flugzeug.
 - Wetter: stündlich reicht
 - Kartenkacheln: dauerhaft lokal cachen, nur bei fehlender Kachel neu laden
 
@@ -483,12 +520,24 @@ Animationskurven) soll eigenständig entwickelt werden.
   Einschränkung gewünscht)
 - Nutzungsbedingungen der eingebundenen Drittanbieter-APIs (adsb.fi, FR24,
   Tomorrow.io, RainViewer, CARTO, OpenStreetMap, AirLabs, aisstream.io,
-  Planespotters, Wikimedia Commons, adsb-radar.com) unabhängig prüfen —
-  diese Bedingungen gelten unabhängig davon, wie der eigene Code
+  Planespotters, Wikimedia Commons, adsb-radar.com, adsbdb.com) unabhängig
+  prüfen — diese Bedingungen gelten unabhängig davon, wie der eigene Code
   lizenziert ist. Für adsb-radar.com (Flugzeugtyp-Icon-Set, siehe
   Abschnitt 5.4a) gilt eine Backlink-Attributionspflicht, umgesetzt in
   README.md, dem On-Device-About-Screen und der Portal-About-Seite (siehe
   `flugradar/assets/icons/aircraft/LICENSE.txt`)
+- **adsbdb.com** (siehe `docs/prompt-adsbdb-openaip.md`, Teil A): kostenlose
+  Anreicherungsquelle ohne Key, Standardquelle wenn kein AirLabs-Key
+  hinterlegt ist. Die Flugroutendaten sind Arbeit von David Taylor
+  (Edinburgh) und Jim Mason (Glasgow) und dürfen ohne deren ausdrückliche
+  Genehmigung nicht kopiert, veröffentlicht oder in andere Datenbanken
+  übernommen werden — deshalb werden Routendaten ausschließlich im
+  Arbeitsspeicher mit TTL gehalten, nie auf Platte persistiert (siehe
+  `flugradar/data_sources/adsbdb.py`, Modul-Kopfkommentar). Für
+  Flugzeugfotos über adsbdb (Fallback, Standard aus) liefert die API keine
+  Pro-Bild-Fotografen-/Urheberangabe, nur einen pauschalen
+  „airport-data.com“-Hinweis — entsprechend generisch ist auch die im UI
+  gezeigte Quellenangabe
 - Kein Quelltext, keine Asset-Dateien (Icons, Layout-Dateien, Fonts) aus
   bestehenden Drittprojekten übernehmen — nur die hier beschriebene
   Funktionsliste und die öffentlichen API-Dokumentationen als Grundlage

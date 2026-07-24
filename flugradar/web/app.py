@@ -75,6 +75,12 @@ def create_app(settings: AppSettings | None = None) -> Flask:
                 val = request.form.get(key, "").strip()
                 if val:
                     updates[key] = val
+            updates["adsbdb_enabled"] = request.form.get("adsbdb_enabled") is not None
+            if nearest := request.form.get("adsbdb_enrich_nearest"):
+                updates["adsbdb_enrich_nearest"] = int(nearest)
+            updates["aircraft_photos_enabled"] = (
+                request.form.get("aircraft_photos_enabled") is not None
+            )
             settings.save_portal_settings(updates)
             return redirect(url_for("api_keys", saved=1))
         return render_template("api_keys.html", settings=settings)

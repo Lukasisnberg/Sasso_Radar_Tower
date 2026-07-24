@@ -126,6 +126,9 @@ class DetailScreen:
         if ac.registration:
             rows.append((ac.registration, self._detail_font, self.theme.hint))
 
+        if ac.registered_owner:
+            rows.append((ac.registered_owner, self._detail_font, self.theme.muted))
+
         if ac.photo_credit:
             rows.append((ac.photo_credit, self._detail_font, self.theme.hint))
 

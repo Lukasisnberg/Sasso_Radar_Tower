@@ -30,6 +30,8 @@ _SEARCH_TIMEOUT = 8
 _DOWNLOAD_TIMEOUT = 12
 _META_TTL_S = 14 * 24 * 3600
 _THUMB_WIDTH = 480
+_MAX_CACHE_MB = int(os.environ.get("FLUGRADAR_PHOTO_CACHE_MAX_MB", "200"))
+_MAX_CACHE_BYTES = _MAX_CACHE_MB * 1024 * 1024
 
 _DATA_DIR = Path(os.environ.get(
     "FLUGRADAR_DATA_DIR",
@@ -151,6 +153,47 @@ def _extract_credit(photo: dict) -> str:
     return "Photo: planespotters.net"
 
 
+def _evict_if_needed() -> None:
+    """Cap the on-disk photo cache at _MAX_CACHE_BYTES, oldest first.
+
+    Runs after every newly-cached photo (from any source) so the cache
+    directory never grows unbounded, per docs/prompt-adsbdb-openaip.md
+    Schritt 3.
+    """
+    with _lock:
+        meta = _load_meta()
+        sized: list[tuple[float, str, str, int]] = []
+        total = 0
+        for hex_id, entry in meta.items():
+            path = entry.get("path")
+            if entry.get("miss") or not path:
+                continue
+            try:
+                size = os.path.getsize(path)
+            except OSError:
+                continue
+            sized.append((entry.get("ts", 0), hex_id, path, size))
+            total += size
+
+        if total <= _MAX_CACHE_BYTES:
+            return
+
+        sized.sort()  # oldest ts first
+        changed = False
+        for ts, hex_id, path, size in sized:
+            if total <= _MAX_CACHE_BYTES:
+                break
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+            meta.pop(hex_id, None)
+            total -= size
+            changed = True
+        if changed:
+            _save_meta()
+
+
 def _do_lookup(icao_hex: str, registration: str = "") -> None:
     hex_id = normalize_hex(icao_hex)
     if not hex_id:
@@ -207,6 +250,73 @@ def _do_lookup(icao_hex: str, registration: str = "") -> None:
         }
         _save_meta()
     log.info("[photo] cached %s → %s", hex_id, dest)
+    _evict_if_needed()
+
+
+def request_adsbdb_photo(icao_hex: str, url_thumbnail: str = "", url_full: str = "") -> None:
+    """Fallback photo source: adsbdb (backed by airport-data.com).
+
+    Only tried when planespotters has nothing for this aircraft (checked
+    by the caller enabling this at all via AIRCRAFT_PHOTOS_ENABLED, and
+    here by skipping if *any* non-miss entry already exists). Unlike
+    planespotters, adsbdb's API carries no per-photo photographer/
+    copyright field -- only a blanket "airport-data.com" source note, so
+    the credit text here is intentionally generic. See
+    flugradar/data_sources/adsbdb.py's module docstring for the full
+    attribution situation.
+    """
+    hex_id = normalize_hex(icao_hex)
+    if not hex_id:
+        return
+    img_url = (url_thumbnail or url_full or "").strip()
+    if not img_url:
+        return
+
+    with _lock:
+        if hex_id in _pending:
+            return
+        meta = _load_meta()
+        entry = meta.get(hex_id)
+        if entry and not entry.get("miss"):
+            return  # a photo already exists, from any source
+        if (
+            entry
+            and entry.get("miss")
+            and entry.get("miss_source") == "adsbdb"
+            and (time.time() - entry.get("ts", 0)) < _META_TTL_S
+        ):
+            return  # adsbdb itself missed recently; don't hammer it again yet
+        _pending.add(hex_id)
+
+    def _worker():
+        try:
+            _ensure_cache_dir()
+            dest = str(_CACHE_DIR / f"{hex_id}.jpg")
+            ok = _download_image(img_url, dest)
+            now = time.time()
+            with _lock:
+                if ok:
+                    meta[hex_id] = {
+                        "miss": False,
+                        "ts": now,
+                        "hex": hex_id,
+                        "path": dest,
+                        "credit": "Photo: airport-data.com (via adsbdb)",
+                        "source": "adsbdb",
+                    }
+                else:
+                    meta[hex_id] = {
+                        "miss": True, "ts": now, "hex": hex_id, "miss_source": "adsbdb",
+                    }
+                _save_meta()
+            if ok:
+                log.info("[photo] cached %s → %s (adsbdb)", hex_id, dest)
+                _evict_if_needed()
+        finally:
+            with _lock:
+                _pending.discard(hex_id)
+
+    threading.Thread(target=_worker, daemon=True).start()
 
 
 def request_photo(icao_hex: str, registration: str = "") -> None:

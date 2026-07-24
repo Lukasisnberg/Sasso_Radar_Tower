@@ -52,6 +52,7 @@ class AboutScreen:
             "",
             f"Display {self.size}×{self.size}",
             "Data: adsb.fi (opendata)",
+            "Enrichment: adsbdb.com (opendata)",
             "Maps: CARTO / OpenStreetMap",
             "Photos: planespotters.net",
             "Icons: adsb-radar.com",
