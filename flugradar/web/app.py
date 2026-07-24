@@ -142,6 +142,9 @@ def create_app(settings: AppSettings | None = None) -> Flask:
             "aircraft_icon_set": settings.aircraft_icon_set,
             "min_altitude_ft": settings.min_altitude_ft,
             "auto_clock_s": settings.auto_clock_s,
+            "adsbdb_enabled": settings.adsbdb_enabled,
+            "adsbdb_enrich_nearest": settings.adsbdb_enrich_nearest,
+            "aircraft_photos_enabled": settings.aircraft_photos_enabled,
         })
 
     @app.route("/api/settings", methods=["POST"])
