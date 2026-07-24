@@ -54,6 +54,10 @@ flugradar/
   (free open-data API, no key required)
 - **CARTO / OpenStreetMap** — map tile backgrounds
   (© CARTO, © OpenStreetMap contributors)
+- **[ADS-B Radar for macOS](https://adsb-radar.com/)** — aircraft type
+  SVG icons used by the "detailed" icon set
+  (free for personal/commercial use, backlink required — see
+  `flugradar/assets/icons/aircraft/LICENSE.txt`)
 
 ## License
 

@@ -1,19 +1,31 @@
-"""Programmatic aircraft silhouettes by category for the radar display.
+"""Aircraft icon rendering for the radar display, in two selectable styles.
 
-Draws top-down aircraft icons as filled polygons, rotated to heading.
-Categories: narrow-body jet, wide-body jet, prop/regional, helicopter,
-military fighter, light/GA, glider, drone/UAV. Falls back to a plain
-generic silhouette when neither ADS-B category nor type code resolve.
+"detailed" (default): licensed SVG silhouettes from
+flugradar/assets/icons/aircraft/ (see LICENSE.txt/SOURCE.md there),
+resolved per-aircraft via flugradar.display.icon_mapping, recoloured and
+rotated with lazy per-(icon, size, colour, angle-bucket) caching so no
+rasterisation happens per frame.
+
+"simple": the original hand-drawn polygon silhouettes, kept as a
+zero-dependency fallback/performance-comparison mode. Categories: jet,
+wide, prop, helicopter, fighter, light, glider, drone, generic.
+
+Both styles share the same classify_type()-driven size staggering and
+the same category-fallback classifier.
 """
 
 from __future__ import annotations
 
+import logging
 import math
+import os
 from typing import Optional
 
 import pygame
 
 from flugradar.display import scaling
+from flugradar.display.icon_mapping import FIGHTER_PREFIXES as _FIGHTER_PREFIXES
+from flugradar.display.icon_mapping import GENERIC_ICON, resolve_icon
 from flugradar.display.theme import Theme
 
 # Nose points toward -Y (north/up). Right-side outline, mirrored for left.
@@ -191,12 +203,8 @@ _CATEGORY_CLASS: dict[str, str] = {
     "D4": "generic", "D5": "generic", "D6": "generic", "D7": "generic",
 }
 
-# Type code prefixes for classification
-_FIGHTER_PREFIXES = (
-    "F14", "F15", "F16", "F18", "F22", "F35", "F104", "F111", "F117",
-    "EUFI", "RFAL", "HAWK", "TORN", "SU27", "SU30", "SU35", "MIG29", "MIG31",
-    "JAS39", "M2K", "M346",
-)
+# Type code prefixes for classification (fighter list lives in
+# icon_mapping.py, imported above, so both modules share one definition)
 _HELI_PREFIXES = (
     "EC", "AS", "AW", "R4", "R6", "MI", "KA", "BK", "MD5",
     "H125", "H130", "H135", "H145", "H155", "H160", "H175", "H215", "H225",
@@ -292,36 +300,35 @@ def _draw_polygon(
         pygame.draw.polygon(surface, color, pts)
 
 
-def draw_plane_icon(
+def _base_scale(icon_category: str, compact: bool) -> float:
+    """Relative size factor shared by both the 'simple' and 'detailed'
+    render paths, so switching AIRCRAFT_ICON_SET doesn't change the
+    relative light/heavy size staggering a user has gotten used to."""
+    if compact:
+        return 0.40
+    if icon_category == "wide":
+        return 0.80
+    if icon_category == "fighter":
+        return 0.65
+    if icon_category == "light":
+        return 0.50
+    if icon_category == "glider":
+        return 0.55
+    if icon_category == "drone":
+        return 0.42
+    if icon_category == "generic":
+        return 0.62
+    return 0.68
+
+
+def _draw_polygon_icon(
     surface: pygame.Surface,
     cx: int, cy: int,
     heading_deg: float,
     color: tuple[int, int, int],
-    aircraft_type: str = "",
-    category: Optional[str] = None,
-    compact: bool = False,
+    icon_category: str,
+    scale: float,
 ) -> None:
-    icon_category = classify_type(aircraft_type, category)
-    if compact:
-        base_scale = 0.40
-    elif icon_category == "wide":
-        base_scale = 0.80
-    elif icon_category == "fighter":
-        base_scale = 0.65
-    elif icon_category == "light":
-        base_scale = 0.50
-    elif icon_category == "glider":
-        base_scale = 0.55
-    elif icon_category == "drone":
-        base_scale = 0.42
-    elif icon_category == "generic":
-        base_scale = 0.62
-    else:
-        base_scale = 0.68
-
-    screen_scale = scaling.s(10) / 10.0
-    scale = base_scale * screen_scale
-
     if icon_category == "helicopter":
         _draw_polygon(surface, cx, cy, heading_deg, color, _HELICOPTER_HALF, scale)
         rotor_r = int(_HELICOPTER_ROTOR_R * scale)
@@ -344,6 +351,120 @@ def draw_plane_icon(
         _draw_polygon(surface, cx, cy, heading_deg, color, _GENERIC_HALF, scale)
     else:
         _draw_polygon(surface, cx, cy, heading_deg, color, _JET_HALF, scale)
+
+
+# --- "detailed" render path: licensed SVG icon set (see assets/icons/aircraft) ---
+
+_ICON_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets", "icons", "aircraft")
+_ANGLE_STEP_DEG = 5
+_REFERENCE_ICON_PX = 46
+_MIN_ICON_PX = 14
+
+# icon_key -> loaded raw Surface, or None if the file was missing/corrupt
+# (loaded at most once per key, never per frame).
+_raw_surface_cache: dict[str, Optional[pygame.Surface]] = {}
+# (icon_key, size_px, color, angle_bucket) -> final tinted+scaled+rotated
+# Surface (built at most once per unique combination, never per frame).
+_render_cache: dict[tuple[str, int, tuple[int, int, int], int], pygame.Surface] = {}
+_warned_missing: set[str] = set()
+
+
+def _load_raw_icon(icon_key: str) -> Optional[pygame.Surface]:
+    if icon_key in _raw_surface_cache:
+        return _raw_surface_cache[icon_key]
+    path = os.path.join(_ICON_DIR, f"{icon_key}.svg")
+    try:
+        surface = pygame.image.load(path)
+    except (pygame.error, FileNotFoundError, OSError) as exc:
+        if icon_key not in _warned_missing:
+            _warned_missing.add(icon_key)
+            logging.getLogger(__name__).warning(
+                "aircraft icon %r failed to load (%s); falling back to generic icon",
+                icon_key, exc,
+            )
+        surface = None
+    _raw_surface_cache[icon_key] = surface
+    return surface
+
+
+def _tint_surface(surface: pygame.Surface, color: tuple[int, int, int]) -> pygame.Surface:
+    """Recolour a single-colour silhouette to `color`, preserving alpha.
+
+    Standard pygame recipe: multiply RGB to zero (alpha untouched since its
+    multiplier is 255/255), then add the target colour (alpha untouched
+    since its addend is 0). Works regardless of the source icon's own
+    fill colour.
+    """
+    tinted = surface.copy()
+    tinted.fill((0, 0, 0, 255), special_flags=pygame.BLEND_RGBA_MULT)
+    tinted.fill((*color, 0), special_flags=pygame.BLEND_RGBA_ADD)
+    return tinted
+
+
+def _get_rendered_icon(
+    icon_key: str,
+    size_px: int,
+    color: tuple[int, int, int],
+    heading_deg: float,
+) -> Optional[pygame.Surface]:
+    angle_bucket = round(heading_deg / _ANGLE_STEP_DEG) * _ANGLE_STEP_DEG % 360
+    cache_key = (icon_key, size_px, color, angle_bucket)
+    cached = _render_cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    raw = _load_raw_icon(icon_key)
+    if raw is None:
+        if icon_key != GENERIC_ICON:
+            return _get_rendered_icon(GENERIC_ICON, size_px, color, heading_deg)
+        return None
+
+    scaled = pygame.transform.smoothscale(raw, (size_px, size_px))
+    tinted = _tint_surface(scaled, color)
+    # Source icons are drawn nose-up (north at 0 deg); pygame.transform.rotate
+    # is counter-clockwise for positive angles, so negate to get the usual
+    # clockwise-from-north compass heading.
+    rotated = pygame.transform.rotate(tinted, -angle_bucket)
+    _render_cache[cache_key] = rotated
+    return rotated
+
+
+def _draw_svg_icon(
+    surface: pygame.Surface,
+    cx: int, cy: int,
+    heading_deg: float,
+    color: tuple[int, int, int],
+    icon_key: str,
+    scale: float,
+) -> None:
+    size_px = max(_MIN_ICON_PX, round(_REFERENCE_ICON_PX * scale))
+    rendered = _get_rendered_icon(icon_key, size_px, color, heading_deg)
+    if rendered is None:
+        return
+    rect = rendered.get_rect(center=(cx, cy))
+    surface.blit(rendered, rect)
+
+
+def draw_plane_icon(
+    surface: pygame.Surface,
+    cx: int, cy: int,
+    heading_deg: float,
+    color: tuple[int, int, int],
+    aircraft_type: str = "",
+    category: Optional[str] = None,
+    compact: bool = False,
+    icon_set: str = "detailed",
+) -> None:
+    icon_category = classify_type(aircraft_type, category)
+    screen_scale = scaling.s(10) / 10.0
+    scale = _base_scale(icon_category, compact) * screen_scale
+
+    if icon_set == "simple":
+        _draw_polygon_icon(surface, cx, cy, heading_deg, color, icon_category, scale)
+        return
+
+    icon_key = resolve_icon(aircraft_type, category)
+    _draw_svg_icon(surface, cx, cy, heading_deg, color, icon_key, scale)
 
 
 def format_altitude(alt_ft: Optional[int]) -> str:

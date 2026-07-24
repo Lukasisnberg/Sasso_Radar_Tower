@@ -24,6 +24,17 @@
   </div>
 
   <div class="card">
+    <h2>Aircraft Icons</h2>
+    <div class="form-group">
+      <label for="aircraft_icon_set">Icon Set</label>
+      <select id="aircraft_icon_set" name="aircraft_icon_set">
+        <option value="detailed" {% if settings.aircraft_icon_set | default('detailed') == 'detailed' %}selected{% endif %}>Detailed (per-type SVG icons)</option>
+        <option value="simple" {% if settings.aircraft_icon_set == 'simple' %}selected{% endif %}>Simple (hand-drawn shapes)</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="card">
     <h2>Idle Behaviour</h2>
     <div class="form-group">
       <label for="auto_clock_s">Auto-return to clock (seconds, 0 = off)</label>

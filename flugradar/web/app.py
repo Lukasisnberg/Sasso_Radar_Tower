@@ -59,6 +59,8 @@ def create_app(settings: AppSettings | None = None) -> Flask:
             updates = {}
             if theme := request.form.get("theme"):
                 updates["theme"] = theme
+            if icon_set := request.form.get("aircraft_icon_set"):
+                updates["aircraft_icon_set"] = icon_set
             if (v := request.form.get("auto_clock_s")) is not None:
                 updates["auto_clock_s"] = int(v)
             settings.save_portal_settings(updates)
@@ -131,6 +133,7 @@ def create_app(settings: AppSettings | None = None) -> Flask:
             "radius_km": settings.home.radius_km,
             "distance_unit": settings.distance_unit,
             "theme": settings.theme,
+            "aircraft_icon_set": settings.aircraft_icon_set,
             "min_altitude_ft": settings.min_altitude_ft,
             "auto_clock_s": settings.auto_clock_s,
         })

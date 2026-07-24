@@ -37,6 +37,7 @@ class RadarRenderer:
         sweep_rpm: float = 6.0,
         ring_count: int = 4,
         distance_unit: str = "km",
+        aircraft_icon_set: str = "detailed",
     ) -> None:
         self.size = screen_size
         self.proj = projection
@@ -44,6 +45,7 @@ class RadarRenderer:
         self.sweep_rpm = sweep_rpm
         self.ring_count = ring_count
         self.distance_unit = distance_unit
+        self.aircraft_icon_set = aircraft_icon_set
         self._sweep_surface = pygame.Surface((screen_size, screen_size), pygame.SRCALPHA)
         self._font_sm: Optional[pygame.font.Font] = None
         self._font_md: Optional[pygame.font.Font] = None
@@ -221,6 +223,7 @@ class RadarRenderer:
                 surface, ix, iy, heading, colour,
                 aircraft_type=ac.aircraft_type or "",
                 category=ac.category,
+                icon_set=self.aircraft_icon_set,
             )
 
             hit = self._draw_aircraft_tag(surface, ac, ix, iy)

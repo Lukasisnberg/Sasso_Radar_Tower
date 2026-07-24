@@ -3,6 +3,7 @@
 import pygame
 import pytest
 
+import flugradar.display.aircraft_icons as aircraft_icons
 from flugradar.display.aircraft_icons import (
     _JET_HALF,
     _WIDE_HALF,
@@ -95,3 +96,43 @@ class TestDrawPlaneIconSmoke:
             surf, 50, 50, 45.0, (255, 255, 255),
             aircraft_type=aircraft_type, category=category,
         )
+
+    @pytest.mark.parametrize("icon_set", ["detailed", "simple"])
+    def test_draw_does_not_crash_either_icon_set(self, icon_set):
+        surf = pygame.Surface((100, 100), pygame.SRCALPHA)
+        draw_plane_icon(
+            surf, 50, 50, 123.0, (200, 150, 50),
+            aircraft_type="B747", icon_set=icon_set,
+        )
+
+
+class TestDetailedIconCache:
+    def setup_method(self):
+        aircraft_icons._raw_surface_cache.clear()
+        aircraft_icons._render_cache.clear()
+        aircraft_icons._warned_missing.clear()
+
+    def test_same_combo_returns_cached_object(self):
+        s1 = aircraft_icons._get_rendered_icon("a320", 30, (10, 20, 30), 44.0)
+        s2 = aircraft_icons._get_rendered_icon("a320", 30, (10, 20, 30), 46.0)
+        assert s1 is s2  # 44 and 46 both round to the same 5-degree bucket
+
+    def test_different_angle_bucket_not_cached_together(self):
+        s1 = aircraft_icons._get_rendered_icon("a320", 30, (10, 20, 30), 0.0)
+        s2 = aircraft_icons._get_rendered_icon("a320", 30, (10, 20, 30), 90.0)
+        assert s1 is not s2
+
+    def test_missing_icon_falls_back_to_generic_without_crash(self):
+        result = aircraft_icons._get_rendered_icon(
+            "definitely_not_a_real_icon", 20, (1, 2, 3), 0.0
+        )
+        assert result is not None
+        assert "definitely_not_a_real_icon" in aircraft_icons._warned_missing
+
+    def test_missing_icon_warns_only_once(self, caplog):
+        import logging
+        caplog.set_level(logging.WARNING)
+        aircraft_icons._get_rendered_icon("still_not_real", 20, (1, 2, 3), 0.0)
+        aircraft_icons._get_rendered_icon("still_not_real", 20, (1, 2, 3), 0.0)
+        warnings = [r for r in caplog.records if "still_not_real" in r.message]
+        assert len(warnings) == 1

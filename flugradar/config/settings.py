@@ -35,6 +35,7 @@ class AppSettings:
     adsb: AdsbConfig = field(default_factory=AdsbConfig)
     distance_unit: str = "km"  # km | sm | nm
     theme: str = "dark"  # dark | amber
+    aircraft_icon_set: str = "detailed"  # detailed | simple
     min_altitude_ft: int = 0
     auto_clock_s: int = 300
     fr24_api_key: str = ""
@@ -61,6 +62,8 @@ class AppSettings:
             self.distance_unit = v
         if v := os.environ.get("FLUGRADAR_THEME"):
             self.theme = v
+        if v := os.environ.get("FLUGRADAR_AIRCRAFT_ICON_SET"):
+            self.aircraft_icon_set = v
         if v := os.environ.get("FLUGRADAR_MIN_ALT_FT"):
             self.min_altitude_ft = int(v)
         if v := os.environ.get("FLUGRADAR_AUTO_CLOCK_S"):
@@ -92,6 +95,8 @@ class AppSettings:
             self.distance_unit = data["distance_unit"]
         if "theme" in data:
             self.theme = data["theme"]
+        if "aircraft_icon_set" in data:
+            self.aircraft_icon_set = data["aircraft_icon_set"]
         if "min_altitude_ft" in data:
             self.min_altitude_ft = int(data["min_altitude_ft"])
         if "auto_clock_s" in data:
@@ -110,6 +115,7 @@ class AppSettings:
             return False
         self._portal_mtime = mtime
         old_theme = self.theme
+        old_icon_set = self.aircraft_icon_set
         old_unit = self.distance_unit
         old_lat = self.home.lat
         old_lon = self.home.lon
@@ -123,6 +129,7 @@ class AppSettings:
         self.home.radius_km = defaults.radius_km
         self.distance_unit = "km"
         self.theme = "dark"
+        self.aircraft_icon_set = "detailed"
         self.min_altitude_ft = 0
         self.auto_clock_s = 300
         self._apply_portal_settings()
@@ -130,6 +137,7 @@ class AppSettings:
 
         return (
             self.theme != old_theme
+            or self.aircraft_icon_set != old_icon_set
             or self.distance_unit != old_unit
             or self.home.lat != old_lat
             or self.home.lon != old_lon

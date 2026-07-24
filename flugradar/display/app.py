@@ -90,6 +90,7 @@ class RadarApp:
         radar = RadarScreen(
             self.screen_size, proj, theme,
             distance_unit=self.settings.distance_unit,
+            aircraft_icon_set=self.settings.aircraft_icon_set,
         )
         detail = DetailScreen(
             self.screen_size, theme,
@@ -255,6 +256,7 @@ class RadarApp:
         theme = THEMES.get(self.settings.theme, THEMES["dark"])
         radar.update_theme(theme)
         radar.update_unit(self.settings.distance_unit)
+        radar.update_icon_set(self.settings.aircraft_icon_set)
         detail.theme = theme
         detail.distance_unit = self.settings.distance_unit
         clock_scr.theme = theme

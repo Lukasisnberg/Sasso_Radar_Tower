@@ -19,6 +19,7 @@ class RadarScreen:
         projection: ScreenProjection,
         theme: Theme,
         distance_unit: str = "km",
+        aircraft_icon_set: str = "detailed",
     ) -> None:
         self.size = screen_size
         self.proj = projection
@@ -27,6 +28,7 @@ class RadarScreen:
             projection=projection,
             theme=theme,
             distance_unit=distance_unit,
+            aircraft_icon_set=aircraft_icon_set,
         )
         self.selected_hex: Optional[str] = None
         self._hit_rects: list[tuple[pygame.Rect, Aircraft]] = []
@@ -69,3 +71,6 @@ class RadarScreen:
 
     def update_unit(self, unit: str) -> None:
         self.renderer.distance_unit = unit
+
+    def update_icon_set(self, icon_set: str) -> None:
+        self.renderer.aircraft_icon_set = icon_set

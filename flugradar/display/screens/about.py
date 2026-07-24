@@ -54,6 +54,7 @@ class AboutScreen:
             "Data: adsb.fi (opendata)",
             "Maps: CARTO / OpenStreetMap",
             "Photos: planespotters.net",
+            "Icons: adsb-radar.com",
         ]
 
         for line in lines:

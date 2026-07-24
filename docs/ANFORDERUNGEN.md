@@ -166,6 +166,22 @@ gezeichnet** werden (z. B. als SVG-Pfade oder direkt in pygame als
 Polygon-Koordinaten definiert) — keine Icons aus bestehenden Projekten,
 Icon-Bibliotheken mit unklarer Lizenz oder Screenshots übernehmen.
 
+**Update (siehe `docs/prompt-flugzeug-icons.md`)**: Auf expliziten
+Auftrag hin wurde diese Vorgabe für das Icon-System bewusst
+aufgeweicht. Der Radar zeigt standardmäßig (`AIRCRAFT_ICON_SET=detailed`)
+jetzt ein lizenziertes, extern bezogenes SVG-Icon-Set (37 Icons,
+adsb-radar.com, frei nutzbar mit Backlink-Pflicht — siehe
+`flugradar/assets/icons/aircraft/LICENSE.txt` und `SOURCE.md`) statt
+komplett eigengezeichneter Icons. Die ursprünglich eigenständig
+gezeichneten Polygon-Silhouetten (alle neun oben genannten Kategorien,
+inkl. Drohne/UAV) bleiben als zweite, per Einstellung wählbare
+Render-Variante (`AIRCRAFT_ICON_SET=simple`) im Code erhalten
+(`flugradar/display/aircraft_icons.py`) — u. a. als Fallback ganz ohne
+externe Assets und für Performance-Vergleiche. Bekannte Lücke: Das
+externe Set hat kein eigenes Drohnen-/UAV-Icon (ADS-B-Kategorie B6 fällt
+auf das generische Icon zurück); die selbstgezeichnete `_DRONE_HALF`-
+Silhouette im "simple"-Pfad deckt diesen Fall weiterhin ab.
+
 ### 5.4b Weitere Bilder & Fotos
 
 - **Planespotters** — Flugzeugfotos zur Anreicherung der Detailansicht
@@ -467,8 +483,12 @@ Animationskurven) soll eigenständig entwickelt werden.
   Einschränkung gewünscht)
 - Nutzungsbedingungen der eingebundenen Drittanbieter-APIs (adsb.fi, FR24,
   Tomorrow.io, RainViewer, CARTO, OpenStreetMap, AirLabs, aisstream.io,
-  Planespotters, Wikimedia Commons) unabhängig prüfen — diese Bedingungen
-  gelten unabhängig davon, wie der eigene Code lizenziert ist
+  Planespotters, Wikimedia Commons, adsb-radar.com) unabhängig prüfen —
+  diese Bedingungen gelten unabhängig davon, wie der eigene Code
+  lizenziert ist. Für adsb-radar.com (Flugzeugtyp-Icon-Set, siehe
+  Abschnitt 5.4a) gilt eine Backlink-Attributionspflicht, umgesetzt in
+  README.md, dem On-Device-About-Screen und der Portal-About-Seite (siehe
+  `flugradar/assets/icons/aircraft/LICENSE.txt`)
 - Kein Quelltext, keine Asset-Dateien (Icons, Layout-Dateien, Fonts) aus
   bestehenden Drittprojekten übernehmen — nur die hier beschriebene
   Funktionsliste und die öffentlichen API-Dokumentationen als Grundlage

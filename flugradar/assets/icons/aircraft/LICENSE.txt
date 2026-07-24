@@ -1,0 +1,25 @@
+Source: ADS-B Radar for macOS — https://adsb-radar.com
+Icon page: https://adsb-radar.com/help/icons.html
+Retrieved: 2026-07-24
+
+License & Attribution (verbatim from source page):
+
+"These aircraft SVG icons are free to use for personal and commercial
+projects. The only requirement: please provide a backlink to ADS-B Radar
+somewhere in your project, website, or documentation - or buy the App
+ADS-B Radar."
+
+Example attribution given by the source:
+
+"Icons by ADS-B Radar for macOS - https://adsb-radar.com -
+https://apps.apple.com/app/id1538149835"
+
+This requirement is satisfied in this project at:
+- README.md, "Data sources & attribution" section
+- On-device About screen (flugradar/display/screens/about.py)
+- Web portal About page (flugradar/web/templates/about.html)
+- docs/ANFORDERUNGEN.md, license section
+
+This attribution is a condition of use and must not be made
+user-configurable/hideable (unlike the map-tile attribution, which has a
+separate permission on file for this project).

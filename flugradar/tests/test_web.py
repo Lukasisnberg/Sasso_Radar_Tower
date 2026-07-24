@@ -87,6 +87,16 @@ class TestDisplayPost:
         data = json.loads(portal_file.read_text())
         assert data["theme"] == "amber"
 
+    def test_save_aircraft_icon_set(self, client, monkeypatch, tmp_path):
+        portal_file = tmp_path / "settings.json"
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
+        r = client.post(
+            "/display", data={"aircraft_icon_set": "simple"}, follow_redirects=False
+        )
+        assert r.status_code == 302
+        data = json.loads(portal_file.read_text())
+        assert data["aircraft_icon_set"] == "simple"
+
 
 class TestRestApi:
     def test_get_settings(self, client):

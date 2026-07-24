@@ -28,6 +28,11 @@ class TestEnvOverrides:
         s = AppSettings()
         assert s.distance_unit == "nm"
 
+    def test_aircraft_icon_set_from_env(self, monkeypatch):
+        monkeypatch.setenv("FLUGRADAR_AIRCRAFT_ICON_SET", "simple")
+        s = AppSettings()
+        assert s.aircraft_icon_set == "simple"
+
 
 class TestPortalSettings:
     def test_portal_overrides_defaults(self, monkeypatch, tmp_path):
@@ -75,6 +80,14 @@ class TestPortalSettings:
         s.save_portal_settings({"theme": "amber"})
         assert s.theme == "amber"
         assert s.home.lat == pytest.approx(47.3769)
+
+    def test_save_updates_aircraft_icon_set_in_memory(self, monkeypatch, tmp_path):
+        portal_file = tmp_path / "settings.json"
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
+        s = AppSettings()
+        assert s.aircraft_icon_set == "detailed"
+        s.save_portal_settings({"aircraft_icon_set": "simple"})
+        assert s.aircraft_icon_set == "simple"
 
     def test_save_updates_home_location_in_memory(self, monkeypatch, tmp_path):
         portal_file = tmp_path / "settings.json"
@@ -129,6 +142,18 @@ class TestLiveReload:
         portal_file.write_text(json.dumps({"home_lat": 40.0}))
         s.check_portal_reload()
         assert s.home.lat == pytest.approx(52.0)
+
+    def test_reload_applies_aircraft_icon_set(self, monkeypatch, tmp_path):
+        portal_file = tmp_path / "settings.json"
+        portal_file.write_text(json.dumps({"aircraft_icon_set": "detailed"}))
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
+        s = AppSettings()
+        assert s.aircraft_icon_set == "detailed"
+
+        os.utime(portal_file, (0, 0))
+        portal_file.write_text(json.dumps({"aircraft_icon_set": "simple"}))
+        assert s.check_portal_reload() is True
+        assert s.aircraft_icon_set == "simple"
 
     def test_reload_missing_file(self, monkeypatch, tmp_path):
         portal_file = tmp_path / "settings.json"
