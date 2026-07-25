@@ -76,9 +76,21 @@ switchable via `DISPLAY_BACKEND` in `.env`:
 - `kiosk` — direct KMS/DRM access to the physical panel, no desktop
   session required (for the finished, permanently-mounted display)
 
-To deploy a code update to an existing install, re-sync the project
-directory (e.g. `rsync -a --exclude='.git' --exclude='.venv' ./
-~/sasso-radar-tower/`) and restart both services.
+To deploy a code update to an existing install, use the **Update** button
+(web portal → System, or on-device → Settings → System → Update). It
+pulls the latest `main` from GitHub into `~/sasso-radar-tower`
+(a real git clone, not just a copy — `install.sh` sets this up),
+reinstalls dependencies, checks the new code imports cleanly, and
+restarts both services — rolling back to the previous commit
+automatically if any of that fails, so a bad push can't leave an
+unattended device (e.g. a permanently-mounted living-room display)
+stuck in a broken state. Logs to
+`~/.local/share/flugradar/update.log`.
+
+For a from-source dev checkout that isn't set up as `~/sasso-radar-tower`,
+re-sync the project directory manually instead (e.g. `rsync -a
+--exclude='.git' --exclude='.venv' ./ ~/sasso-radar-tower/`) and restart
+both services.
 
 ## Tests
 

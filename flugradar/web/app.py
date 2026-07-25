@@ -11,6 +11,8 @@ from flugradar.config.locations import LOCATIONS
 from flugradar.config.settings import AppSettings, PORTAL_SETTINGS_FILE
 from flugradar.data_sources.weather import WeatherClient
 from flugradar.system.actions import system_action
+from flugradar.system.update import LOG_FILE as _UPDATE_LOG_FILE
+from flugradar.system.update import trigger_update_async
 
 log = logging.getLogger(__name__)
 
@@ -130,8 +132,12 @@ def create_app(settings: AppSettings | None = None) -> Flask:
         elif action == "shutdown":
             message = "Shutdown initiated..."
             system_action("shutdown")
+        elif action == "update":
+            message = "Update started in the background — check below in a minute."
+            trigger_update_async()
         return render_template(
-            "system.html", settings=settings, version=__version__, message=message
+            "system.html", settings=settings, version=__version__, message=message,
+            update_log=_last_update_log_line(),
         )
 
     @app.route("/weather")
@@ -192,3 +198,11 @@ def create_app(settings: AppSettings | None = None) -> Flask:
         return jsonify({"status": "ok"})
 
     return app
+
+
+def _last_update_log_line() -> str | None:
+    try:
+        lines = _UPDATE_LOG_FILE.read_text().strip().splitlines()
+    except OSError:
+        return None
+    return lines[-1] if lines else None

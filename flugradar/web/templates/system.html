@@ -17,6 +17,23 @@
 </div>
 
 <div class="card">
+  <h2>Update</h2>
+  <p style="font-size:13px;color:var(--text-muted);">
+    Pulls the latest code from GitHub, checks it imports cleanly, and
+    restarts both services. Rolls back automatically and leaves the
+    running app untouched if anything fails along the way.
+  </p>
+  <form method="post" class="btn-group">
+    <button type="submit" name="action" value="update" class="btn">Update now</button>
+  </form>
+  {% if update_log %}
+  <p style="font-size:12px;color:var(--text-muted);margin-top:10px;">
+    Last attempt: {{ update_log }}
+  </p>
+  {% endif %}
+</div>
+
+<div class="card">
   <h2>Actions</h2>
   <form method="post" class="btn-group">
     <button type="submit" name="action" value="restart" class="btn">Restart</button>

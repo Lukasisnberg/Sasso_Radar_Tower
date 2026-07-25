@@ -1,6 +1,7 @@
 """Tests for the Flask web portal."""
 
 import json
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -275,6 +276,34 @@ class TestApiKeysPost:
         assert r.status_code == 302
         data = json.loads(portal_file.read_text())
         assert data["openaip_api_key"] == "my-openaip-key"
+
+
+class TestSystemUpdate:
+    def test_update_button_triggers_async_update(self, client, monkeypatch):
+        mock_trigger = MagicMock()
+        monkeypatch.setattr("flugradar.web.app.trigger_update_async", mock_trigger)
+        r = client.post("/system", data={"action": "update"})
+        assert r.status_code == 200
+        mock_trigger.assert_called_once_with()
+        assert b"Update" in r.data
+
+    def test_update_does_not_trigger_on_plain_get(self, client, monkeypatch):
+        mock_trigger = MagicMock()
+        monkeypatch.setattr("flugradar.web.app.trigger_update_async", mock_trigger)
+        client.get("/system")
+        mock_trigger.assert_not_called()
+
+    def test_shows_last_update_log_line(self, client, monkeypatch, tmp_path):
+        log_file = tmp_path / "update.log"
+        log_file.write_text("2026-07-25T12:00:00 OK: already up to date\n")
+        monkeypatch.setattr("flugradar.web.app._UPDATE_LOG_FILE", log_file)
+        r = client.get("/system")
+        assert b"already up to date" in r.data
+
+    def test_no_log_file_yet_does_not_crash(self, client, monkeypatch, tmp_path):
+        monkeypatch.setattr("flugradar.web.app._UPDATE_LOG_FILE", tmp_path / "missing.log")
+        r = client.get("/system")
+        assert r.status_code == 200
 
 
 class TestRestApi:

@@ -181,9 +181,40 @@ Schritte 1–8 aus dem Bauauftrag (Abschnitt 13) sind abgeschlossen:
   nicht sofort endet). Erreichbar per Swipe rechts vom Radar (vierte,
   bisher ungenutzte Swipe-Richtung); getrackter Flug auf dem Radar mit
   derselben Akzentfarbe hervorgehoben wie die Tap-Auswahl
-  (`RadarRenderer._is_tracked`, keine zweite Akzentfarbe eingeführt).
+  (`RadarRenderer._is_tracked`). **Nachbesserung nach Gerätetest**: die
+  Hervorhebung war zu unauffällig (`aircraft_selected` ist nur ~25%
+  heller als die normale Punktfarbe, auf einem kleinen bewegten Icon kaum
+  wahrnehmbar) — getrackte Flugzeuge bekommen jetzt die volle Akzentfarbe
+  (`theme.sweep_colour`) plus einen sichtbaren Ring
+  (`RadarRenderer._draw_tracked_ring`); die Tap-Auswahl auf der
+  Detailansicht behält den dezenteren Farbton. Außerdem fehlte das Foto
+  im Tracking-Screen komplett (Import beim ersten Entwurf verworfen,
+  nie wieder ergänzt) — jetzt nachgezogen, kleiner als im Detail-Screen.
+- **Update-Funktion** (nicht Teil von `docs/prompt-ausbaustufe-2.md`,
+  separat angefragt — Hintergrund: das Gerät steht im Wohnzimmer, soll
+  Code-Änderungen per Knopfdruck aus GitHub übernehmen, ohne dass jemand
+  vor Ort SSH braucht): neuer Menüpunkt „Update" in System (Gerät +
+  Portal, `flugradar/system/update.py` — `trigger_update_async()`).
+  Zieht `git fetch`/`git reset --hard origin/main`, installiert
+  Abhängigkeiten neu (`pip install -e .[display,web]`), prüft dass der
+  neue Code sauber importiert (`python -c "import ..."`), und startet erst
+  dann beide systemd-Dienste neu. Bricht die Aktualisierung bei jedem
+  Fehlschlag ab und setzt per `git reset --hard <alter-commit>` auf den
+  vorherigen Stand zurück, **bevor** irgendein Dienst angefasst wird — ein
+  fehlgeschlagenes Update darf das unbeaufsichtigte Gerät nie in einem
+  kaputten Zustand zurücklassen. Verweigert außerdem bei lokal
+  abweichendem Arbeitsverzeichnis (`git status --porcelain` nicht leer).
+  Läuft als abgekoppelter Hintergrundprozess (`start_new_session=True`),
+  da der letzte Schritt genau den Dienst neu startet, der die Anfrage
+  ausgelöst hat — Ergebnis landet in
+  `~/.local/share/flugradar/update.log` (im Portal auf der System-Seite
+  als letzte Zeile angezeigt). **Voraussetzung**: das Installationsverzeichnis
+  auf dem Pi (`~/sasso-radar-tower`) muss ein echtes Git-Repo sein (zeigt
+  auf denselben GitHub-Remote), nicht nur eine rsync-Kopie wie bisher —
+  einmalig manuell umgestellt, danach läuft jedes weitere Update
+  eigenständig darüber.
 
-406 Tests grün.
+423 Tests grün.
 
 ## Offene Punkte
 

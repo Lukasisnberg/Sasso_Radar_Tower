@@ -55,7 +55,20 @@ fi
 
 # --- Copy project ---
 info "Setting up project in ${INSTALL_DIR}..."
-if [[ "${REPO_DIR}" != "${INSTALL_DIR}" ]]; then
+if [[ "${REPO_DIR}" == "${INSTALL_DIR}" ]]; then
+    info "Running in-place from ${INSTALL_DIR}, nothing to copy."
+elif [[ -d "${INSTALL_DIR}/.git" ]]; then
+    info "Existing git checkout found in ${INSTALL_DIR} -- leaving it as-is (use the in-app Update button for code updates, not a re-run of install.sh)."
+elif git -C "${REPO_DIR}" remote get-url origin &>/dev/null; then
+    # A real git clone (not just a copy) is what makes the in-app Update
+    # button work later (flugradar/system/update.py does `git fetch` +
+    # `git reset --hard origin/main` in place).
+    ORIGIN_URL="$(git -C "${REPO_DIR}" remote get-url origin)"
+    info "Cloning ${ORIGIN_URL} into ${INSTALL_DIR}..."
+    mkdir -p "$(dirname "${INSTALL_DIR}")"
+    sudo -u "${SRT_USER}" git clone "${ORIGIN_URL}" "${INSTALL_DIR}"
+else
+    warn "No git remote found in ${REPO_DIR} -- falling back to a plain copy. The in-app Update button won't work until ${INSTALL_DIR} is turned into a git clone manually."
     mkdir -p "${INSTALL_DIR}"
     rsync -a --exclude='.git' --exclude='.venv' --exclude='__pycache__' \
         --exclude='*.egg-info' --exclude='.pytest_cache' \

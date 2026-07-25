@@ -32,6 +32,7 @@ from flugradar.display.fonts import get_font
 from flugradar.display.screens.about import _hostname, _ip_address
 from flugradar.display.theme import TOKENS, Theme, ease_out_cubic
 from flugradar.system.actions import system_action
+from flugradar.system.update import trigger_update_async
 
 _SLIDE_DURATION_S = TOKENS.duration_long_ms / 1000.0
 
@@ -291,6 +292,7 @@ class MenuScreen:
                 _Row("ip", "IP-Adresse", "info", get_text=_ip_address),
                 _Row("portal", "Portal", "info", get_text=lambda: f"{_hostname()}.local:5000"),
                 _Row("sources", "Datenquellen", "info", get_text=lambda: "adsb.fi, adsbdb.com"),
+                _Row("update", "Update", "action", run=trigger_update_async),
                 _Row("restart", "Neustart", "action", run=lambda: system_action("reboot")),
                 _Row("shutdown", "Herunterfahren", "action", run=lambda: system_action("shutdown")),
             ]

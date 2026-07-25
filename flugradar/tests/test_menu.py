@@ -39,7 +39,16 @@ def screen(settings):
 
 
 def _tap_row(m, surf, key):
-    """Draw, find the row with `key`, and tap its centre."""
+    """Draw, find the row with `key`, and tap its centre. Scrolls to the
+    bottom and retries once if the row is currently clipped out of view
+    (e.g. a long submenu like System)."""
+    m.draw(surf)
+    for rect, row in m._row_rects:
+        if row.key == key:
+            return m.handle_tap(rect.centerx, rect.centery), rect, row
+    # jump the (eased) scroll position straight to the bottom, bypassing
+    # the animation -- current_offset() reads _anim_to, not .offset
+    m._scroll._anim_from = m._scroll._anim_to = m._scroll.max_offset
     m.draw(surf)
     for rect, row in m._row_rects:
         if row.key == key:
@@ -230,6 +239,17 @@ class TestConfirmAction:
         m.handle_tap(rect.right - 2, rect.centery)  # right half == cancel
         mock_action.assert_not_called()
         assert m._confirm_key is None
+
+    def test_update_action_triggers_async_update(self, screen, monkeypatch):
+        m, surf = screen
+        mock_trigger = MagicMock()
+        monkeypatch.setattr(menu_mod, "trigger_update_async", mock_trigger)
+        _tap_row(m, surf, "system")
+        _, rect, row = _tap_row(m, surf, "update")
+        m.draw(surf)
+        rect, _ = next(rr for rr in m._row_rects if rr[1].key == "update")
+        m.handle_tap(rect.left + 2, rect.centery)  # left half == confirm
+        mock_trigger.assert_called_once_with()
 
     def test_leaving_the_submenu_clears_pending_confirmation(self, screen):
         m, surf = screen
