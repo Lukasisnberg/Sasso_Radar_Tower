@@ -114,6 +114,9 @@ class EnrichmentClient:
         self._session.close()
 
 
+_UNKNOWN_RETRY_S = 1800.0  # re-ask adsbdb about a route it didn't know, after this long
+
+
 class AdsbdbEnricher:
     """Background-threaded adsbdb lookups: throttled, priority-aware.
 
@@ -122,6 +125,13 @@ class AdsbdbEnricher:
     with simultaneous requests. Reading cached results (`apply`) never
     blocks; a network hiccup mid-lookup just leaves an aircraft
     un-enriched for this cycle, never crashes or stalls the caller.
+
+    A route that adsbdb didn't know gets re-asked every
+    `_UNKNOWN_RETRY_S` instead of never again -- adsbdb's route table is
+    community-maintained and grows over time, so "unknown" now doesn't
+    mean "unknown forever" the way it's treated for aircraft still being
+    tracked across a long session. A route it *did* find is never
+    re-asked -- that's stable enough not to bother.
     """
 
     def __init__(self, client: AdsbdbClient) -> None:
@@ -131,7 +141,8 @@ class AdsbdbEnricher:
         self._pending: set[str] = set()
         self._lock = threading.Lock()
         self._stop = threading.Event()
-        self._results: dict[str, AdsbdbResult] = {}
+        # icao_hex -> (monotonic fetch time, result)
+        self._results: dict[str, tuple[float, AdsbdbResult]] = {}
         self._thread = threading.Thread(target=self._worker, daemon=True)
         self._thread.start()
 
@@ -146,15 +157,33 @@ class AdsbdbEnricher:
         (self._priority_queue if priority else self._queue).put((hex_id, callsign))
 
     def get_cached(self, icao_hex: str) -> Optional[AdsbdbResult]:
-        return self._results.get((icao_hex or "").strip().lower())
+        entry = self._results.get((icao_hex or "").strip().lower())
+        return entry[1] if entry else None
+
+    def _has_route(self, result: Optional[AdsbdbResult]) -> bool:
+        return bool(result and result.route and result.route.origin and result.route.destination)
+
+    def _needs_lookup(self, icao_hex: str) -> bool:
+        """True if this aircraft has never been asked about, or was asked
+        and came back with no route long enough ago to be worth asking
+        again. A hex that already has a real route is never re-queued."""
+        entry = self._results.get((icao_hex or "").strip().lower())
+        if entry is None:
+            return True
+        fetched_at, result = entry
+        if self._has_route(result):
+            return False
+        return (time.monotonic() - fetched_at) >= _UNKNOWN_RETRY_S
 
     def enrich_priority(self, ac: Aircraft) -> None:
         """Enrich exactly this aircraft with priority (e.g. detail view opened)."""
         self.request(ac.icao_hex, ac.callsign or "", priority=True)
 
     def enrich_nearest(self, aircraft: list[Aircraft], limit: int) -> None:
-        """Queue background lookups for up to `limit` nearest unknown aircraft."""
-        candidates = [ac for ac in aircraft if self.get_cached(ac.icao_hex) is None]
+        """Queue background lookups for up to `limit` nearest aircraft that
+        either have never been asked about, or were asked and came back
+        without a route long enough ago to be worth re-checking."""
+        candidates = [ac for ac in aircraft if self._needs_lookup(ac.icao_hex)]
         candidates.sort(
             key=lambda ac: ac.distance_km if ac.distance_km is not None else float("inf")
         )
@@ -200,7 +229,7 @@ class AdsbdbEnricher:
             if hex_id is None:
                 continue
             try:
-                self._results[hex_id] = self._client.lookup(hex_id, callsign)
+                self._results[hex_id] = (time.monotonic(), self._client.lookup(hex_id, callsign))
             except Exception:
                 log.debug("adsbdb background lookup crashed for %s", hex_id, exc_info=True)
             finally:
@@ -243,7 +272,7 @@ class FlightEnrichment:
     def using_adsbdb(self) -> bool:
         return self._airlabs is None and self._adsbdb is not None
 
-    def poll(self, aircraft: list[Aircraft], nearest_limit: int = 10) -> None:
+    def poll(self, aircraft: list[Aircraft], nearest_limit: int = 20) -> None:
         if self._airlabs:
             self._airlabs.enrich(aircraft)
             return

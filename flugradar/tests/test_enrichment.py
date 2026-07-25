@@ -261,6 +261,105 @@ class TestAdsbdbEnricher:
             enricher.close()
 
 
+class TestUnknownRouteRetry:
+    """A route adsbdb didn't know about gets re-asked after a while --
+    adsbdb's route table is community-maintained and grows over time, so
+    "unknown" shouldn't mean "unknown for the rest of this session"."""
+
+    def test_never_looked_up_needs_a_lookup(self):
+        enricher = AdsbdbEnricher(MagicMock())
+        try:
+            assert enricher._needs_lookup("aabbcc") is True
+        finally:
+            enricher.close()
+
+    def test_recently_fetched_with_no_route_is_not_stale_yet(self):
+        enricher = AdsbdbEnricher(MagicMock())
+        try:
+            enricher._results["aabbcc"] = (
+                time.monotonic(), AdsbdbResult(aircraft=AdsbdbAircraft(icao_type="A320"), route=None),
+            )
+            assert enricher._needs_lookup("aabbcc") is False
+        finally:
+            enricher.close()
+
+    def test_old_no_route_result_becomes_stale(self):
+        enricher = AdsbdbEnricher(MagicMock())
+        try:
+            long_ago = time.monotonic() - 999_999
+            enricher._results["aabbcc"] = (long_ago, AdsbdbResult(aircraft=None, route=None))
+            assert enricher._needs_lookup("aabbcc") is True
+        finally:
+            enricher.close()
+
+    def test_a_real_route_is_never_considered_stale_even_after_a_long_time(self):
+        enricher = AdsbdbEnricher(MagicMock())
+        try:
+            long_ago = time.monotonic() - 999_999
+            result = AdsbdbResult(
+                route=AdsbdbRoute(
+                    origin=AdsbdbAirport(iata_code="FRA"),
+                    destination=AdsbdbAirport(iata_code="JFK"),
+                ),
+            )
+            enricher._results["aabbcc"] = (long_ago, result)
+            assert enricher._needs_lookup("aabbcc") is False
+        finally:
+            enricher.close()
+
+    def test_route_with_only_an_origin_is_not_treated_as_a_real_route(self):
+        # partial route data (e.g. origin known, destination missing) still
+        # counts as "didn't get a usable route" for retry purposes
+        enricher = AdsbdbEnricher(MagicMock())
+        try:
+            long_ago = time.monotonic() - 999_999
+            result = AdsbdbResult(route=AdsbdbRoute(origin=AdsbdbAirport(iata_code="FRA"), destination=None))
+            enricher._results["aabbcc"] = (long_ago, result)
+            assert enricher._needs_lookup("aabbcc") is True
+        finally:
+            enricher.close()
+
+    def test_enrich_nearest_re_queues_a_stale_unknown_hex(self):
+        mock_client = MagicMock()
+        mock_client.lookup.return_value = AdsbdbResult()
+        enricher = AdsbdbEnricher(mock_client)
+        try:
+            long_ago = time.monotonic() - 999_999
+            enricher._results["aabbcc"] = (long_ago, AdsbdbResult(aircraft=None, route=None))
+            enricher.enrich_nearest([Aircraft(icao_hex="aabbcc", distance_km=5)], limit=5)
+            assert _wait_for(lambda: mock_client.lookup.call_count >= 1)
+        finally:
+            enricher.close()
+
+    def test_enrich_nearest_does_not_re_queue_a_known_route_even_when_old(self):
+        mock_client = MagicMock()
+        enricher = AdsbdbEnricher(mock_client)
+        try:
+            long_ago = time.monotonic() - 999_999
+            result = AdsbdbResult(
+                route=AdsbdbRoute(
+                    origin=AdsbdbAirport(iata_code="FRA"),
+                    destination=AdsbdbAirport(iata_code="JFK"),
+                ),
+            )
+            enricher._results["aabbcc"] = (long_ago, result)
+            enricher.enrich_nearest([Aircraft(icao_hex="aabbcc", distance_km=5)], limit=5)
+            time.sleep(0.1)
+            mock_client.lookup.assert_not_called()
+        finally:
+            enricher.close()
+
+    def test_get_cached_still_returns_the_result_regardless_of_staleness(self):
+        enricher = AdsbdbEnricher(MagicMock())
+        try:
+            long_ago = time.monotonic() - 999_999
+            result = AdsbdbResult(aircraft=AdsbdbAircraft(icao_type="A320"))
+            enricher._results["aabbcc"] = (long_ago, result)
+            assert enricher.get_cached("aabbcc") is result
+        finally:
+            enricher.close()
+
+
 class TestFlightEnrichmentPriority:
     def test_airlabs_wins_when_key_configured(self):
         airlabs = MagicMock()

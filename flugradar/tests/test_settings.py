@@ -128,7 +128,7 @@ class TestPortalSettings:
         monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", tmp_path / "nonexistent.json")
         s = AppSettings()
         assert s.adsbdb_enabled is True
-        assert s.adsbdb_enrich_nearest == 10
+        assert s.adsbdb_enrich_nearest == 20
         assert s.aircraft_photos_enabled is False
 
     def test_save_updates_adsbdb_settings_in_memory(self, monkeypatch, tmp_path):

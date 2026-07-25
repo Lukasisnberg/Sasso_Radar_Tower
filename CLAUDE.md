@@ -212,9 +212,35 @@ Schritte 1–8 aus dem Bauauftrag (Abschnitt 13) sind abgeschlossen:
   auf dem Pi (`~/sasso-radar-tower`) muss ein echtes Git-Repo sein (zeigt
   auf denselben GitHub-Remote), nicht nur eine rsync-Kopie wie bisher —
   einmalig manuell umgestellt, danach läuft jedes weitere Update
-  eigenständig darüber.
+  eigenständig darüber. Bereits einmal live dogfooded: den Route-Zeilen-Fix
+  (nächster Punkt) tatsächlich über den neuen Update-Button ausgerollt statt
+  manuell zu deployen.
+- **Detail-Screen: Start/Ziel nicht mehr erzwungen zweizeilig** (separat
+  angefragt): `DetailScreen` maß den Umbruch bisher nicht — Start und Ziel
+  standen immer auf zwei Zeilen, selbst wenn "City (CODE)  →  City (CODE)"
+  locker auf eine gepasst hätte. Prüft jetzt die tatsächliche Sehnenbreite
+  an der Zeile (`DetailScreen._draw_route`, dieselbe Fit-Logik wie
+  `draw_center_text`) und bricht nur bei echtem Platzmangel auf zwei Zeilen
+  um. `_build_rows` dafür in `_build_header_rows`/`_build_detail_rows`
+  aufgeteilt, da die Passform erst beim tatsächlichen Zeichnen (wenn die
+  y-Position feststeht) bekannt ist.
+- **adsbdb-Anreicherung: alte "unbekannt"-Antworten laufen ab** (separat
+  angefragt, Auslöser: viele Flugzeuge ohne Start/Ziel, z. B. `CFG081` —
+  live gegen adsbdb geprüft, die Route ist dort schlicht nicht hinterlegt,
+  kein Bug). Echter Bug dabei gefunden: `AdsbdbEnricher` cachte eine
+  "kenne ich nicht"-Antwort für die gesamte Laufzeit der Session, obwohl
+  adsbdb (community-gepflegt) die Route zwischenzeitlich ergänzt haben
+  könnte — nie erneut angefragt. Jetzt Zeitstempel pro Cache-Eintrag
+  (`AdsbdbEnricher._results`, `_needs_lookup()`), unbekannte Routen werden
+  nach `_UNKNOWN_RETRY_S` (30 Min) erneut versucht; ein einmal gefundener
+  Callsign/Route-Treffer bleibt weiterhin dauerhaft gecacht (kein Grund,
+  den erneut abzufragen). `adsbdb_enrich_nearest`-Default zusätzlich von
+  10 auf 20 angehoben, damit bei vielen gleichzeitig sichtbaren
+  Flugzeugen weniger davon einen Poll-Zyklus auf ihre erste Anfrage warten
+  müssen. AirLabs als vollständigere (aber kostenpflichtige) Alternative
+  bewusst nicht eingerichtet — Nutzer hat keinen Key.
 
-423 Tests grün.
+438 Tests grün.
 
 ## Offene Punkte
 

@@ -48,7 +48,7 @@ class AppSettings:
     tomorrow_api_key: str = ""
     airlabs_api_key: str = ""
     adsbdb_enabled: bool = True  # no key needed; free enrichment fallback
-    adsbdb_enrich_nearest: int = 10
+    adsbdb_enrich_nearest: int = 20
     aircraft_photos_enabled: bool = False
     openaip_api_key: str = ""
     openaip_overlay_enabled: bool = True  # only takes effect if a key is set
@@ -297,7 +297,7 @@ class AppSettings:
         self.min_altitude_ft = 0
         self.auto_clock_s = 300
         self.adsbdb_enabled = True
-        self.adsbdb_enrich_nearest = 10
+        self.adsbdb_enrich_nearest = 20
         self.aircraft_photos_enabled = False
         self.openaip_overlay_enabled = True
         self.map_provider = "carto_dark"
