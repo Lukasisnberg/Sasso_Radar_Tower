@@ -809,3 +809,17 @@ Vollständige Übersichtstabelle ergänzt:
   bestehenden Drittprojekten übernehmen — nur die hier beschriebene
   Funktionsliste und die öffentlichen API-Dokumentationen als Grundlage
   verwenden
+- **Weather Icons von Erik Flowers** (siehe `docs/prompt-wetterscreen.md`,
+  Schritt 2): eigenständig geprüft (2026-07-25, direkt aus dem README des
+  Repos `erikflowers/weather-icons`, nicht von Dritt-Quellen). Lizenz laut
+  README wörtlich: „Weather Icons licensed under SIL OFL 1.1 / Code
+  licensed under MIT License / Documentation licensed under CC BY 3.0" —
+  nur die einzelnen SVG-Icon-Dateien werden verwendet (nicht das
+  Webfont/CSS-Tooling, da der Screen wie alle anderen in pygame gerendert
+  wird), verwendet ist also nur der SIL-OFL-1.1-Teil. Volltext der Lizenz
+  liegt bei `flugradar/assets/icons/weather/LICENSE.txt`, inkl.
+  Quellenangabe und Abrufdatum. SIL OFL 1.1 verlangt (anders als das
+  Backlink-Erfordernis von adsb-radar.com) keine sichtbare In-App-Nennung,
+  nur die Weitergabe des Lizenztexts bei Redistribution — trotzdem aus
+  Konsistenz mit den übrigen Quellen zusätzlich im On-Device-About-Screen,
+  der Portal-About-Seite und README.md genannt.

@@ -64,6 +64,7 @@ class AboutScreen:
             "Maps: CARTO / OpenStreetMap",
             "Photos: planespotters.net",
             "Icons: adsb-radar.com",
+            "Weather icons: erikflowers.github.io (SIL OFL 1.1)",
         ]
         if self.openaip_enabled:
             lines.append("Aviation overlay: openAIP.net (CC BY-NC 4.0)")

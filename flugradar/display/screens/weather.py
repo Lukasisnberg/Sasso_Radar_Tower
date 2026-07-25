@@ -194,8 +194,13 @@ class WeatherScreen:
         icon_cx = self._x(_ICON_DX_FRAC)
         icon_cy = self._y(_ICON_DY_FRAC)
         icon_r = int(_ICON_R_FRAC * scaling.visible_radius())
+        # Only the current icon gets the theme accent -- forecast icons
+        # stay neutral (Abschnitt 15: "Nur die Theme-Akzentfarbe ...
+        # das aktuelle Icon", no colour-coding by condition elsewhere).
+        # Day/night is a wall-clock heuristic for now; Schritt 3 wires
+        # this to Tomorrow.io's actual sunrise/sunset data.
         draw_weather_icon(surface, wx.weather_code, (icon_cx, icon_cy), icon_r,
-                           self.theme.muted, self.theme.sweep_colour)
+                           self.theme.sweep_colour, is_night=_is_night_now())
 
         temp_font = get_font(scaling.s(round(TOKENS.font_title * _HERO_TEMP_SCALE)), bold=True)
         temp_str = _bare_temp_str(wx.temperature_c, self.temperature_unit)
@@ -262,8 +267,9 @@ class WeatherScreen:
             surface.blit(day_surf, day_surf.get_rect(midtop=(cx, label_y)))
 
             icon_cy = label_y + day_h + scaling.s(_FORECAST_ICON_GAP) + icon_r
-            draw_weather_icon(surface, day.weather_code, (cx, icon_cy), icon_r,
-                               self.theme.muted, self.theme.muted)
+            # Always the day variant -- a forecast day has no single
+            # "time of day" the way "right now" does.
+            draw_weather_icon(surface, day.weather_code, (cx, icon_cy), icon_r, self.theme.muted)
 
             hi_y = icon_cy + icon_r + scaling.s(_FORECAST_HI_GAP)
             hi_str = _bare_temp_str(day.temp_max_c, self.temperature_unit)
@@ -317,3 +323,12 @@ def _weekday_label(date_str: str) -> str:
         return time.strftime("%a", time.strptime(date_str, "%Y-%m-%d")).upper()
     except ValueError:
         return "—"
+
+
+def _is_night_now() -> bool:
+    """Rough wall-clock day/night heuristic for the current-conditions
+    icon -- Tomorrow.io's actual sunrise/sunset isn't wired in yet
+    (Schritt 3), so this is a placeholder rather than an astronomical
+    calculation."""
+    hour = time.localtime().tm_hour
+    return hour < 6 or hour >= 20

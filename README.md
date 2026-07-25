@@ -144,6 +144,12 @@ docs/ANFORDERUNGEN.md           # Full project specification
 - **[RainViewer](https://www.rainviewer.com/)** — optional rain radar
   overlay on top of the map background, no key required. Free for
   personal/educational use only
+- **[Weather Icons by Erik Flowers](https://erikflowers.github.io/weather-icons/)**
+  — weather condition icons on the weather screen, licensed
+  [SIL OFL 1.1](https://scripts.sil.org/OFL) — see
+  `flugradar/assets/icons/weather/LICENSE.txt`
+- **[Tomorrow.io](https://www.tomorrow.io/)** — current conditions and
+  forecast on the weather screen, requires a free API key
 
 ## License
 
