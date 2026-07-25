@@ -1,0 +1,85 @@
+<svg viewBox="0 0 720 720" xmlns="http://www.w3.org/2000/svg" width="720" height="720">
+<!-- Sasso Radar Tower — Wetterscreen Referenz-Mockup
+     720x720 rund, Amber-auf-Anthrazit, Dieter-Rams-Stil.
+     NUR Layout-/Farb-/Positionsreferenz. Nicht einbetten —
+     in pygame nachbauen. Icons hier nur angedeutet; im echten
+     Screen echte, lizenzierte Wetter-Icons verwenden. -->
+<defs>
+<clipPath id="disc"><circle cx="360" cy="360" r="360"/></clipPath>
+</defs>
+<g clip-path="url(#disc)">
+<rect x="0" y="0" width="720" height="720" fill="#0B0D0F"/>
+<circle cx="360" cy="360" r="352" fill="none" stroke="#1C1E20" stroke-width="1"/>
+<circle cx="360" cy="360" r="300" fill="none" stroke="#141618" stroke-width="1"/>
+
+<text x="360" y="118" text-anchor="middle" fill="#8A8F94" font-family="Inter, sans-serif" font-size="20" letter-spacing="3">SASSOFORTINO</text>
+<text x="360" y="146" text-anchor="middle" fill="#5A5F64" font-family="Inter, sans-serif" font-size="16" letter-spacing="1">Fr · 14:20</text>
+
+<g transform="translate(268,188)" stroke="#E8B049" stroke-width="6" fill="none" stroke-linecap="round">
+<circle cx="30" cy="30" r="20" fill="#E8B049" stroke="none"/>
+<line x1="30" y1="-4" x2="30" y2="4"/>
+<line x1="30" y1="56" x2="30" y2="64"/>
+<line x1="-4" y1="30" x2="4" y2="30"/>
+<line x1="56" y1="30" x2="64" y2="30"/>
+<line x1="7" y1="7" x2="12" y2="12"/>
+<line x1="48" y1="48" x2="53" y2="53"/>
+<line x1="7" y1="53" x2="12" y2="48"/>
+<line x1="48" y1="12" x2="53" y2="7"/>
+</g>
+
+<text x="392" y="272" text-anchor="middle" fill="#EDEFF1" font-family="Inter, sans-serif" font-size="104" font-weight="500" letter-spacing="-2">21°</text>
+<text x="360" y="322" text-anchor="middle" fill="#B9BEC3" font-family="Inter, sans-serif" font-size="24" letter-spacing="1">Überwiegend sonnig</text>
+
+<g font-family="Inter, sans-serif" font-size="19" letter-spacing="0.5">
+<text x="230" y="372" text-anchor="middle" fill="#5A5F64">WIND</text>
+<text x="230" y="400" text-anchor="middle" fill="#DDE1E4">12 km/h</text>
+<text x="360" y="372" text-anchor="middle" fill="#5A5F64">GEFÜHLT</text>
+<text x="360" y="400" text-anchor="middle" fill="#DDE1E4">20°</text>
+<text x="490" y="372" text-anchor="middle" fill="#5A5F64">REGEN</text>
+<text x="490" y="400" text-anchor="middle" fill="#DDE1E4">5 %</text>
+</g>
+
+<line x1="250" y1="436" x2="470" y2="436" stroke="#22262A" stroke-width="1"/>
+
+<g font-family="Inter, sans-serif">
+<g transform="translate(150,470)">
+<text x="0" y="0" text-anchor="middle" fill="#8A8F94" font-size="17" letter-spacing="1">SA</text>
+<circle cx="0" cy="34" r="12" fill="#C9922F"/>
+<text x="0" y="78" text-anchor="middle" fill="#EDEFF1" font-size="19">23°</text>
+<text x="0" y="100" text-anchor="middle" fill="#6A6F74" font-size="15">13°</text>
+</g>
+<g transform="translate(255,452)">
+<text x="0" y="0" text-anchor="middle" fill="#8A8F94" font-size="17" letter-spacing="1">SO</text>
+<circle cx="0" cy="34" r="12" fill="#C9922F"/>
+<text x="0" y="78" text-anchor="middle" fill="#EDEFF1" font-size="19">24°</text>
+<text x="0" y="100" text-anchor="middle" fill="#6A6F74" font-size="15">14°</text>
+</g>
+<g transform="translate(360,446)">
+<text x="0" y="0" text-anchor="middle" fill="#8A8F94" font-size="17" letter-spacing="1">MO</text>
+<g transform="translate(-12,22)" fill="#7E8388"><circle cx="8" cy="14" r="9"/><circle cx="18" cy="10" r="11"/><circle cx="26" cy="15" r="8"/></g>
+<text x="0" y="78" text-anchor="middle" fill="#EDEFF1" font-size="19">19°</text>
+<text x="0" y="100" text-anchor="middle" fill="#6A6F74" font-size="15">11°</text>
+</g>
+<g transform="translate(465,452)">
+<text x="0" y="0" text-anchor="middle" fill="#8A8F94" font-size="17" letter-spacing="1">DI</text>
+<g transform="translate(-12,22)" fill="#6A6F74"><circle cx="8" cy="14" r="9"/><circle cx="18" cy="10" r="11"/><circle cx="26" cy="15" r="8"/></g>
+<text x="0" y="78" text-anchor="middle" fill="#EDEFF1" font-size="19">17°</text>
+<text x="0" y="100" text-anchor="middle" fill="#6A6F74" font-size="15">10°</text>
+</g>
+<g transform="translate(570,470)">
+<text x="0" y="0" text-anchor="middle" fill="#8A8F94" font-size="17" letter-spacing="1">MI</text>
+<circle cx="0" cy="34" r="12" fill="#C9922F"/>
+<text x="0" y="78" text-anchor="middle" fill="#EDEFF1" font-size="19">22°</text>
+<text x="0" y="100" text-anchor="middle" fill="#6A6F74" font-size="15">12°</text>
+</g>
+</g>
+
+<g font-family="Inter, sans-serif" font-size="17" fill="#5A5F64">
+<circle cx="330" cy="604" r="3" fill="#E8B049"/>
+<circle cx="348" cy="604" r="3" fill="#3A3F44"/>
+<circle cx="366" cy="604" r="3" fill="#3A3F44"/>
+<circle cx="384" cy="604" r="3" fill="#3A3F44"/>
+<text x="360" y="640" text-anchor="middle" letter-spacing="2">WETTER</text>
+</g>
+</g>
+</svg>
