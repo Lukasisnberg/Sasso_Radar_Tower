@@ -15,10 +15,6 @@ from flugradar.display.draw_helpers import draw_center_text, fit_text
 from flugradar.display.fonts import get_font
 from flugradar.display.theme import TOKENS, Theme
 
-_FOOTER_BUTTONS = ["prev", "next", "radar"]
-_FOOTER_SINGLE = ["radar"]
-
-
 class DetailScreen:
     """Renders detailed flight information with photo header and nav chrome."""
 
@@ -26,6 +22,9 @@ class DetailScreen:
         self.size = screen_size
         self.theme = theme
         self.distance_unit = distance_unit
+        # Kept in sync from RadarApp so the footer can show "Track"/"Untrack"
+        # correctly (Ausbaustufe 2, Schritt 5).
+        self.tracked_callsign: str = ""
         self.aircraft: Optional[Aircraft] = None
         self._aircraft_list: list[Aircraft] = []
         self._selected_index: int = 0
@@ -76,6 +75,17 @@ class DetailScreen:
         idx = (idx + delta) % len(self._aircraft_list)
         self.aircraft = self._aircraft_list[idx]
         self._scroll.reset()
+
+    def _footer_buttons(self, ac: Optional[Aircraft]) -> list[str]:
+        buttons = ["prev", "next"] if len(self._aircraft_list) > 1 else []
+        if ac and ac.callsign:
+            is_tracked = (
+                bool(self.tracked_callsign)
+                and self.tracked_callsign.strip().upper() == ac.callsign.strip().upper()
+            )
+            buttons.append("untrack" if is_tracked else "track")
+        buttons.append("radar")
+        return buttons
 
     def _build_rows(self, ac: Aircraft) -> list[tuple[str, pygame.font.Font, tuple[int, int, int]]]:
         rows = []
@@ -145,7 +155,7 @@ class DetailScreen:
         ac = self._current_aircraft()
         if ac is None:
             nav.draw_breadcrumb(surface, ["Radar", "Detail"], self.theme)
-            nav.draw_footer_buttons(surface, _FOOTER_SINGLE, self.theme)
+            nav.draw_footer_buttons(surface, ["radar"], self.theme)
             draw_center_text(surface, "No traffic", scaling.center_y(), self._body_font, self.theme.muted)
             return
 
@@ -191,12 +201,14 @@ class DetailScreen:
         total_h = y + self._scroll.offset - chrome_top
         self._scroll.max_offset = max(0, total_h - (bottom - chrome_top))
 
-        buttons = _FOOTER_BUTTONS if len(self._aircraft_list) > 1 else _FOOTER_SINGLE
+        buttons = self._footer_buttons(ac)
         nav.draw_footer_buttons(surface, buttons, self.theme)
 
     def handle_tap(self, x: int, y: int) -> str:
-        """Returns 'radar' to go back, 'prev'/'next' to browse, '' to do nothing."""
-        buttons = _FOOTER_BUTTONS if len(self._aircraft_list) > 1 else _FOOTER_SINGLE
+        """Returns 'radar' to go back, 'prev'/'next' to browse, 'track'/
+        'untrack' to (un)follow this flight (Schritt 5), '' to do nothing."""
+        ac = self._current_aircraft()
+        buttons = self._footer_buttons(ac)
         idx = nav.tap_footer_button(x, y, len(buttons))
         if idx is not None:
             action = buttons[idx]
@@ -206,6 +218,8 @@ class DetailScreen:
             if action == "next":
                 self._navigate(1)
                 return ""
+            if action in ("track", "untrack"):
+                return action
             return "radar"
 
         breadcrumb_y = scaling.center_y() - int(scaling.visible_radius() * 0.75)

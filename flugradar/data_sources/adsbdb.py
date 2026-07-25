@@ -70,6 +70,8 @@ class AdsbdbAirport:
     municipality: str = ""
     country_name: str = ""
     country_iso_name: str = ""
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
 
 @dataclass
@@ -107,6 +109,13 @@ def _normalize_callsign(value: str) -> str:
     return (value or "").strip().upper()
 
 
+def _opt_float(value) -> Optional[float]:
+    try:
+        return float(value) if value is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
 def _parse_airport(data: Optional[dict]) -> Optional[AdsbdbAirport]:
     if not isinstance(data, dict):
         return None
@@ -117,6 +126,8 @@ def _parse_airport(data: Optional[dict]) -> Optional[AdsbdbAirport]:
         municipality=data.get("municipality") or "",
         country_name=data.get("country_name") or "",
         country_iso_name=data.get("country_iso_name") or "",
+        latitude=_opt_float(data.get("latitude")),
+        longitude=_opt_float(data.get("longitude")),
     )
 
 

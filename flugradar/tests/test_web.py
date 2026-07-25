@@ -146,6 +146,35 @@ class TestRadarPost:
         assert b"Sassofortino" in r.data
         assert b"Gie\xc3\x9fen" in r.data or b"Gie&#223;en" in r.data or "Gießen".encode() in r.data
 
+    def test_set_tracked_callsign(self, client, monkeypatch, tmp_path):
+        portal_file = tmp_path / "settings.json"
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
+        r = client.post(
+            "/radar", data={"tracked_callsign": "dlh400"}, follow_redirects=False,
+        )
+        assert r.status_code == 302
+        data = json.loads(portal_file.read_text())
+        assert data["tracked_callsign"] == "DLH400"  # normalised uppercase
+
+    def test_empty_tracked_callsign_clears_tracking(self, client, monkeypatch, tmp_path):
+        portal_file = tmp_path / "settings.json"
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
+        client.post("/radar", data={"tracked_callsign": "DLH400"}, follow_redirects=False)
+        r = client.post("/radar", data={}, follow_redirects=False)
+        assert r.status_code == 302
+        data = json.loads(portal_file.read_text())
+        assert data["tracked_callsign"] == ""
+
+    def test_tracking_timeout_minutes_converted_to_seconds(self, client, monkeypatch, tmp_path):
+        portal_file = tmp_path / "settings.json"
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
+        r = client.post(
+            "/radar", data={"tracking_timeout_min": "20"}, follow_redirects=False,
+        )
+        assert r.status_code == 302
+        data = json.loads(portal_file.read_text())
+        assert data["tracking_timeout_s"] == 1200
+
 
 class TestDisplayPost:
     def test_save_theme(self, client, monkeypatch, tmp_path):

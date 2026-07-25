@@ -167,8 +167,8 @@ class TestAdsbdbEnricher:
             route=AdsbdbRoute(
                 callsign_iata="LH400",
                 airline=AdsbdbAirline(name="Lufthansa", icao="DLH"),
-                origin=AdsbdbAirport(iata_code="FRA"),
-                destination=AdsbdbAirport(iata_code="JFK"),
+                origin=AdsbdbAirport(iata_code="FRA", latitude=50.033333, longitude=8.570556),
+                destination=AdsbdbAirport(iata_code="JFK", latitude=40.639801, longitude=-73.7789),
             ),
         )
         enricher = AdsbdbEnricher(mock_client)
@@ -185,6 +185,28 @@ class TestAdsbdbEnricher:
             assert ac.flight_number == "LH400"
             assert ac.origin == "FRA"
             assert ac.destination == "JFK"
+            assert ac.origin_lat == pytest.approx(50.033333)
+            assert ac.origin_lon == pytest.approx(8.570556)
+            assert ac.destination_lat == pytest.approx(40.639801)
+            assert ac.destination_lon == pytest.approx(-73.7789)
+        finally:
+            enricher.close()
+
+    def test_apply_leaves_coordinates_none_when_airport_has_none(self):
+        mock_client = MagicMock()
+        mock_client.lookup.return_value = AdsbdbResult(
+            route=AdsbdbRoute(origin=AdsbdbAirport(iata_code="FRA"), destination=None),
+        )
+        enricher = AdsbdbEnricher(mock_client)
+        try:
+            ac = Aircraft(icao_hex="4b1805", callsign="DLH400")
+            enricher.enrich_priority(ac)
+            assert _wait_for(lambda: enricher.get_cached("4b1805") is not None)
+
+            enricher.apply([ac])
+            assert ac.origin == "FRA"
+            assert ac.origin_lat is None
+            assert ac.destination_lat is None
         finally:
             enricher.close()
 

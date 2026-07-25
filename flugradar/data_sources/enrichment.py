@@ -187,6 +187,12 @@ class AdsbdbEnricher:
                         or result.route.destination.icao_code
                         or None
                     )
+                if ac.origin_lat is None and result.route.origin:
+                    ac.origin_lat = result.route.origin.latitude
+                    ac.origin_lon = result.route.origin.longitude
+                if ac.destination_lat is None and result.route.destination:
+                    ac.destination_lat = result.route.destination.latitude
+                    ac.destination_lon = result.route.destination.longitude
 
     def _worker(self) -> None:
         while not self._stop.is_set():

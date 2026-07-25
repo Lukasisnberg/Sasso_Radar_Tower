@@ -25,6 +25,7 @@ from flugradar.display.screens.clock import ClockScreen
 from flugradar.display.screens.detail import DetailScreen
 from flugradar.display.screens.radar import RadarScreen
 from flugradar.display.screens.menu import MenuScreen
+from flugradar.display.screens.tracking import TrackedFlightScreen
 from flugradar.display.theme import CLASSIC_AMBER, TOKENS, Theme, ease_out_cubic, resolve_theme
 from flugradar.maps.compositor import MapCompositor
 from flugradar.maps.rainviewer import RainViewerClient
@@ -39,6 +40,7 @@ class ActiveScreen(Enum):
     CLOCK = auto()
     ABOUT = auto()
     SETTINGS = auto()
+    TRACKING = auto()
 
 
 class RadarApp:
@@ -72,6 +74,13 @@ class RadarApp:
         self._prev_frame_copy: pygame.Surface | None = None
         self._transition_from: pygame.Surface | None = None
         self._transition_start: float = 0.0
+        # Tracked-flight lifecycle (Ausbaustufe 2, Schritt 5) -- kept here,
+        # not on TrackedFlightScreen, since it must keep running even while
+        # a different screen is on-screen (e.g. ending tracking on timeout
+        # while the user is looking at the clock).
+        self._tracked_last_seen: float | None = None
+        self._tracked_was_airborne: bool = False
+        self._tracked_last_snapshot: Aircraft | None = None
 
     def run(self) -> None:
         pygame.init()
@@ -109,6 +118,7 @@ class RadarApp:
             self.screen_size, theme,
             distance_unit=self.settings.distance_unit,
         )
+        detail.tracked_callsign = self.settings.tracked_callsign
         clock_scr = ClockScreen(self.screen_size, theme, time_format=self.settings.time_format)
         about = AboutScreen(
             self.screen_size, theme,
@@ -116,7 +126,15 @@ class RadarApp:
             rainviewer_enabled=self._rainviewer_enabled(),
         )
         menu = MenuScreen(self.screen_size, theme, self.settings)
+        tracking_scr = TrackedFlightScreen(
+            self.screen_size, theme,
+            distance_unit=self.settings.distance_unit,
+            aircraft_icon_set=self.settings.aircraft_icon_set,
+        )
         gestures = GestureRecogniser()
+
+        if self.settings.tracked_callsign:
+            self._tracked_last_seen = time.monotonic()
 
         viewport = (
             CircularViewport(self.screen_size, self.rotation_deg, theme=theme)
@@ -177,7 +195,8 @@ class RadarApp:
                     if event.type == pygame.KEYDOWN:
                         if event.key == pygame.K_ESCAPE:
                             if self._active in (ActiveScreen.DETAIL, ActiveScreen.ABOUT,
-                                                ActiveScreen.SETTINGS, ActiveScreen.CLOCK):
+                                                ActiveScreen.SETTINGS, ActiveScreen.CLOCK,
+                                                ActiveScreen.TRACKING):
                                 self._active = ActiveScreen.RADAR
                             else:
                                 self.running = False
@@ -187,19 +206,22 @@ class RadarApp:
                     if gesture:
                         self._last_interaction = time.monotonic()
                         self._handle_gesture(
-                            gesture, radar, detail, clock_scr, about, menu, map_comp,
-                            proj, viewport,
+                            gesture, radar, detail, clock_scr, about, menu, tracking_scr,
+                            map_comp, proj, viewport,
                         )
 
                 now = time.monotonic()
 
                 if now - self._last_reload_check >= 2.0:
                     self._last_reload_check = now
+                    old_tracked = self.settings.tracked_callsign
                     if self.settings.check_portal_reload():
                         self._apply_live_settings(
                             proj, radar, detail, clock_scr, about,
-                            menu, map_comp, viewport,
+                            menu, tracking_scr, map_comp, viewport,
                         )
+                        if self.settings.tracked_callsign != old_tracked:
+                            self._reset_tracking_lifecycle()
 
                 if (
                     self.settings.auto_clock_s > 0
@@ -226,6 +248,8 @@ class RadarApp:
                     self._request_photos(self._aircraft)
                     self._update_photo_fields(self._aircraft)
                     self._last_fetch = now
+                    if self.settings.tracked_callsign:
+                        self._update_tracking_lifecycle(now)
 
                 weather_status = ""
                 if self._weather_client:
@@ -236,7 +260,7 @@ class RadarApp:
                         weather_status = temp_str
 
                 self._render_active_screen(
-                    frame_surface, radar, detail, clock_scr, about, menu,
+                    frame_surface, radar, detail, clock_scr, about, menu, tracking_scr,
                     map_comp, weather_status,
                 )
 
@@ -314,8 +338,70 @@ class RadarApp:
                 ac.photo_path = info["path"]
                 ac.photo_credit = info.get("credit", "")
 
+    def _find_tracked_aircraft(self) -> Aircraft | None:
+        cs = self.settings.tracked_callsign.strip().upper()
+        if not cs:
+            return None
+        for ac in self._aircraft:
+            if (ac.callsign or "").strip().upper() == cs:
+                return ac
+        return None
+
+    def _update_tracking_lifecycle(self, now: float) -> None:
+        """Runs once per ADS-B poll, regardless of which screen is showing,
+        so a timeout/landing can end tracking even while the user is
+        looking at something else (Schritt 5, 5.3/5.1)."""
+        match = self._find_tracked_aircraft()
+        if match is not None:
+            self._tracked_last_seen = now
+            self._tracked_last_snapshot = match
+            if not match.is_on_ground:
+                self._tracked_was_airborne = True
+            elif self._tracked_was_airborne:
+                # was airborne, now on the ground again -- landed
+                self._end_tracking()
+                return
+
+        if (
+            self._tracked_last_seen is not None
+            and (now - self._tracked_last_seen) >= self.settings.tracking_timeout_s
+        ):
+            self._end_tracking()
+
+    def _update_tracking_screen(self, tracking_scr) -> None:
+        """Feed the tracked-flight screen either the live aircraft object,
+        or the last-known snapshot with an age if it's currently out of
+        reception range (5.3) -- never crashes into an empty screen even
+        if nothing has ever been received for this callsign yet."""
+        match = self._find_tracked_aircraft()
+        if match is not None:
+            tracking_scr.set_tracking(match, True, None)
+            return
+        if self._tracked_last_snapshot is not None and self._tracked_last_seen is not None:
+            age = time.monotonic() - self._tracked_last_seen
+            tracking_scr.set_tracking(self._tracked_last_snapshot, False, age)
+            return
+        tracking_scr.set_tracking(None, False, None)
+
+    def _start_tracking(self, callsign: str) -> None:
+        self.settings.save_portal_settings({"tracked_callsign": callsign})
+        self.settings.mark_portal_synced()
+        self._reset_tracking_lifecycle()
+
+    def _end_tracking(self) -> None:
+        self.settings.save_portal_settings({"tracked_callsign": ""})
+        self.settings.mark_portal_synced()
+        self._reset_tracking_lifecycle()
+        if self._active == ActiveScreen.TRACKING:
+            self._active = ActiveScreen.RADAR
+
+    def _reset_tracking_lifecycle(self) -> None:
+        self._tracked_was_airborne = False
+        self._tracked_last_snapshot = None
+        self._tracked_last_seen = time.monotonic() if self.settings.tracked_callsign else None
+
     def _apply_live_settings(
-        self, proj, radar, detail, clock_scr, about, menu, map_comp,
+        self, proj, radar, detail, clock_scr, about, menu, tracking_scr, map_comp,
         viewport=None,
     ) -> None:
         """Hot-apply changed portal settings without restarting."""
@@ -333,12 +419,16 @@ class RadarApp:
         )
         detail.theme = theme
         detail.distance_unit = self.settings.distance_unit
+        detail.tracked_callsign = self.settings.tracked_callsign
         clock_scr.theme = theme
         clock_scr.time_format = self.settings.time_format
         about.theme = theme
         about.openaip_enabled = self._openaip_enabled()
         about.rainviewer_enabled = self._rainviewer_enabled()
         menu.theme = theme
+        tracking_scr.theme = theme
+        tracking_scr.distance_unit = self.settings.distance_unit
+        tracking_scr.aircraft_icon_set = self.settings.aircraft_icon_set
         if viewport:
             viewport.update_theme(theme)
 
@@ -364,7 +454,7 @@ class RadarApp:
         )
 
     def _render_active_screen(
-        self, target, radar, detail, clock_scr, about, menu,
+        self, target, radar, detail, clock_scr, about, menu, tracking_scr,
         map_comp, weather_status,
     ) -> None:
         """Draw whichever screen is active into `target` (not necessarily
@@ -379,6 +469,7 @@ class RadarApp:
                 target, self._aircraft,
                 has_map_bg=has_map_bg,
                 weather_str=weather_status,
+                tracked_callsign=self.settings.tracked_callsign,
             )
             if has_map_bg:
                 self._draw_attribution(target, map_comp.attribution)
@@ -396,6 +487,9 @@ class RadarApp:
             about.draw(target)
         elif self._active == ActiveScreen.SETTINGS:
             menu.draw(target)
+        elif self._active == ActiveScreen.TRACKING:
+            self._update_tracking_screen(tracking_scr)
+            tracking_scr.draw(target)
 
     def _compose_frame(self, screen: pygame.Surface, frame: pygame.Surface) -> None:
         """Blit the freshly rendered `frame` onto `screen`, crossfading from
@@ -426,7 +520,8 @@ class RadarApp:
         surface.blit(txt, (x, y))
 
     def _handle_gesture(
-        self, gesture, radar, detail, clock_scr, about, menu, map_comp, proj, viewport
+        self, gesture, radar, detail, clock_scr, about, menu, tracking_scr,
+        map_comp, proj, viewport,
     ) -> None:
         if self._active == ActiveScreen.RADAR:
             if gesture.type == GestureType.TAP:
@@ -451,18 +546,40 @@ class RadarApp:
                 self._active = ActiveScreen.ABOUT
             elif gesture.type == GestureType.SWIPE_LEFT:
                 self._active = ActiveScreen.SETTINGS
+            elif gesture.type == GestureType.SWIPE_RIGHT:
+                self._active = ActiveScreen.TRACKING
 
         elif self._active == ActiveScreen.DETAIL:
             if gesture.type == GestureType.TAP:
                 result = detail.handle_tap(gesture.x, gesture.y)
                 if result == "radar":
                     self._active = ActiveScreen.RADAR
+                elif result == "track":
+                    ac = detail.aircraft
+                    if ac and ac.callsign:
+                        self._start_tracking(ac.callsign)
+                        detail.tracked_callsign = self.settings.tracked_callsign
+                        self._active = ActiveScreen.TRACKING
+                elif result == "untrack":
+                    self._end_tracking()
+                    detail.tracked_callsign = self.settings.tracked_callsign
             elif gesture.type in (GestureType.SWIPE_RIGHT, GestureType.SWIPE_DOWN):
                 self._active = ActiveScreen.RADAR
             elif gesture.type == GestureType.SWIPE_UP:
                 detail.handle_scroll(1)
             elif gesture.type == GestureType.SWIPE_LEFT:
                 detail.handle_scroll(-1)
+
+        elif self._active == ActiveScreen.TRACKING:
+            if gesture.type == GestureType.TAP:
+                result = tracking_scr.handle_tap(gesture.x, gesture.y)
+                if result == "stop":
+                    self._end_tracking()
+                    detail.tracked_callsign = self.settings.tracked_callsign
+                elif result == "radar":
+                    self._active = ActiveScreen.RADAR
+            elif gesture.type in (GestureType.SWIPE_RIGHT, GestureType.SWIPE_DOWN):
+                self._active = ActiveScreen.RADAR
 
         elif self._active == ActiveScreen.CLOCK:
             if gesture.type == GestureType.SWIPE_UP:
@@ -491,7 +608,8 @@ class RadarApp:
                     # own write a moment later (which would flicker the map).
                     self.settings.mark_portal_synced()
                     self._apply_live_settings(
-                        proj, radar, detail, clock_scr, about, menu, map_comp, viewport,
+                        proj, radar, detail, clock_scr, about, menu, tracking_scr,
+                        map_comp, viewport,
                     )
             elif gesture.type == GestureType.SWIPE_RIGHT:
                 if menu.go_back() == "radar":

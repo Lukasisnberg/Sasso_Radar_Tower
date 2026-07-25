@@ -46,12 +46,12 @@ _FULL_RESPONSE = {
             "origin": {
                 "icao_code": "EDDF", "iata_code": "FRA", "name": "Frankfurt am Main Airport",
                 "municipality": "Frankfurt am Main", "country_name": "Germany",
-                "country_iso_name": "DE",
+                "country_iso_name": "DE", "latitude": 50.033333, "longitude": 8.570556,
             },
             "destination": {
                 "icao_code": "KJFK", "iata_code": "JFK", "name": "John F Kennedy International Airport",
                 "municipality": "New York", "country_name": "United States",
-                "country_iso_name": "US",
+                "country_iso_name": "US", "latitude": 40.639801, "longitude": -73.7789,
             },
         },
     }
@@ -75,6 +75,29 @@ class TestFullResponseParsing:
         assert result.route.airline.name == "Lufthansa"
         assert result.route.origin.iata_code == "FRA"
         assert result.route.destination.iata_code == "JFK"
+        assert result.route.origin.latitude == pytest.approx(50.033333)
+        assert result.route.origin.longitude == pytest.approx(8.570556)
+        assert result.route.destination.latitude == pytest.approx(40.639801)
+        assert result.route.destination.longitude == pytest.approx(-73.7789)
+        client.close()
+
+    def test_missing_coordinates_parse_as_none_not_crash(self):
+        client = AdsbdbClient()
+        response = {
+            "response": {
+                "aircraft": _FULL_RESPONSE["response"]["aircraft"],
+                "flightroute": {
+                    **_FULL_RESPONSE["response"]["flightroute"],
+                    "origin": {"icao_code": "EDDF", "iata_code": "FRA", "name": "Frankfurt"},
+                },
+            }
+        }
+        with patch.object(client, "_session") as mock_session:
+            mock_session.get.return_value = _resp(200, response)
+            result = client.lookup("4b1805", "DLH400")
+
+        assert result.route.origin.latitude is None
+        assert result.route.origin.longitude is None
         client.close()
 
 

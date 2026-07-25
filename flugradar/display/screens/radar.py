@@ -49,6 +49,7 @@ class RadarScreen:
         aircraft: list[Aircraft],
         has_map_bg: bool = False,
         weather_str: str = "",
+        tracked_callsign: str = "",
     ) -> None:
         if not has_map_bg:
             self.renderer.draw_background(surface)
@@ -57,7 +58,7 @@ class RadarScreen:
             self.renderer.draw_compass(surface)
         self.renderer.draw_centre(surface)
         self._hit_rects = self.renderer.draw_aircraft(
-            surface, aircraft, self.selected_hex
+            surface, aircraft, self.selected_hex, tracked_callsign
         )
         if self.show_sweep:
             self.renderer.draw_sweep(surface)

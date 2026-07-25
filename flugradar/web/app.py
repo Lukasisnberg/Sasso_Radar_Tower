@@ -63,6 +63,11 @@ def create_app(settings: AppSettings | None = None) -> Flask:
             updates["highlight_emergency"] = request.form.get("highlight_emergency") is not None
             updates["highlight_military"] = request.form.get("highlight_military") is not None
             updates["only_highlighted"] = request.form.get("only_highlighted") is not None
+            # unlike the other text fields above, an empty submission here is
+            # meaningful (it stops tracking), so it's not skipped like `home_lat` etc.
+            updates["tracked_callsign"] = request.form.get("tracked_callsign", "").strip().upper()
+            if (v := request.form.get("tracking_timeout_min")) is not None:
+                updates["tracking_timeout_s"] = int(float(v) * 60)
             settings.save_portal_settings(updates)
             return redirect(url_for("radar", saved=1))
         return render_template("radar.html", settings=settings, locations=LOCATIONS)

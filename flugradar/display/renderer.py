@@ -162,6 +162,12 @@ class RadarRenderer:
             )
         surface.blit(self._sweep_surface, (0, 0))
 
+    @staticmethod
+    def _is_tracked(ac: Aircraft, tracked_callsign: str) -> bool:
+        return bool(tracked_callsign) and bool(ac.callsign) and (
+            ac.callsign.strip().upper() == tracked_callsign.strip().upper()
+        )
+
     def _flight_icon_color(self, ac: Aircraft, is_selected: bool) -> tuple[int, int, int]:
         if ac.is_emergency and self.highlight_emergency:
             t = (time.time() * 4) % 2
@@ -299,6 +305,7 @@ class RadarRenderer:
         surface: pygame.Surface,
         aircraft: list[Aircraft],
         selected_hex: Optional[str] = None,
+        tracked_callsign: str = "",
     ) -> list[tuple[pygame.Rect, Aircraft]]:
         self._ensure_fonts()
         hit_rects: list[tuple[pygame.Rect, Aircraft]] = []
@@ -317,7 +324,7 @@ class RadarRenderer:
             ix, iy = int(x), int(y)
             current_hexes.add(ac.icao_hex)
 
-            is_sel = ac.icao_hex == selected_hex
+            is_sel = ac.icao_hex == selected_hex or self._is_tracked(ac, tracked_callsign)
             colour = self._flight_icon_color(ac, is_sel)
             heading = ac.track_deg if ac.track_deg is not None else 0.0
 

@@ -678,9 +678,68 @@ Hintergrundbeleuchtungssteuerung. Nachtmodus setzt in seinem Zeitfenster
 Obergrenze, hebt eine ohnehin schon niedrigere manuelle Einstellung aber
 nie an.
 
-**Wichtig: nur Schritt 1–4 von 5 sind umgesetzt** — Schritt 5
-(Getrackter-Flug-Screen) steht noch aus, wie vom Auftrag vorgegeben erst
-nach Rückmeldung vom Gerätetest.
+**Update — Ausbaustufe 2, Schritt 5** (siehe `docs/prompt-ausbaustufe-2.md`,
+letzter Schritt des Auftrags): Getrackter-Flug-Screen
+(`flugradar/display/screens/tracking.py` — `TrackedFlightScreen`).
+
+- **Auswahl** (5.1, alle drei Wege funktionieren): Footer-Aktion
+  „Track"/„Untrack" auf der Detailansicht (`DetailScreen._footer_buttons`,
+  nur sichtbar wenn ein Callsign vorliegt, zeigt „Untrack" statt „Track"
+  wenn der gerade angezeigte Flug schon der getrackte ist); Callsign-Feld
+  im Portal (Radar-Seite, Bereich „Flight Tracking", inkl. Zeitfenster in
+  Minuten); automatisches Beenden nach `tracking_timeout_s` ohne Empfang
+  (Default 900s/15min, konfigurierbar an beiden Stellen). Das getrackte
+  Callsign liegt in `settings.json` (`tracked_callsign`) und übersteht
+  einen Neustart; die „zuletzt gesehen"-Uhr startet nach einem Neustart
+  bewusst neu (kein sofortiger Timeout nur weil die App kurz neu startete).
+- **Routendaten**: adsbdb liefert `latitude`/`longitude` für Origin-/
+  Destination-Flughäfen bereits in der bestehenden `/callsign/`-Antwort —
+  wurde bisher nicht ausgelesen (`AdsbdbAirport` hatte nur Code/Name/Stadt).
+  Jetzt ergänzt (`flugradar/data_sources/adsbdb.py`) und über
+  `AdsbdbEnricher.apply()` in vier neue `Aircraft`-Felder durchgereicht
+  (`origin_lat/lon`, `destination_lat/lon`) — keine neue Datenquelle,
+  keine zusätzlichen API-Calls, unterliegt derselben RAM-only/TTL-Regel
+  wie alle anderen Routendaten. AirLabs liefert diese Koordinaten nicht
+  (nur `dep_iata`/`arr_iata`), fällt bei aktivem AirLabs-Key also auf den
+  „Route unbekannt"-Zustand zurück (Codes werden trotzdem angezeigt).
+- **Fortschrittsberechnung** (5.2, reine Funktionen, keine pygame-Abhängigkeit,
+  `flugradar/data_sources/route_progress.py`): Fortschritt = (Gesamtstrecke
+  − Reststrecke zum Ziel) / Gesamtstrecke, beidseitig auf 0–100% geklemmt;
+  Reststrecke via bestehendem `geo.haversine_km`; Restzeit aus
+  Reststrecke/Geschwindigkeit, `None` (→ „—" in der Anzeige) bei
+  Geschwindigkeit 0 oder unbekannt statt Division durch Null. Steig-/
+  Sinkrate als Wort („climbing"/„descending"/„level"), nicht nur Vorzeichen.
+- **Die vier Sonderfälle aus 5.3** — alle im Screen selbst behandelt
+  (`TrackedFlightScreen.draw`), kein leerer Screen und kein Absturz:
+  1. Keine Route bekannt → kein Balken, Codes (falls vorhanden) plus Hinweis
+     „Route position unknown"/„Route unknown", Live-Telemetrie bleibt sichtbar
+  2. Außer Reichweite, Tracking aktiv → letzter bekannter Zustand plus
+     „No current data · last seen Xm ago" (App hält den letzten Snapshot in
+     `RadarApp._tracked_last_snapshot`, nicht im Screen selbst, damit er
+     auch beim Screen-Wechsel erhalten bleibt)
+  3. Kein getrackter Flug → kurzer Hinweistext statt leerem Screen
+  4. Gelandet / Signal endgültig weg → Tracking beendet, zurück zum Radar
+     (`RadarApp._update_tracking_lifecycle`, läuft pro Poll unabhängig vom
+     aktiven Screen; „gelandet" erkennt einen Wechsel `is_on_ground`
+     False→True **innerhalb der Tracking-Session**, damit ein am Gate
+     gestarteter Trackingvorgang nicht sofort wegen Bodenstatus endet)
+- **Integration** (5.4): erreichbar per Swipe rechts vom Radar (neue
+  vierte Swipe-Richtung, vervollständigt die bisher nur 3 belegten
+  Radar-Swipes runter/hoch/links); getrackter Flug auf dem Radar mit der
+  Akzentfarbe hervorgehoben (`RadarRenderer._is_tracked`, dieselbe
+  `aircraft_selected`-Farbe wie die Tap-Auswahl auf der Detailansicht,
+  keine zweite Akzentfarbe eingeführt); tabellarische Ziffern für alle
+  Werte wie in Schritt 1/3.
+
+Vollständige Übersichtstabelle ergänzt:
+
+| Einstellung | Env-Variable | Portal-Seite | Menüpfad (Gerät) |
+|---|---|---|---|
+| Getrackter Flug (Callsign) | `FLUGRADAR_TRACKED_CALLSIGN` | Radar | — (nur Detailansicht-Footer, kein Gerätemenü-Eintrag) |
+| Tracking-Timeout | `FLUGRADAR_TRACKING_TIMEOUT_S` | Radar | — (dito) |
+
+**Ausbaustufe 2 damit vollständig abgeschlossen** (alle 5 Schritte aus
+`docs/prompt-ausbaustufe-2.md`).
 
 ## 16. Lizenz & Rechtliches
 

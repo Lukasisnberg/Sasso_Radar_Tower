@@ -156,16 +156,37 @@ Schritte 1–8 aus dem Bauauftrag (Abschnitt 13) sind abgeschlossen:
   Presets" hatten andere Koordinaten für „Grosseto" als die jetzt
   recherchierten für Sassofortino — Portal zieht die Presets jetzt aus
   derselben `LOCATIONS`-Liste wie das Gerätemenü.
-  **Wichtig: nur Schritt 1–4 von 5 sind umgesetzt** — der Auftrag
-  verlangt explizit, nach jedem Schritt zu testen/committen und erst nach
-  Rückmeldung weiterzumachen, nicht alle fünf am Stück.
+- **Ausbaustufe 2, Schritt 5** (Abschnitt 15, siehe
+  `docs/prompt-ausbaustufe-2.md` — **letzter Schritt, Ausbaustufe 2 damit
+  komplett**): Getrackter-Flug-Screen
+  (`flugradar/display/screens/tracking.py` — `TrackedFlightScreen`).
+  Auswahl über alle drei geforderten Wege (Detail-Footer „Track"/
+  „Untrack", Portal-Callsign-Feld auf der Radar-Seite, automatisches Ende
+  nach `tracking_timeout_s` ohne Empfang, Default 15 min). Nebenbefund
+  beim Bauen: adsbdb liefert Flughafen-Koordinaten (`latitude`/
+  `longitude`) bereits in der bestehenden Route-Antwort mit, wurden bisher
+  nicht ausgelesen — jetzt ergänzt (`flugradar/data_sources/adsbdb.py`,
+  vier neue `Aircraft`-Felder `origin_lat/lon`/`destination_lat/lon`),
+  keine neue Datenquelle, keine zusätzlichen Calls. AirLabs liefert diese
+  Koordinaten nicht, fällt bei aktivem AirLabs-Key auf „Route unbekannt"
+  zurück. Fortschrittsberechnung als reine, pygame-freie Funktionen
+  (`flugradar/data_sources/route_progress.py`): Fortschritt = (Gesamt−
+  Rest)/Gesamt beidseitig auf 0–100% geklemmt, Restzeit `None` (nicht
+  Division durch Null) bei Geschwindigkeit 0. Alle vier Sonderfälle aus
+  5.3 im Screen behandelt, kein leerer/abstürzender Screen: keine Route
+  bekannt, außer Reichweite (App hält den letzten Snapshot in
+  `RadarApp._tracked_last_snapshot`, überlebt Screen-Wechsel), kein
+  getrackter Flug, gelandet (erkennt `is_on_ground` False→True
+  **innerhalb der Session**, damit ein am Gate gestarteter Trackingvorgang
+  nicht sofort endet). Erreichbar per Swipe rechts vom Radar (vierte,
+  bisher ungenutzte Swipe-Richtung); getrackter Flug auf dem Radar mit
+  derselben Akzentfarbe hervorgehoben wie die Tap-Auswahl
+  (`RadarRenderer._is_tracked`, keine zweite Akzentfarbe eingeführt).
 
-326 Tests grün.
+406 Tests grün.
 
 ## Offene Punkte
 
-- **Ausbaustufe 2, Schritt 5** (siehe `docs/prompt-ausbaustufe-2.md`):
-  Getrackter-Flug-Screen. Letzter Schritt des Auftrags.
 - FAA VFR Sectional Charts (Abschnitt 5.3) weiterhin nicht gebaut — kein
   Provider im Code, keine Portal-Option.
 - Live-Reload-Verifikation (Settings-Änderungen im Portal ohne App-Neustart)

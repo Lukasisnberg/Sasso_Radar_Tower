@@ -251,6 +251,29 @@ class TestLiveReload:
         assert s.adsbdb_enabled is False
         assert s.adsbdb_enrich_nearest == 2
 
+    def test_reload_applies_tracked_callsign_and_timeout(self, monkeypatch, tmp_path):
+        portal_file = tmp_path / "settings.json"
+        portal_file.write_text(json.dumps({}))
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
+        s = AppSettings()
+        assert s.tracked_callsign == ""
+
+        os.utime(portal_file, (0, 0))
+        portal_file.write_text(
+            json.dumps({"tracked_callsign": "DLH400", "tracking_timeout_s": 1200})
+        )
+        assert s.check_portal_reload() is True
+        assert s.tracked_callsign == "DLH400"
+        assert s.tracking_timeout_s == 1200
+
+    def test_mark_portal_synced_prevents_redundant_reload(self, monkeypatch, tmp_path):
+        portal_file = tmp_path / "settings.json"
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
+        s = AppSettings()
+        s.save_portal_settings({"tracked_callsign": "DLH400"})
+        s.mark_portal_synced()
+        assert s.check_portal_reload() is False
+
     def test_reload_applies_openaip_overlay_toggle(self, monkeypatch, tmp_path):
         portal_file = tmp_path / "settings.json"
         portal_file.write_text(json.dumps({"openaip_overlay_enabled": True}))

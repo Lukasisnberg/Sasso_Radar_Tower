@@ -107,6 +107,29 @@
     </div>
   </div>
 
+  <div class="card">
+    <h2>Flight Tracking</h2>
+    <p style="font-size:13px;color:var(--text-muted);">
+      Follow one flight on the tracking screen. Also settable from the
+      device (flight detail &rarr; "Track" in the footer). Ends
+      automatically once the flight lands or isn't received for the
+      timeout below.
+    </p>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="tracked_callsign">Callsign</label>
+        <input type="text" id="tracked_callsign" name="tracked_callsign"
+               value="{{ settings.tracked_callsign }}" placeholder="e.g. DLH400"
+               style="text-transform:uppercase;">
+      </div>
+      <div class="form-group">
+        <label for="tracking_timeout_s">Timeout (min)</label>
+        <input type="number" id="tracking_timeout_s" name="tracking_timeout_min"
+               min="1" step="1" value="{{ (settings.tracking_timeout_s / 60) | round | int }}">
+      </div>
+    </div>
+  </div>
+
   <div class="btn-group">
     <button type="submit" class="btn">Save</button>
   </div>

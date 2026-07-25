@@ -78,6 +78,12 @@ class AppSettings:
     temperature_unit: str = "c"  # c | f
     time_format: str = "24h"  # 24h | 12h
 
+    # --- Getrackter Flug (Ausbaustufe 2, Schritt 5) ---
+    # Selected from the detail screen, or entered in the portal. Survives a
+    # restart (per spec); "last seen" naturally does not and resets on boot.
+    tracked_callsign: str = ""
+    tracking_timeout_s: int = 900  # 15 min of no reception ends tracking
+
     _portal_mtime: Optional[float] = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
@@ -152,6 +158,10 @@ class AppSettings:
             self.temperature_unit = v
         if v := os.environ.get("FLUGRADAR_TIME_FORMAT"):
             self.time_format = v
+        if v := os.environ.get("FLUGRADAR_TRACKED_CALLSIGN"):
+            self.tracked_callsign = v
+        if v := os.environ.get("FLUGRADAR_TRACKING_TIMEOUT_S"):
+            self.tracking_timeout_s = int(v)
 
     def _apply_portal_settings(self) -> None:
         if not PORTAL_SETTINGS_FILE.exists():
@@ -221,6 +231,10 @@ class AppSettings:
             self.temperature_unit = data["temperature_unit"]
         if "time_format" in data:
             self.time_format = data["time_format"]
+        if "tracked_callsign" in data:
+            self.tracked_callsign = data["tracked_callsign"]
+        if "tracking_timeout_s" in data:
+            self.tracking_timeout_s = int(data["tracking_timeout_s"])
 
     def _get_portal_mtime(self) -> Optional[float]:
         try:
@@ -270,6 +284,8 @@ class AppSettings:
         old_night_mode_brightness = self.night_mode_brightness
         old_temperature_unit = self.temperature_unit
         old_time_format = self.time_format
+        old_tracked_callsign = self.tracked_callsign
+        old_tracking_timeout_s = self.tracking_timeout_s
 
         defaults = HomeLocation()
         self.home.lat = defaults.lat
@@ -300,6 +316,8 @@ class AppSettings:
         self.night_mode_brightness = 30
         self.temperature_unit = "c"
         self.time_format = "24h"
+        self.tracked_callsign = ""
+        self.tracking_timeout_s = 900
         self._apply_portal_settings()
         self._apply_env()
 
@@ -332,6 +350,8 @@ class AppSettings:
             or self.night_mode_brightness != old_night_mode_brightness
             or self.temperature_unit != old_temperature_unit
             or self.time_format != old_time_format
+            or self.tracked_callsign != old_tracked_callsign
+            or self.tracking_timeout_s != old_tracking_timeout_s
         )
 
     def save_portal_settings(self, updates: dict) -> None:

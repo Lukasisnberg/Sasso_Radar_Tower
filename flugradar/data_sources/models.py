@@ -26,6 +26,14 @@ class Aircraft:
     airline: Optional[str] = None
     origin: Optional[str] = None
     destination: Optional[str] = None
+    # only ever populated via adsbdb today (AirLabs' /flights endpoint
+    # doesn't return airport coordinates) -- used for the tracked-flight
+    # progress bar (Ausbaustufe 2, Schritt 5); absent means "no route known"
+    # for progress-bar purposes even if origin/destination codes are set.
+    origin_lat: Optional[float] = None
+    origin_lon: Optional[float] = None
+    destination_lat: Optional[float] = None
+    destination_lon: Optional[float] = None
     flight_number: Optional[str] = None
     registered_owner: Optional[str] = None
     tags: list[str] = field(default_factory=list)
