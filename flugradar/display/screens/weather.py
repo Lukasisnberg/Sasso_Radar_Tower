@@ -34,36 +34,57 @@ from flugradar.display.weather_icons import draw_weather_icon
 # The hero temperature is the sole focal element of the current-weather
 # block, so it intentionally exceeds the 4 UI font tiers -- same
 # documented-multiple-of-font_title approach as the clock screen's hero
-# time (flugradar/display/screens/clock.py, _HERO_TIME_SCALE).
-_HERO_TEMP_SCALE = 4.0
+# time (flugradar/display/screens/clock.py, _HERO_TIME_SCALE). Smaller
+# than the mockup's own proportions: fitting a hero number *and* a full
+# 5-day forecast (weekday + icon + two temperatures each) into the
+# available band below the header leaves no room for a bigger one.
+_HERO_TEMP_SCALE = 2.9
 
 _FORECAST_DAYS = 5
 
-# Fractions of scaling.visible_radius() from screen centre, read off the
-# mockup's disc (centre 360,360, r=352 on its 720px canvas) rather than
-# copied as literal pixels, so the layout scales to any screen_size.
+# Horizontal layout is read off the mockup's disc as fractions of
+# scaling.visible_radius() (centre 360,360, r=352 on its 720px canvas) --
+# safe, since side-by-side elements can't overlap from a font-metric
+# mismatch the way stacked ones can.
+#
+# Vertical layout is NOT copied as fixed fractions: the mockup's SVG
+# <text> y is a baseline, pygame positions from a box top, and the
+# mockup's own font sizes don't match TOKENS -- translating its absolute
+# y-values 1:1 caused real overlap (the hero temperature and the
+# condition text, on real hardware). Each block below is instead
+# positioned relative to the *measured* bottom of the block above it
+# (the same pattern clock.py/detail.py already use), which is correct
+# regardless of exact font metrics.
 _LOCATION_Y_FRAC = -0.6875
 _SUBHEAD_Y_FRAC = -0.6080
 _ICON_DX_FRAC = -0.1761
 _ICON_DY_FRAC = -0.4034
 _ICON_R_FRAC = 0.0966
 _TEMP_DX_FRAC = 0.0909
-_TEMP_Y_FRAC = -0.2500
-_CONDITION_Y_FRAC = -0.1080
-_VALUES_LABEL_Y_FRAC = 0.0341
-_VALUES_VALUE_Y_FRAC = 0.1136
+_TEMP_Y_FRAC = -0.3000
 _VALUES_DX_FRAC = 0.3693
-_HAIRLINE_Y_FRAC = 0.2159
 _HAIRLINE_HALFWIDTH_FRAC = 0.3125
-# One entry per forecast column, outer-to-outer: the mockup's own y
-# offsets bow the row to follow the disc's curvature rather than sitting
-# dead flat.
-_FORECAST_LABEL_Y_FRAC = (0.3125, 0.2614, 0.2443, 0.2614, 0.3125)
 _FORECAST_DX_FRAC = (-0.5966, -0.2983, 0.0, 0.2983, 0.5966)
-_FORECAST_ICON_R_FRAC = 0.0341
-_FORECAST_ICON_Y_OFFSET_FRAC = 0.0966  # label baseline -> icon centre
-_FORECAST_HI_Y_OFFSET_FRAC = 0.2216
-_FORECAST_LO_Y_OFFSET_FRAC = 0.2841
+_FORECAST_ICON_R_FRAC = 0.0230
+# Slight per-column vertical offset (reference px) so the forecast row
+# gently bows rather than sitting dead flat -- "leicht gebogene Reihe" --
+# much subtler than the mockup's own offsets, which read as jagged once
+# translated onto real font metrics instead of the mockup's placeholder
+# circles/text.
+_FORECAST_ARC_OFFSET = (5, 2, 0, 2, 5)
+
+# Kept tight -- everything from the hero temperature down to the bottom
+# of the forecast row has to fit above the footer/screen-indicator zone,
+# which starts at a fixed fraction of the circle regardless of how much
+# content is above it (see nav.footer_button_rects()).
+_CONDITION_GAP = 0
+_VALUES_ROW_GAP = 6
+_VALUES_LABEL_VALUE_GAP = 0
+_HAIRLINE_GAP = 6
+_FORECAST_ROW_GAP = 6
+_FORECAST_ICON_GAP = 0
+_FORECAST_HI_GAP = 0
+_FORECAST_LO_GAP = 0
 _INDICATOR_LABEL_GAP = 10  # px (reference units) between dots and label
 
 # Placeholder data for the layout skeleton -- Ausbaustufe "Wetterscreen",
@@ -140,10 +161,10 @@ class WeatherScreen:
         surface.fill(self.theme.background)
 
         self._draw_header(surface)
-        self._draw_current(surface)
-        self._draw_values_row(surface)
-        self._draw_hairline(surface)
-        self._draw_forecast_row(surface)
+        y = self._draw_current(surface)
+        y = self._draw_values_row(surface, y)
+        y = self._draw_hairline(surface, y)
+        self._draw_forecast_row(surface, y)
         self._draw_screen_indicator(surface)
 
     def _draw_header(self, surface: pygame.Surface) -> None:
@@ -166,7 +187,9 @@ class WeatherScreen:
         sub_surf = self._subhead_font.render(subhead, True, self.theme.hint)
         surface.blit(sub_surf, sub_surf.get_rect(midtop=(cx, self._y(_SUBHEAD_Y_FRAC))))
 
-    def _draw_current(self, surface: pygame.Surface) -> None:
+    def _draw_current(self, surface: pygame.Surface) -> int:
+        """Icon + hero temperature + condition text. Returns the y just
+        below the condition text, for the next block to build on."""
         wx = _EXAMPLE_CURRENT
         icon_cx = self._x(_ICON_DX_FRAC)
         icon_cy = self._y(_ICON_DY_FRAC)
@@ -177,20 +200,31 @@ class WeatherScreen:
         temp_font = get_font(scaling.s(round(TOKENS.font_title * _HERO_TEMP_SCALE)), bold=True)
         temp_str = _bare_temp_str(wx.temperature_c, self.temperature_unit)
         temp_surf = temp_font.render(temp_str, True, self.theme.label)
-        surface.blit(temp_surf, temp_surf.get_rect(midtop=(self._x(_TEMP_DX_FRAC), self._y(_TEMP_Y_FRAC))))
+        temp_rect = temp_surf.get_rect(midtop=(self._x(_TEMP_DX_FRAC), self._y(_TEMP_Y_FRAC)))
+        surface.blit(temp_surf, temp_rect)
 
+        # Positioned off temp_rect.bottom rather than its own fixed
+        # fraction -- the hero font is far larger than anything else on
+        # screen, so a fraction read off the mockup's baseline (not top)
+        # drifted out of sync with this font's real metrics and
+        # overlapped the condition text on real hardware.
+        cond_y = temp_rect.bottom + scaling.s(_CONDITION_GAP)
         cond_surf = self._condition_font.render(wx.condition or "—", True, self.theme.muted)
-        surface.blit(cond_surf, cond_surf.get_rect(midtop=(scaling.center_x(), self._y(_CONDITION_Y_FRAC))))
+        cond_rect = cond_surf.get_rect(midtop=(scaling.center_x(), cond_y))
+        surface.blit(cond_surf, cond_rect)
+        return cond_rect.bottom
 
-    def _draw_values_row(self, surface: pygame.Surface) -> None:
+    def _draw_values_row(self, surface: pygame.Surface, start_y: int) -> int:
         wx = _EXAMPLE_CURRENT
         columns = (
             ("WIND", wx.wind_speed_str(self.distance_unit)),
             ("FEELS LIKE", _bare_temp_str(_EXAMPLE_FEELS_LIKE_C, self.temperature_unit)),
             ("RAIN", f"{_EXAMPLE_RAIN_CHANCE_PCT:.0f} %"),
         )
-        label_y = self._y(_VALUES_LABEL_Y_FRAC)
-        value_y = self._y(_VALUES_VALUE_Y_FRAC)
+        label_y = start_y + scaling.s(_VALUES_ROW_GAP)
+        label_h = self._value_label_font.get_height()
+        value_y = label_y + label_h + scaling.s(_VALUES_LABEL_VALUE_GAP)
+        value_h = self._value_font.get_height()
         dxs = (-_VALUES_DX_FRAC, 0.0, _VALUES_DX_FRAC)
         for (label, value), dx in zip(columns, dxs):
             cx = self._x(dx)
@@ -200,39 +234,49 @@ class WeatherScreen:
             surface.blit(lbl_surf, lbl_surf.get_rect(midtop=(cx, label_y)))
             val_surf = self._value_font.render(value, True, self.theme.label)
             surface.blit(val_surf, val_surf.get_rect(midtop=(cx, value_y)))
+        return value_y + value_h
 
-    def _draw_hairline(self, surface: pygame.Surface) -> None:
-        y = self._y(_HAIRLINE_Y_FRAC)
+    def _draw_hairline(self, surface: pygame.Surface, start_y: int) -> int:
+        y = start_y + scaling.s(_HAIRLINE_GAP)
         half_w = int(_HAIRLINE_HALFWIDTH_FRAC * scaling.visible_radius())
         cx = scaling.center_x()
         hairline = pygame.Surface((half_w * 2, 1), pygame.SRCALPHA)
         hairline.fill((*self.theme.radar_ring, TOKENS.hairline_alpha))
         surface.blit(hairline, (cx - half_w, y))
+        return y + 1
 
-    def _draw_forecast_row(self, surface: pygame.Surface) -> None:
+    def _draw_forecast_row(self, surface: pygame.Surface, start_y: int) -> int:
         days = _EXAMPLE_FORECAST[:_FORECAST_DAYS]
         icon_r = int(_FORECAST_ICON_R_FRAC * scaling.visible_radius())
+        base_y = start_y + scaling.s(_FORECAST_ROW_GAP)
+        day_h = self._forecast_day_font.get_height()
+        hi_h = self._forecast_hi_font.get_height()
+        bottom = base_y
         for i, day in enumerate(days):
             dx = _FORECAST_DX_FRAC[i]
-            label_y_frac = _FORECAST_LABEL_Y_FRAC[i]
             cx = self._x(dx)
-            label_y = self._y(label_y_frac)
+            label_y = base_y + scaling.s(_FORECAST_ARC_OFFSET[i])
 
             day_label = _weekday_label(day.date)
             day_surf = render_tracked_text(self._forecast_day_font, day_label, self.theme.muted, spacing=scaling.s(1))
             surface.blit(day_surf, day_surf.get_rect(midtop=(cx, label_y)))
 
-            icon_cy = self._y(label_y_frac + _FORECAST_ICON_Y_OFFSET_FRAC)
+            icon_cy = label_y + day_h + scaling.s(_FORECAST_ICON_GAP) + icon_r
             draw_weather_icon(surface, day.weather_code, (cx, icon_cy), icon_r,
                                self.theme.muted, self.theme.muted)
 
+            hi_y = icon_cy + icon_r + scaling.s(_FORECAST_HI_GAP)
             hi_str = _bare_temp_str(day.temp_max_c, self.temperature_unit)
             hi_surf = self._forecast_hi_font.render(hi_str, True, self.theme.label)
-            surface.blit(hi_surf, hi_surf.get_rect(midtop=(cx, self._y(label_y_frac + _FORECAST_HI_Y_OFFSET_FRAC))))
+            surface.blit(hi_surf, hi_surf.get_rect(midtop=(cx, hi_y)))
 
+            lo_y = hi_y + hi_h + scaling.s(_FORECAST_LO_GAP)
             lo_str = _bare_temp_str(day.temp_min_c, self.temperature_unit)
             lo_surf = self._forecast_lo_font.render(lo_str, True, self.theme.hint)
-            surface.blit(lo_surf, lo_surf.get_rect(midtop=(cx, self._y(label_y_frac + _FORECAST_LO_Y_OFFSET_FRAC))))
+            lo_rect = lo_surf.get_rect(midtop=(cx, lo_y))
+            surface.blit(lo_surf, lo_rect)
+            bottom = max(bottom, lo_rect.bottom)
+        return bottom
 
     def _draw_screen_indicator(self, surface: pygame.Surface) -> None:
         rect = nav.footer_button_rects(1)[0]
