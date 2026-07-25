@@ -97,6 +97,68 @@ class TestTileCache:
         assert cache.get("openaip", 10, 100, 200) == b"openaip-overlay"
 
 
+class TestTileCacheEviction:
+    """Unlike the aircraft-photo cache, tiles had no disk-size cap at all
+    before this -- every provider/zoom/location ever viewed just piled up
+    on disk forever."""
+
+    def test_under_budget_evicts_nothing(self, monkeypatch, tmp_path):
+        import flugradar.maps.tiles as tiles_mod
+        monkeypatch.setattr(tiles_mod, "_MAX_CACHE_BYTES", 10_000)
+        cache = TileCache(tmp_path / "tiles")
+        cache.put("carto_dark", 10, 100, 200, b"x" * 100)
+
+        cache.evict_if_needed()
+
+        assert cache.get("carto_dark", 10, 100, 200) == b"x" * 100
+
+    def test_evicts_oldest_first_when_over_budget(self, monkeypatch, tmp_path):
+        import os
+        import flugradar.maps.tiles as tiles_mod
+        monkeypatch.setattr(tiles_mod, "_MAX_CACHE_BYTES", 1500)
+        cache = TileCache(tmp_path / "tiles")
+
+        # Three 1000-byte tiles, written oldest-first with distinct mtimes.
+        for i, y in enumerate([100, 200, 300]):
+            cache.put("carto_dark", 10, i, y, b"x" * 1000)
+            path = cache._path("carto_dark", 10, i, y)
+            os.utime(path, (1000.0 + i, 1000.0 + i))
+
+        cache.evict_if_needed()
+
+        assert cache.get("carto_dark", 10, 0, 100) is None  # oldest evicted
+        assert cache.get("carto_dark", 10, 2, 300) is not None  # newest kept
+
+    def test_evicts_across_providers_by_age_not_provider(self, monkeypatch, tmp_path):
+        import os
+        import flugradar.maps.tiles as tiles_mod
+        monkeypatch.setattr(tiles_mod, "_MAX_CACHE_BYTES", 1000)
+        cache = TileCache(tmp_path / "tiles")
+
+        cache.put("carto_dark", 10, 1, 1, b"x" * 1000)
+        os.utime(cache._path("carto_dark", 10, 1, 1), (1000.0, 1000.0))
+        cache.put("osm", 10, 1, 1, b"x" * 1000)
+        os.utime(cache._path("osm", 10, 1, 1), (2000.0, 2000.0))
+
+        cache.evict_if_needed()
+
+        assert cache.get("carto_dark", 10, 1, 1) is None
+        assert cache.get("osm", 10, 1, 1) is not None
+
+    def test_fetch_region_triggers_eviction_check(self, tmp_path):
+        cache = TileCache(tmp_path / "tiles")
+        tm = TileManager(provider_key="carto_dark", cache=cache)
+        mock_resp = MagicMock(status_code=200, content=b"tiledata")
+        mock_resp.raise_for_status = MagicMock()
+
+        with patch.object(tm._session, "get", return_value=mock_resp), \
+             patch.object(cache, "evict_if_needed") as mock_evict:
+            tm.fetch_region(47.0, 8.0, 50.0, 300)
+
+        mock_evict.assert_called_once()
+        tm.close()
+
+
 class TestOpenAipProvider:
     def test_provider_entry_exists(self):
         assert "openaip" in PROVIDERS

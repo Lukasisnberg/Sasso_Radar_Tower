@@ -22,6 +22,15 @@ log = logging.getLogger(__name__)
 
 _TILE_SIZE = 256
 
+# Unlike the aircraft-photo cache, tile downloads had no disk-size cap at
+# all -- every zoom level, provider, and (for rainviewer) rain frame ever
+# fetched just accumulated on disk forever. A fixed home location with a
+# fixed radius keeps this naturally bounded in practice, but zoom
+# gestures and provider switches still add up over months of uptime, so
+# it gets the same cap-with-oldest-first-eviction treatment.
+_MAX_CACHE_MB = int(os.environ.get("FLUGRADAR_TILE_CACHE_MAX_MB", "300"))
+_MAX_CACHE_BYTES = _MAX_CACHE_MB * 1024 * 1024
+
 
 @dataclass(frozen=True)
 class TileProvider:
@@ -152,6 +161,38 @@ class TileCache:
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_bytes(data)
 
+    def evict_if_needed(self) -> None:
+        """Cap total on-disk size across every provider at
+        `_MAX_CACHE_BYTES`, oldest (by mtime) first. Called once per
+        fetch_region() batch rather than per tile -- a full directory
+        walk isn't free, and tiles are fetched in batches of dozens at a
+        time anyway, so per-tile granularity would buy nothing.
+        """
+        sized: list[tuple[float, str, int]] = []
+        total = 0
+        for root, _dirs, files in os.walk(self.cache_dir):
+            for name in files:
+                path = os.path.join(root, name)
+                try:
+                    st = os.stat(path)
+                except OSError:
+                    continue
+                sized.append((st.st_mtime, path, st.st_size))
+                total += st.st_size
+
+        if total <= _MAX_CACHE_BYTES:
+            return
+
+        sized.sort()  # oldest mtime first
+        for _mtime, path, size in sized:
+            if total <= _MAX_CACHE_BYTES:
+                break
+            try:
+                os.remove(path)
+            except OSError:
+                continue
+            total -= size
+
     def clear_provider(self, provider: str) -> None:
         """Remove every cached tile for one provider key.
 
@@ -266,6 +307,11 @@ class TileManager:
             data = future.result()
             if data:
                 results.append((z, x, y, data))
+
+        # fetch_region() only runs on an actual map rebuild (provider
+        # switch, zoom, pan, location change) -- not every frame -- so a
+        # full cache-directory walk here is rare enough to be free.
+        self.cache.evict_if_needed()
 
         return results
 

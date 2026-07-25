@@ -33,6 +33,17 @@ _THUMB_WIDTH = 480
 _MAX_CACHE_MB = int(os.environ.get("FLUGRADAR_PHOTO_CACHE_MAX_MB", "200"))
 _MAX_CACHE_BYTES = _MAX_CACHE_MB * 1024 * 1024
 
+# A "miss" entry (no photo found for this aircraft) writes no file to
+# disk, so it never triggers _evict_if_needed() below -- that's purely
+# disk-size triggered, and misses don't grow disk usage at all. Left
+# alone, a device parked near a lot of un-photographed traffic (GA,
+# cargo, military) would grow this index forever. Pruned by age instead,
+# checked at most once a day from the normal request path rather than a
+# dedicated timer.
+_MISS_PRUNE_TTL_S = 180 * 24 * 3600
+_MISS_PRUNE_INTERVAL_S = 24 * 3600
+_last_miss_prune_ts = 0.0
+
 _DATA_DIR = Path(os.environ.get(
     "FLUGRADAR_DATA_DIR",
     Path.home() / ".local" / "share" / "flugradar",
@@ -194,6 +205,26 @@ def _evict_if_needed() -> None:
             _save_meta()
 
 
+def _prune_stale_misses(now: float) -> None:
+    """Drop "miss" entries nobody has retried in `_MISS_PRUNE_TTL_S`.
+    Cheap to call often -- does real work at most once a day."""
+    global _last_miss_prune_ts
+    if (now - _last_miss_prune_ts) < _MISS_PRUNE_INTERVAL_S:
+        return
+    _last_miss_prune_ts = now
+    with _lock:
+        meta = _load_meta()
+        stale = [
+            hex_id for hex_id, entry in meta.items()
+            if entry.get("miss") and (now - entry.get("ts", 0)) >= _MISS_PRUNE_TTL_S
+        ]
+        if not stale:
+            return
+        for hex_id in stale:
+            meta.pop(hex_id, None)
+        _save_meta()
+
+
 def _do_lookup(icao_hex: str, registration: str = "") -> None:
     hex_id = normalize_hex(icao_hex)
     if not hex_id:
@@ -272,6 +303,8 @@ def request_adsbdb_photo(icao_hex: str, url_thumbnail: str = "", url_full: str =
     if not img_url:
         return
 
+    _prune_stale_misses(time.time())
+
     with _lock:
         if hex_id in _pending:
             return
@@ -323,6 +356,9 @@ def request_photo(icao_hex: str, registration: str = "") -> None:
     hex_id = normalize_hex(icao_hex)
     if not hex_id:
         return
+
+    _prune_stale_misses(time.time())
+
     with _lock:
         if hex_id in _pending:
             return

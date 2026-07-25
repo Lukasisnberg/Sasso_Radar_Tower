@@ -44,6 +44,9 @@ class TrackedFlightScreen:
         self.aircraft: Optional[Aircraft] = None
         self.is_current: bool = False
         self.last_seen_ago_s: Optional[float] = None
+        # See DetailScreen._get_photo -- avoids re-decoding/rescaling the
+        # same JPEG every frame while this screen is showing.
+        self._photo_cache: Optional[tuple[str, pygame.Surface]] = None
         self._fonts_ready = False
         self._font_title: Optional[pygame.font.Font] = None
         self._font_body: Optional[pygame.font.Font] = None
@@ -76,6 +79,14 @@ class TrackedFlightScreen:
     def _footer_buttons_state(self) -> list[str]:
         return ["stop", "radar"] if self.aircraft is not None else ["radar"]
 
+    def _get_photo(self, path: str, max_h: int, max_w: int, radius: int) -> Optional[pygame.Surface]:
+        if self._photo_cache is not None and self._photo_cache[0] == path:
+            return self._photo_cache[1]
+        photo = load_photo_surface(path, max_h, max_w=max_w, radius=radius)
+        if photo is not None:
+            self._photo_cache = (path, photo)
+        return photo
+
     def draw(self, surface: pygame.Surface) -> None:
         self._ensure_fonts()
         surface.fill(self.theme.background)
@@ -103,7 +114,7 @@ class TrackedFlightScreen:
         if photo_info:
             max_h = scaling.s(42)
             max_w = int(scaling.visible_radius() * 1.3)
-            photo = load_photo_surface(photo_info["path"], max_h, max_w=max_w, radius=scaling.s(6))
+            photo = self._get_photo(photo_info["path"], max_h, max_w, scaling.s(6))
             if photo:
                 rect = photo.get_rect(midtop=(cx, y))
                 surface.blit(photo, rect)

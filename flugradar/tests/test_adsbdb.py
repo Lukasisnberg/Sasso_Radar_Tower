@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import requests
 
-from flugradar.data_sources.adsbdb import AdsbdbClient
+from flugradar.data_sources.adsbdb import AdsbdbClient, _evict_oldest
 
 
 def _resp(status_code=200, json_data=None):
@@ -171,6 +171,57 @@ class TestTtlExpiry:
             client.lookup("4ca87c")
 
         assert mock_session.get.call_count == 1
+        client.close()
+
+
+class TestEvictOldest:
+    """The two RAM caches inside AdsbdbClient (and, via the same helper,
+    AdsbdbEnricher._results in enrichment.py) are only ever staleness-
+    checked, never deleted from -- without a size cap a device running
+    for months would keep every distinct aircraft/callsign it's ever
+    seen in memory forever."""
+
+    def test_noop_under_the_cap(self):
+        cache = {"a": (1.0, "x"), "b": (2.0, "y")}
+        _evict_oldest(cache, max_size=10)
+        assert len(cache) == 2
+
+    def test_drops_oldest_first_when_over_cap(self):
+        cache = {"a": (1.0, "x"), "b": (2.0, "y"), "c": (3.0, "z")}
+        _evict_oldest(cache, max_size=2)
+        assert len(cache) == 2
+        assert "a" not in cache
+        assert "b" in cache and "c" in cache
+
+    def test_exactly_at_cap_is_a_noop(self):
+        cache = {"a": (1.0, "x"), "b": (2.0, "y")}
+        _evict_oldest(cache, max_size=2)
+        assert len(cache) == 2
+
+    def test_client_aircraft_cache_stays_bounded_over_many_lookups(self, monkeypatch):
+        import flugradar.data_sources.adsbdb as adsbdb_mod
+        monkeypatch.setattr(adsbdb_mod, "_MAX_CACHE_ENTRIES", 5)
+
+        client = AdsbdbClient()
+        with patch.object(client, "_session") as mock_session:
+            mock_session.get.return_value = _resp(200, _AIRCRAFT_ONLY_RESPONSE)
+            for i in range(50):
+                client.lookup(f"{i:06x}")
+
+        assert len(client._aircraft_cache) == 5
+        client.close()
+
+    def test_client_route_cache_stays_bounded_over_many_lookups(self, monkeypatch):
+        import flugradar.data_sources.adsbdb as adsbdb_mod
+        monkeypatch.setattr(adsbdb_mod, "_MAX_CACHE_ENTRIES", 5)
+
+        client = AdsbdbClient()
+        with patch.object(client, "_session") as mock_session:
+            mock_session.get.return_value = _resp(200, _FULL_RESPONSE)
+            for i in range(50):
+                client.lookup("4ca87c", callsign=f"CS{i:04d}")
+
+        assert len(client._route_cache) == 5
         client.close()
 
 

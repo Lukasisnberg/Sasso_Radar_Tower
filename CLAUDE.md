@@ -267,7 +267,73 @@ Schritte 1–8 aus dem Bauauftrag (Abschnitt 13) sind abgeschlossen:
   Radar-Footer-Button. Web-Portal-Wetterseite bekam dieselbe 3-Tage-Tabelle
   dazu.
 
-493 Tests grün.
+- **Performance-/Speicher-Durchgang für Dauerbetrieb auf dem Pi 4B**
+  (separat angefragt, Hintergrund: das Gerät soll unbeaufsichtigt
+  durchlaufen, ohne dass Speicher oder Caches im Lauf von Wochen/Monaten
+  volllaufen). Sechs konkrete Fundstellen behoben, keine davon akut
+  kritisch, aber alle relevant für "läuft monatelang":
+  - `get_font()` (`flugradar/display/fonts.py`) baute bei jedem Aufruf ein
+    neues `pygame.font.Font`-Objekt neu auf, statt es wiederzuverwenden —
+    mehrere Zeichenpfade (`nav.py` Breadcrumb/Footer-Buttons, `app.py`
+    Karten-Attribution) rufen das aber bei **jedem Frame** auf, nicht nur
+    einmal beim Screen-Aufbau wie die meisten anderen Stellen. Jetzt ein
+    nach `(family, size, bold)` gecachtes `Font`-Objekt statt 30×/Sekunde
+    neu zu parsen. Nebenbefund beim Bauen: ein prozessweiter Cache
+    überlebt einen `pygame.quit()`/`pygame.font.init()`-Zyklus nicht (das
+    alte `Font`-Objekt wird ungültig, ein erneuter Zugriff crasht hart mit
+    Segfault statt einer fangbaren Python-Exception) — betrifft nur die
+    Testsuite (viele Testdateien machen je einen eigenen
+    init/quit-Zyklus im selben Prozess), nicht den Produktivbetrieb (dort
+    läuft `pygame.quit()` genau einmal, beim endgültigen Shutdown). Gelöst
+    über `fonts.reset_cache()` plus eine neue, testsuiteweite
+    `flugradar/tests/conftest.py` mit einer autouse-Fixture, die den Cache
+    nach jedem einzelnen Test zurücksetzt.
+  - `DetailScreen`/`TrackedFlightScreen` (`flugradar/display/screens/
+    detail.py`, `tracking.py`): `load_photo_surface()` wurde bei jedem
+    Frame neu aufgerufen, solange der Screen offen war — JPEG-Dekodierung
+    + Skalierung + Rundmaskierung komplett neu, 30×/Sekunde, obwohl sich
+    das Foto zwischen Frames praktisch nie ändert. Jetzt pro Screen ein
+    `(path, Surface)`-Cache-Eintrag, nur neu dekodiert wenn sich der
+    Foto-Pfad tatsächlich ändert (anderes Flugzeug ausgewählt, oder Foto
+    trifft neu ein).
+  - `AdsbdbClient._aircraft_cache`/`_route_cache`
+    (`flugradar/data_sources/adsbdb.py`): reine TTL-Frische-Prüfung, aber
+    nie eine tatsächliche Löschung — ein Eintrag blieb für die gesamte
+    Prozesslaufzeit im RAM, auch nachdem er längst als "stale" galt. Bei
+    monatelangem Betrieb in der Einflugschneise sammeln sich so beliebig
+    viele Flugzeuge/Callsigns im Speicher an — das widerspricht auch der
+    im Modul-Docstring festgehaltenen Lizenzauflage ("no local database of
+    routes built up over time"), die zwar RAM-only meint, aber ein nur
+    wachsender RAM-Cache ist im Kern dasselbe, nur nicht auf Platte. Neuer
+    `_evict_oldest()`-Helper (Alter-zuerst-raus, Obergrenze
+    `_MAX_CACHE_ENTRIES=3000`), von `AdsbdbEnricher._results`
+    (`enrichment.py`) mitgenutzt, das denselben Fehler eine Ebene höher
+    hatte.
+  - `aircraft_photo.py`: die Foto-Cache-Größenbegrenzung (`FLUGRADAR_
+    PHOTO_CACHE_MAX_MB`, aus einem früheren Durchgang) wird nur bei
+    tatsächlich heruntergeladenen Fotos angestoßen — ein "kein Foto
+    gefunden"-Eintrag (`miss`) schreibt keine Datei, löst also nie eine
+    Bereinigung aus und blieb bislang für immer im Index. Neue, nach Alter
+    filternde `_prune_stale_misses()` (180 Tage, höchstens einmal täglich
+    geprüft statt bei jedem Aufruf), angestoßen aus dem normalen
+    `request_photo()`/`request_adsbdb_photo()`-Pfad statt über einen
+    eigenen Timer.
+  - `TileCache` (`flugradar/maps/tiles.py`) hatte — anders als der
+    Foto-Cache — überhaupt keine Größenbegrenzung: Kartenkacheln für jeden
+    je angesehenen Zoomlevel/Anbieter/Ort sammelten sich unbegrenzt auf
+    der Platte. Jetzt dieselbe Alter-zuerst-raus-Begrenzung wie beim
+    Foto-Cache (`FLUGRADAR_TILE_CACHE_MAX_MB`, Default 300 MB), geprüft
+    einmal pro tatsächlichem Kartenneuaufbau (`fetch_region()`), nicht pro
+    Kachel oder Frame.
+  - Nicht angefasst, bewusst: der SVG-Icon-Render-Cache in
+    `aircraft_icons.py` ist bereits durch einen festen, kleinen
+    Schlüsselraum begrenzt (Icon-Set × Größe × Farbe × 5°-Winkel-Bucket);
+    der Kartenkompositor kann bei sehr schnell aufeinanderfolgenden
+    Zoom-Gesten kurzzeitig mehrere Rebuild-Threads gleichzeitig anstoßen
+    (kein Leck, nur ein seltener, nutzerausgelöster Nebeneffekt) — beides
+    kein tatsächliches Wachstumsproblem, daher nicht verändert.
+
+520 Tests grün.
 
 ## Offene Punkte
 

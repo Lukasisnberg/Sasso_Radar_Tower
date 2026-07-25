@@ -24,7 +24,7 @@ from typing import Optional
 
 import requests
 
-from flugradar.data_sources.adsbdb import AdsbdbClient, AdsbdbResult
+from flugradar.data_sources.adsbdb import AdsbdbClient, AdsbdbResult, _evict_oldest
 from flugradar.data_sources.models import Aircraft
 
 log = logging.getLogger(__name__)
@@ -132,6 +132,10 @@ class AdsbdbEnricher:
     mean "unknown forever" the way it's treated for aircraft still being
     tracked across a long session. A route it *did* find is never
     re-asked -- that's stable enough not to bother.
+
+    `_results` is capped (via adsbdb.py's `_evict_oldest`, shared with
+    AdsbdbClient's own two caches) so a device left running for months
+    doesn't keep every distinct aircraft it's ever seen in RAM forever.
     """
 
     def __init__(self, client: AdsbdbClient) -> None:
@@ -230,6 +234,7 @@ class AdsbdbEnricher:
                 continue
             try:
                 self._results[hex_id] = (time.monotonic(), self._client.lookup(hex_id, callsign))
+                _evict_oldest(self._results)
             except Exception:
                 log.debug("adsbdb background lookup crashed for %s", hex_id, exc_info=True)
             finally:

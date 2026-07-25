@@ -27,6 +27,7 @@ def isolated_cache(monkeypatch, tmp_path):
     monkeypatch.setattr(photo_mod, "_META_PATH", cache_dir / "index.json")
     monkeypatch.setattr(photo_mod, "_meta", None)
     monkeypatch.setattr(photo_mod, "_pending", set())
+    monkeypatch.setattr(photo_mod, "_last_miss_prune_ts", 0.0)
     monkeypatch.setattr(photo_mod.threading, "Thread", _SyncThread)
     yield
 
@@ -118,3 +119,74 @@ class TestCacheEviction:
         photo_mod._evict_if_needed()
 
         assert "h0" in photo_mod._load_meta()
+
+
+class TestStaleMissPruning:
+    """A "miss" entry writes no file, so _evict_if_needed() (purely
+    disk-size triggered) never fires for it -- an aircraft that's only
+    ever missed would otherwise stay in the index forever."""
+
+    def test_prunes_miss_entries_older_than_ttl(self):
+        now = time.time()
+        meta = photo_mod._load_meta()
+        meta["stale"] = {"miss": True, "ts": now - photo_mod._MISS_PRUNE_TTL_S - 1, "hex": "stale"}
+        photo_mod._save_meta()
+
+        photo_mod._prune_stale_misses(now)
+
+        assert "stale" not in photo_mod._load_meta()
+
+    def test_keeps_recent_miss_entries(self):
+        now = time.time()
+        meta = photo_mod._load_meta()
+        meta["fresh"] = {"miss": True, "ts": now - 60, "hex": "fresh"}
+        photo_mod._save_meta()
+
+        photo_mod._prune_stale_misses(now)
+
+        assert "fresh" in photo_mod._load_meta()
+
+    def test_never_prunes_non_miss_entries_regardless_of_age(self, tmp_path):
+        now = time.time()
+        path = tmp_path / "old.jpg"
+        path.write_bytes(b"x" * 10)
+        meta = photo_mod._load_meta()
+        meta["old_photo"] = {
+            "miss": False, "ts": now - photo_mod._MISS_PRUNE_TTL_S - 1,
+            "hex": "old_photo", "path": str(path),
+        }
+        photo_mod._save_meta()
+
+        photo_mod._prune_stale_misses(now)
+
+        assert "old_photo" in photo_mod._load_meta()
+
+    def test_does_not_reprune_within_the_interval(self):
+        now = time.time()
+        meta = photo_mod._load_meta()
+        meta["a"] = {"miss": True, "ts": now - photo_mod._MISS_PRUNE_TTL_S - 1, "hex": "a"}
+        photo_mod._save_meta()
+        photo_mod._prune_stale_misses(now)
+        assert "a" not in photo_mod._load_meta()
+
+        # A second stale entry appears right after -- the interval guard
+        # means it's not swept immediately, only on the next scheduled pass.
+        meta = photo_mod._load_meta()
+        meta["b"] = {"miss": True, "ts": now - photo_mod._MISS_PRUNE_TTL_S - 1, "hex": "b"}
+        photo_mod._save_meta()
+        photo_mod._prune_stale_misses(now + 1)
+
+        assert "b" in photo_mod._load_meta()
+
+    def test_request_photo_triggers_pruning(self, monkeypatch):
+        now = time.time()
+        meta = photo_mod._load_meta()
+        meta["stale"] = {"miss": True, "ts": now - photo_mod._MISS_PRUNE_TTL_S - 1, "hex": "stale"}
+        photo_mod._save_meta()
+
+        monkeypatch.setattr(
+            photo_mod, "_planespotters_lookup", lambda url: None,
+        )
+        photo_mod.request_photo("4b1805")
+
+        assert "stale" not in photo_mod._load_meta()

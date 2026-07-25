@@ -46,6 +46,30 @@ log = logging.getLogger(__name__)
 _BASE_URL = "https://api.adsbdb.com/v0"
 _UA = "SassoRadarTower/1.0 (+https://github.com/Lukasisnberg/Sasso_Radar_Tower)"
 
+# Cap on AdsbdbClient's two RAM caches (aircraft/route) and, reused by
+# AdsbdbEnricher, its combined-result cache -- see _evict_oldest(). The
+# per-entry TTL above only governs *freshness* (whether to re-fetch), not
+# deletion: without this, a device that runs for months would keep every
+# distinct aircraft/callsign it ever saw in memory forever, which is also
+# at odds with the "no local database of routes built up over time"
+# licensing note above -- a RAM cache that only ever grows is exactly
+# that, just not persisted to disk.
+_MAX_CACHE_ENTRIES = 3000
+
+
+def _evict_oldest(cache: dict[str, tuple[float, object]], max_size: Optional[int] = None) -> None:
+    """Trim a timestamp-keyed cache to `max_size` (default
+    `_MAX_CACHE_ENTRIES`, read at call time so tests can monkeypatch it),
+    dropping the oldest-fetched entries first once it overflows."""
+    if max_size is None:
+        max_size = _MAX_CACHE_ENTRIES
+    overflow = len(cache) - max_size
+    if overflow <= 0:
+        return
+    oldest = sorted(cache.items(), key=lambda kv: kv[1][0])[:overflow]
+    for key, _ in oldest:
+        del cache[key]
+
 
 @dataclass
 class AdsbdbAircraft:
@@ -225,8 +249,10 @@ class AdsbdbClient:
             return AdsbdbResult(aircraft=aircraft, route=route)
 
         self._aircraft_cache[hex_id] = (now, fetched_aircraft)
+        _evict_oldest(self._aircraft_cache)
         if cs and route_conclusive:
             self._route_cache[cs] = (now, fetched_route)
+            _evict_oldest(self._route_cache)
 
         return AdsbdbResult(aircraft=fetched_aircraft, route=fetched_route if cs else None)
 

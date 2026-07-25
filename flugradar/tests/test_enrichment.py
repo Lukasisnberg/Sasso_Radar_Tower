@@ -261,6 +261,29 @@ class TestAdsbdbEnricher:
             enricher.close()
 
 
+class TestResultsCacheBounded:
+    """AdsbdbEnricher._results is only ever staleness-checked, never
+    otherwise deleted from -- without a cap, a device running for months
+    would keep every distinct aircraft it's ever seen in RAM forever."""
+
+    def test_results_cache_stays_bounded_over_many_lookups(self, monkeypatch):
+        import flugradar.data_sources.adsbdb as adsbdb_mod
+        monkeypatch.setattr(adsbdb_mod, "_MAX_CACHE_ENTRIES", 5)
+
+        mock_client = MagicMock()
+        mock_client.lookup.return_value = AdsbdbResult()
+        enricher = AdsbdbEnricher(mock_client)
+        try:
+            for i in range(20):
+                ac = Aircraft(icao_hex=f"{i:06x}", callsign=f"CS{i:04d}")
+                enricher.enrich_priority(ac)
+                assert _wait_for(lambda i=i: enricher.get_cached(f"{i:06x}") is not None)
+
+            assert len(enricher._results) == 5
+        finally:
+            enricher.close()
+
+
 class TestUnknownRouteRetry:
     """A route adsbdb didn't know about gets re-asked after a while --
     adsbdb's route table is community-maintained and grows over time, so

@@ -29,6 +29,12 @@ class DetailScreen:
         self._aircraft_list: list[Aircraft] = []
         self._selected_index: int = 0
         self._scroll = nav.ScrollState()
+        # (path -> decoded+scaled+masked Surface) for whichever photo is
+        # currently shown -- draw() runs every frame, but the JPEG on disk
+        # only ever changes when a different aircraft is selected or a
+        # photo newly arrives, so redoing the decode/scale/mask each frame
+        # was pure waste.
+        self._photo_cache: Optional[tuple[str, pygame.Surface]] = None
         self._fonts_ready = False
         self._title_font: Optional[pygame.font.Font] = None
         self._body_font: Optional[pygame.font.Font] = None
@@ -154,6 +160,14 @@ class DetailScreen:
 
         return rows
 
+    def _get_photo(self, path: str, max_h: int, max_w: int, radius: int) -> Optional[pygame.Surface]:
+        if self._photo_cache is not None and self._photo_cache[0] == path:
+            return self._photo_cache[1]
+        photo = load_photo_surface(path, max_h, max_w=max_w, radius=radius)
+        if photo is not None:
+            self._photo_cache = (path, photo)
+        return photo
+
     def _draw_rows(
         self, surface: pygame.Surface,
         rows: list[tuple[str, pygame.font.Font, tuple[int, int, int]]],
@@ -219,7 +233,7 @@ class DetailScreen:
         if photo_info:
             max_h = scaling.s(72)
             max_w = int(scaling.visible_radius() * 1.45)
-            photo = load_photo_surface(photo_info["path"], max_h, max_w=max_w, radius=scaling.s(8))
+            photo = self._get_photo(photo_info["path"], max_h, max_w, scaling.s(8))
             if photo:
                 rect = photo.get_rect(midtop=(scaling.center_x(), y))
                 if rect.top >= chrome_top - max_h and rect.bottom <= bottom + max_h:
