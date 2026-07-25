@@ -52,15 +52,24 @@ class TestIsTracked:
 
 
 class TestTrackedAircraftGetsAccentColour:
-    def test_tracked_aircraft_uses_selected_colour(self, renderer):
+    def test_tracked_aircraft_uses_full_accent_colour(self, renderer):
+        # Stronger than the tap-selection tint (aircraft_selected is only
+        # ~25% lighter than the default dot -- too subtle to notice at a
+        # glance on a small, moving icon), so tracking gets the same full,
+        # saturated accent as the sweep/breadcrumb/footer "active" colour.
         ac = Aircraft(icao_hex="abc", callsign="DLH400", lat=50.01, lon=8.01)
-        colour = renderer._flight_icon_color(ac, renderer._is_tracked(ac, "DLH400"))
-        assert colour == renderer.theme.aircraft_selected
+        colour = renderer._flight_icon_color(ac, False, renderer._is_tracked(ac, "DLH400"))
+        assert colour == renderer.theme.sweep_colour
 
     def test_untracked_aircraft_uses_normal_colour(self, renderer):
         ac = Aircraft(icao_hex="abc", callsign="DLH400", lat=50.01, lon=8.01)
-        colour = renderer._flight_icon_color(ac, renderer._is_tracked(ac, "SWR100"))
+        colour = renderer._flight_icon_color(ac, False, renderer._is_tracked(ac, "SWR100"))
         assert colour == renderer.theme.aircraft_dot
+
+    def test_tap_selected_but_not_tracked_keeps_the_subtle_tint(self, renderer):
+        ac = Aircraft(icao_hex="abc", callsign="DLH400", lat=50.01, lon=8.01)
+        colour = renderer._flight_icon_color(ac, True, False)
+        assert colour == renderer.theme.aircraft_selected
 
     def test_draw_aircraft_accepts_tracked_callsign_without_crashing(self, renderer):
         surf = pygame.Surface((200, 200))

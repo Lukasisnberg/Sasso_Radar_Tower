@@ -168,16 +168,32 @@ class RadarRenderer:
             ac.callsign.strip().upper() == tracked_callsign.strip().upper()
         )
 
-    def _flight_icon_color(self, ac: Aircraft, is_selected: bool) -> tuple[int, int, int]:
+    def _flight_icon_color(
+        self, ac: Aircraft, is_selected: bool, is_tracked: bool = False,
+    ) -> tuple[int, int, int]:
         if ac.is_emergency and self.highlight_emergency:
             t = (time.time() * 4) % 2
             return self.theme.alert_flash_other if t < 1 else self.theme.alert_other
         if ac.is_military and self.highlight_military:
             t = (time.time() * 3) % 2
             return self.theme.alert_flash if t < 1 else self.theme.alert_military
+        # A persistently-tracked flight needs a stronger cue than the subtle
+        # tap-selection tint (aircraft_selected is only ~25% lighter than
+        # the default dot colour -- easy to miss at a glance); tracking
+        # gets the full, saturated accent instead.
+        if is_tracked:
+            return self.theme.sweep_colour
         if is_selected:
             return self.theme.aircraft_selected
         return self.theme.aircraft_dot
+
+    def _draw_tracked_ring(self, surface: pygame.Surface, ix: int, iy: int) -> None:
+        """A visible ring around the tracked aircraft -- the colour change
+        alone on a small icon isn't reliably noticeable on a live, moving
+        radar (Ausbaustufe 2, Schritt 5, 5.4: "mit der Akzentfarbe
+        hervorgehoben")."""
+        r = scaling.s(16)
+        pygame.draw.circle(surface, self.theme.sweep_colour, (ix, iy), r, max(1, scaling.s(TOKENS.line_stroke)))
 
     def _draw_aircraft_tag(
         self,
@@ -324,8 +340,9 @@ class RadarRenderer:
             ix, iy = int(x), int(y)
             current_hexes.add(ac.icao_hex)
 
-            is_sel = ac.icao_hex == selected_hex or self._is_tracked(ac, tracked_callsign)
-            colour = self._flight_icon_color(ac, is_sel)
+            is_tracked = self._is_tracked(ac, tracked_callsign)
+            is_sel = ac.icao_hex == selected_hex
+            colour = self._flight_icon_color(ac, is_sel, is_tracked)
             heading = ac.track_deg if ac.track_deg is not None else 0.0
 
             first_seen = self._first_seen.setdefault(ac.icao_hex, now)
@@ -335,6 +352,9 @@ class RadarRenderer:
             else:
                 alpha = int(255 * ease_out_cubic(age / fade_s))
                 hit = self._draw_faded(surface, ac, ix, iy, heading, colour, alpha)
+
+            if is_tracked:
+                self._draw_tracked_ring(surface, ix, iy)
 
             hit_rects.append((hit, ac))
             self._last_drawn[ac.icao_hex] = (ac, ix, iy, now)

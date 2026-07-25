@@ -11,6 +11,7 @@ from typing import Optional
 
 import pygame
 
+from flugradar.data_sources.aircraft_photo import get_photo_info, load_photo_surface
 from flugradar.data_sources.airline_branding import display_flight_id, marketing_brand_name
 from flugradar.data_sources.airports import format_route_endpoint
 from flugradar.data_sources.geo import km_to_unit, unit_label
@@ -97,6 +98,17 @@ class TrackedFlightScreen:
             return
 
         ac = self.aircraft
+
+        photo_info = get_photo_info(ac.icao_hex)
+        if photo_info:
+            max_h = scaling.s(42)
+            max_w = int(scaling.visible_radius() * 1.3)
+            photo = load_photo_surface(photo_info["path"], max_h, max_w=max_w, radius=scaling.s(6))
+            if photo:
+                rect = photo.get_rect(midtop=(cx, y))
+                surface.blit(photo, rect)
+                y += rect.height + scaling.s(4)
+
         flight_id = display_flight_id(flight_number=ac.flight_number or "", callsign=ac.callsign or "")
         y = draw_center_text(surface, flight_id, y, self._font_title, self.theme.label)
 
