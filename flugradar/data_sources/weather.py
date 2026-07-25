@@ -51,6 +51,8 @@ class WeatherData:
     visibility_km: Optional[float] = None
     pressure_hpa: Optional[float] = None
     cloud_cover_pct: Optional[float] = None
+    temperature_apparent_c: Optional[float] = None
+    precipitation_probability_pct: Optional[float] = None
 
     def temperature_str(self, unit: str = "c") -> str:
         if unit == "f":
@@ -118,17 +120,42 @@ class WeatherClient:
         self._cache_ts: float = 0.0
         self._forecast_cache: list[DailyForecast] = []
         self._forecast_cache_ts: float = 0.0
+        # Tracks the *current-conditions* fetch specifically (not the
+        # forecast) -- that's the "right now" data the weather screen
+        # shows most prominently, so it's the one that gets an "as of"
+        # age hint when a fetch fails and a stale cached value is served
+        # instead of a crash.
+        self._last_fetch_failed: bool = False
 
     def get_weather(self) -> Optional[WeatherData]:
         if self._cache and (time.monotonic() - self._cache_ts) < self._cache_ttl_s:
+            self._last_fetch_failed = False
             return self._cache
         try:
             data = self._fetch()
             self._cache = data
             self._cache_ts = time.monotonic()
+            self._last_fetch_failed = False
         except Exception:
             log.exception("Weather fetch failed, returning cached data")
+            self._last_fetch_failed = True
         return self._cache
+
+    @property
+    def is_stale(self) -> bool:
+        """True if the most recent fetch attempt failed -- get_weather()
+        is then serving a possibly-old cached value (or None, if nothing
+        has ever been fetched successfully)."""
+        return self._last_fetch_failed
+
+    def weather_age_s(self) -> Optional[float]:
+        """Seconds since the currently-cached WeatherData was actually
+        fetched, or None if nothing has ever been fetched. Meaningful
+        mainly when is_stale is True; a fresh within-TTL read doesn't
+        need an age disclaimer."""
+        if self._cache_ts == 0.0:
+            return None
+        return time.monotonic() - self._cache_ts
 
     def get_forecast(self, days: int = 3) -> list[DailyForecast]:
         if self._forecast_cache and (time.monotonic() - self._forecast_cache_ts) < self._forecast_cache_ttl_s:
@@ -164,6 +191,8 @@ class WeatherClient:
             visibility_km=_opt_float(values, "visibility"),
             pressure_hpa=_opt_float(values, "pressureSeaLevel"),
             cloud_cover_pct=_opt_float(values, "cloudCover"),
+            temperature_apparent_c=_opt_float(values, "temperatureApparent"),
+            precipitation_probability_pct=_opt_float(values, "precipitationProbability"),
         )
 
     def _fetch_forecast(self, days: int) -> list[DailyForecast]:

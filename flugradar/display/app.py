@@ -393,6 +393,24 @@ class RadarApp:
             return
         tracking_scr.set_tracking(None, False, None)
 
+    def _update_weather_screen(self, weather_scr) -> None:
+        """Feed the weather screen from the shared WeatherClient -- the
+        screen adds no data source of its own. get_weather() already
+        falls back to the last cached value on a failed fetch rather
+        than raising, so `current` here is only None if nothing has ever
+        been fetched successfully."""
+        has_key = bool(self.settings.tomorrow_api_key)
+        current = None
+        is_stale = False
+        age_s = None
+        forecast: list = []
+        if self._weather_client:
+            current = self._weather_client.get_weather()
+            is_stale = self._weather_client.is_stale
+            age_s = self._weather_client.weather_age_s()
+            forecast = self._weather_client.get_forecast(days=5)
+        weather_scr.set_data(has_key, current, is_stale, age_s, forecast)
+
     def _start_tracking(self, callsign: str) -> None:
         self.settings.save_portal_settings({"tracked_callsign": callsign})
         self.settings.mark_portal_synced()
@@ -516,6 +534,7 @@ class RadarApp:
             self._update_tracking_screen(tracking_scr)
             tracking_scr.draw(target)
         elif self._active == ActiveScreen.WEATHER:
+            self._update_weather_screen(weather_scr)
             weather_scr.draw(target)
 
     def _compose_frame(self, screen: pygame.Surface, frame: pygame.Surface) -> None:

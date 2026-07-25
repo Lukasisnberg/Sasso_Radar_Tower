@@ -24,6 +24,7 @@ from typing import Optional
 
 import pygame
 
+from flugradar.data_sources.route_progress import format_duration
 from flugradar.data_sources.weather import DailyForecast, WeatherData
 from flugradar.display import nav, scaling
 from flugradar.display.draw_helpers import render_tracked_text
@@ -87,25 +88,6 @@ _FORECAST_HI_GAP = 0
 _FORECAST_LO_GAP = 0
 _INDICATOR_LABEL_GAP = 10  # px (reference units) between dots and label
 
-# Placeholder data for the layout skeleton -- Ausbaustufe "Wetterscreen",
-# Schritt 1 (docs/prompt-wetterscreen.md): real Tomorrow.io wiring lands
-# in Schritt 3. Numbers match the mockup's own example values.
-_EXAMPLE_CURRENT = WeatherData(
-    temperature_c=21.0,
-    wind_speed_ms=12.0 / 3.6,
-    weather_code=1100,
-    condition="Mostly Clear",
-)
-_EXAMPLE_FEELS_LIKE_C = 20.0
-_EXAMPLE_RAIN_CHANCE_PCT = 5.0
-_EXAMPLE_FORECAST: list[DailyForecast] = [
-    DailyForecast(date="2026-01-03", temp_min_c=13, temp_max_c=23, weather_code=1000, condition="Clear"),
-    DailyForecast(date="2026-01-04", temp_min_c=14, temp_max_c=24, weather_code=1000, condition="Clear"),
-    DailyForecast(date="2026-01-05", temp_min_c=11, temp_max_c=19, weather_code=1001, condition="Cloudy"),
-    DailyForecast(date="2026-01-06", temp_min_c=10, temp_max_c=17, weather_code=1001, condition="Cloudy"),
-    DailyForecast(date="2026-01-07", temp_min_c=12, temp_max_c=22, weather_code=1000, condition="Clear"),
-]
-
 
 class WeatherScreen:
     """Current conditions + 5-day forecast, laid out per the mockup."""
@@ -125,6 +107,16 @@ class WeatherScreen:
         self.distance_unit = distance_unit
         self.time_format = time_format
         self.location_label = location_label
+        # Data state -- fed by RadarApp from the shared WeatherClient
+        # (flugradar/data_sources/weather.py); this screen adds no data
+        # source of its own. Defaults to "no key" rather than "loading",
+        # since that's the actual initial state before app.py's first
+        # settings read.
+        self.has_key: bool = False
+        self.current: Optional[WeatherData] = None
+        self.is_stale: bool = False
+        self.age_s: Optional[float] = None
+        self.forecast: list[DailyForecast] = []
         self._fonts_ready = False
         self._location_font: Optional[pygame.font.Font] = None
         self._subhead_font: Optional[pygame.font.Font] = None
@@ -135,6 +127,21 @@ class WeatherScreen:
         self._forecast_hi_font: Optional[pygame.font.Font] = None
         self._forecast_lo_font: Optional[pygame.font.Font] = None
         self._indicator_font: Optional[pygame.font.Font] = None
+        self._message_font: Optional[pygame.font.Font] = None
+
+    def set_data(
+        self,
+        has_key: bool,
+        current: Optional[WeatherData],
+        is_stale: bool = False,
+        age_s: Optional[float] = None,
+        forecast: Optional[list[DailyForecast]] = None,
+    ) -> None:
+        self.has_key = has_key
+        self.current = current
+        self.is_stale = is_stale
+        self.age_s = age_s
+        self.forecast = forecast or []
 
     def _ensure_fonts(self) -> None:
         if self._fonts_ready:
@@ -148,6 +155,7 @@ class WeatherScreen:
         self._forecast_hi_font = get_font(scaling.s(TOKENS.font_standard), mono=True)
         self._forecast_lo_font = get_font(scaling.s(TOKENS.font_small), mono=True)
         self._indicator_font = get_font(scaling.s(TOKENS.font_standard))
+        self._message_font = get_font(scaling.s(TOKENS.font_standard))
         self._fonts_ready = True
 
     def _y(self, frac: float) -> int:
@@ -160,14 +168,23 @@ class WeatherScreen:
         self._ensure_fonts()
         surface.fill(self.theme.background)
 
-        self._draw_header(surface)
-        y = self._draw_current(surface)
-        y = self._draw_values_row(surface, y)
-        y = self._draw_hairline(surface, y)
-        self._draw_forecast_row(surface, y)
+        header_bottom = self._draw_header(surface)
+
+        if not self.has_key:
+            self._draw_message(surface, header_bottom, "No Tomorrow.io key configured", "Add one in the portal")
+        elif self.current is None:
+            self._draw_message(surface, header_bottom, "Weather unavailable")
+        else:
+            y = self._draw_current(surface)
+            y = self._draw_values_row(surface, y)
+            y = self._draw_hairline(surface, y)
+            self._draw_forecast_row(surface, y)
+
         self._draw_screen_indicator(surface)
 
-    def _draw_header(self, surface: pygame.Surface) -> None:
+    def _draw_header(self, surface: pygame.Surface) -> int:
+        """Location + weekday/time. Returns the subhead's bottom y, used
+        to position the no-key/no-data messages below it."""
         # location_label is always app-controlled (a preset name or a
         # short "lat, lon" fallback -- flugradar.config.locations
         # .location_display_name()), never arbitrary-length external
@@ -184,21 +201,41 @@ class WeatherScreen:
         else:
             clock_str = time.strftime("%H:%M", now)
         subhead = f"{time.strftime('%a', now)} · {clock_str}"
+        # A stale reading (fetch failed, showing the last known values)
+        # gets a quiet age disclaimer folded into the same line, rather
+        # than a whole extra row -- there's no vertical room to spare
+        # (see the gap constants above) and this is meant to be
+        # unobtrusive ("dezenter Hinweis") anyway.
+        if self.has_key and self.current is not None and self.is_stale and self.age_s is not None:
+            subhead += f" · updated {format_duration(self.age_s)} ago"
         sub_surf = self._subhead_font.render(subhead, True, self.theme.hint)
-        surface.blit(sub_surf, sub_surf.get_rect(midtop=(cx, self._y(_SUBHEAD_Y_FRAC))))
+        sub_rect = sub_surf.get_rect(midtop=(cx, self._y(_SUBHEAD_Y_FRAC)))
+        surface.blit(sub_surf, sub_rect)
+        return sub_rect.bottom
+
+    def _draw_message(self, surface: pygame.Surface, top_y: int, *lines: str) -> None:
+        rect = nav.footer_button_rects(1)[0]
+        available = rect.top - top_y
+        line_h = self._message_font.get_height() + scaling.s(4)
+        y = top_y + max(0, (available - line_h * len(lines)) // 2)
+        for line in lines:
+            surf = self._message_font.render(line, True, self.theme.muted)
+            surface.blit(surf, surf.get_rect(midtop=(scaling.center_x(), y)))
+            y += line_h
 
     def _draw_current(self, surface: pygame.Surface) -> int:
         """Icon + hero temperature + condition text. Returns the y just
         below the condition text, for the next block to build on."""
-        wx = _EXAMPLE_CURRENT
+        wx = self.current
         icon_cx = self._x(_ICON_DX_FRAC)
         icon_cy = self._y(_ICON_DY_FRAC)
         icon_r = int(_ICON_R_FRAC * scaling.visible_radius())
         # Only the current icon gets the theme accent -- forecast icons
         # stay neutral (Abschnitt 15: "Nur die Theme-Akzentfarbe ...
         # das aktuelle Icon", no colour-coding by condition elsewhere).
-        # Day/night is a wall-clock heuristic for now; Schritt 3 wires
-        # this to Tomorrow.io's actual sunrise/sunset data.
+        # Day/night is a wall-clock heuristic for now -- Tomorrow.io's
+        # realtime response doesn't carry sunrise/sunset in the field set
+        # this client requests.
         draw_weather_icon(surface, wx.weather_code, (icon_cx, icon_cy), icon_r,
                            self.theme.sweep_colour, is_night=_is_night_now())
 
@@ -220,11 +257,15 @@ class WeatherScreen:
         return cond_rect.bottom
 
     def _draw_values_row(self, surface: pygame.Surface, start_y: int) -> int:
-        wx = _EXAMPLE_CURRENT
+        wx = self.current
+        feels_like = _bare_temp_str(wx.temperature_apparent_c, self.temperature_unit) \
+            if wx.temperature_apparent_c is not None else ""
+        rain = f"{wx.precipitation_probability_pct:.0f} %" \
+            if wx.precipitation_probability_pct is not None else ""
         columns = (
             ("WIND", wx.wind_speed_str(self.distance_unit)),
-            ("FEELS LIKE", _bare_temp_str(_EXAMPLE_FEELS_LIKE_C, self.temperature_unit)),
-            ("RAIN", f"{_EXAMPLE_RAIN_CHANCE_PCT:.0f} %"),
+            ("FEELS LIKE", feels_like),
+            ("RAIN", rain),
         )
         label_y = start_y + scaling.s(_VALUES_ROW_GAP)
         label_h = self._value_label_font.get_height()
@@ -251,7 +292,7 @@ class WeatherScreen:
         return y + 1
 
     def _draw_forecast_row(self, surface: pygame.Surface, start_y: int) -> int:
-        days = _EXAMPLE_FORECAST[:_FORECAST_DAYS]
+        days = self.forecast[:_FORECAST_DAYS]
         icon_r = int(_FORECAST_ICON_R_FRAC * scaling.visible_radius())
         base_y = start_y + scaling.s(_FORECAST_ROW_GAP)
         day_h = self._forecast_day_font.get_height()
@@ -327,8 +368,8 @@ def _weekday_label(date_str: str) -> str:
 
 def _is_night_now() -> bool:
     """Rough wall-clock day/night heuristic for the current-conditions
-    icon -- Tomorrow.io's actual sunrise/sunset isn't wired in yet
-    (Schritt 3), so this is a placeholder rather than an astronomical
-    calculation."""
+    icon, not an astronomical sunrise/sunset calculation -- out of scope
+    for this pass, and not requested by the brief (which only asks the
+    icon *set* to offer day/night variants, not real astronomy)."""
     hour = time.localtime().tm_hour
     return hour < 6 or hour >= 20

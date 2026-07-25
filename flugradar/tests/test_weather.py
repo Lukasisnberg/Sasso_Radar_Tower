@@ -37,6 +37,22 @@ class TestWeatherData:
         w = WeatherData(temperature_c=15, weather_code=1000, condition="Clear")
         assert w.condition == "Clear"
 
+    def test_wind_speed_str_km(self):
+        w = WeatherData(temperature_c=20, wind_speed_ms=10 / 3.6)
+        assert w.wind_speed_str("km") == "10 km/h"
+
+    def test_wind_speed_str_statute_miles(self):
+        w = WeatherData(temperature_c=20, wind_speed_ms=10.0)
+        assert w.wind_speed_str("sm") == "22 mph"
+
+    def test_wind_speed_str_nautical_miles(self):
+        w = WeatherData(temperature_c=20, wind_speed_ms=10.0)
+        assert w.wind_speed_str("nm") == "19 kt"
+
+    def test_wind_speed_str_none(self):
+        w = WeatherData(temperature_c=20)
+        assert w.wind_speed_str("km") == ""
+
 
 class TestWeatherClient:
     _SAMPLE_RESPONSE = {
@@ -44,6 +60,7 @@ class TestWeatherClient:
             "time": "2025-01-15T12:00:00Z",
             "values": {
                 "temperature": 18.5,
+                "temperatureApparent": 17.2,
                 "humidity": 65,
                 "windSpeed": 3.2,
                 "windDirection": 220,
@@ -51,6 +68,7 @@ class TestWeatherClient:
                 "visibility": 10,
                 "pressureSeaLevel": 1013.25,
                 "cloudCover": 40,
+                "precipitationProbability": 15,
             },
         }
     }
@@ -64,6 +82,15 @@ class TestWeatherClient:
         assert result.condition == "Partly Cloudy"
         assert result.pressure_hpa == 1013.25
         assert result.cloud_cover_pct == 40
+        assert result.temperature_apparent_c == 17.2
+        assert result.precipitation_probability_pct == 15
+        client.close()
+
+    def test_parse_missing_apparent_and_precip_fields(self):
+        client = WeatherClient("test-key", 47.0, 8.0)
+        result = client._parse({"data": {"values": {"temperature": 10}}})
+        assert result.temperature_apparent_c is None
+        assert result.precipitation_probability_pct is None
         client.close()
 
     def test_parse_missing_values(self):
@@ -119,6 +146,80 @@ class TestWeatherClient:
         client = WeatherClient("test-key", 47.0, 8.0)
         assert client._cache is None
         assert client.get_weather() is None
+        client.close()
+
+
+class TestWeatherClientStaleness:
+    """Backs the weather screen's "last known values + age hint" offline
+    case (docs/prompt-wetterscreen.md): get_weather() already falls back
+    to the cached value on fetch failure -- is_stale/weather_age_s let
+    the screen tell a fresh read apart from a served-stale one."""
+
+    _SAMPLE_RESPONSE = TestWeatherClient._SAMPLE_RESPONSE
+
+    def test_never_fetched_is_not_stale_and_has_no_age(self):
+        client = WeatherClient("test-key", 47.0, 8.0)
+        assert client.is_stale is False
+        assert client.weather_age_s() is None
+        client.close()
+
+    @patch("flugradar.data_sources.weather.requests.Session")
+    def test_successful_fetch_is_not_stale(self, mock_session_cls):
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = self._SAMPLE_RESPONSE
+        mock_resp.raise_for_status = MagicMock()
+        mock_session = MagicMock()
+        mock_session.get.return_value = mock_resp
+        mock_session_cls.return_value = mock_session
+
+        client = WeatherClient("test-key", 47.0, 8.0, cache_ttl_s=300)
+        client.get_weather()
+
+        assert client.is_stale is False
+        assert client.weather_age_s() == pytest.approx(0.0, abs=1.0)
+        client.close()
+
+    @patch("flugradar.data_sources.weather.requests.Session")
+    def test_failed_fetch_after_cache_expiry_is_stale(self, mock_session_cls):
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = self._SAMPLE_RESPONSE
+        mock_resp.raise_for_status = MagicMock()
+        mock_session = MagicMock()
+        mock_session.get.return_value = mock_resp
+        mock_session_cls.return_value = mock_session
+
+        client = WeatherClient("test-key", 47.0, 8.0, cache_ttl_s=0.01)
+        client.get_weather()
+        assert client.is_stale is False
+
+        mock_session.get.side_effect = ConnectionError("offline")
+        time.sleep(0.02)
+        result = client.get_weather()
+
+        assert result is not None  # still serves the last known value
+        assert client.is_stale is True
+        assert client.weather_age_s() > 0.0
+        client.close()
+
+    @patch("flugradar.data_sources.weather.requests.Session")
+    def test_recovering_after_a_failure_clears_stale(self, mock_session_cls):
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = self._SAMPLE_RESPONSE
+        mock_resp.raise_for_status = MagicMock()
+        mock_session = MagicMock()
+        mock_session_cls.return_value = mock_session
+
+        client = WeatherClient("test-key", 47.0, 8.0, cache_ttl_s=0.01)
+        mock_session.get.side_effect = ConnectionError("offline")
+        client.get_weather()
+        assert client.is_stale is True
+
+        mock_session.get.side_effect = None
+        mock_session.get.return_value = mock_resp
+        time.sleep(0.02)
+        client.get_weather()
+
+        assert client.is_stale is False
         client.close()
 
 
