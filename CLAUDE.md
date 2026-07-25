@@ -239,8 +239,35 @@ Schritte 1–8 aus dem Bauauftrag (Abschnitt 13) sind abgeschlossen:
   Flugzeugen weniger davon einen Poll-Zyklus auf ihre erste Anfrage warten
   müssen. AirLabs als vollständigere (aber kostenpflichtige) Alternative
   bewusst nicht eingerichtet — Nutzer hat keinen Key.
+- **Tomorrow.io-Key aus dem Portal wurde nie übernommen + neuer
+  Wetter-Screen** (separat angefragt). Root Cause: `AppSettings._apply_data()`
+  (liest `settings.json`, sowohl beim Start als auch nach jedem Portal-Save)
+  hatte für `tomorrow_api_key` (und ebenso `fr24_api_key`/`airlabs_api_key`)
+  schlicht keinen Fall — nur `openaip_api_key` war verdrahtet. Der Key wurde
+  also korrekt in `settings.json` geschrieben, aber nie zurück in die
+  laufende Instanz übernommen, auch nicht nach einem Neustart. Jetzt
+  ergänzt (`flugradar/config/settings.py`). Zusätzlich baute sowohl die
+  Pygame-App als auch das Web-Portal ihren `WeatherClient` bisher genau
+  einmal beim Start — ein nachträglich im Portal gespeicherter Key hätte
+  also weiterhin einen Dienst-Neustart gebraucht. Für die Pygame-App jetzt
+  über `_apply_live_settings()` gelöst (Client wird bei jeder erkannten
+  Settings-Änderung neu gebaut, `check_portal_reload()` erkennt eine
+  reine `tomorrow_api_key`-Änderung jetzt auch als Änderung); fürs Portal
+  über eine pro-Request neu geprüfte `_get_weather_client()`-Closure statt
+  eines einmal gebauten Objekts (`flugradar/web/app.py`). Neuer
+  Wetter-Screen am Gerät (`flugradar/display/screens/weather.py` —
+  `WeatherScreen`): nächste 3 Tage, je eine Spalte mit Tag, Min/Max-Temp
+  und einem handgezeichneten Wettersymbol (`flugradar/display/
+  weather_icons.py` — Sonne/Wolke/Nebel/Regen/Schnee/Gewitter aus
+  Pygame-Primitiven, kein Icon-Set nötig, gleiches Prinzip wie Kompassrose/
+  Sweep). Tomorrow.io liefert dafür einen neuen Forecast-Endpunkt
+  (`WeatherClient.get_forecast()`, eigener 30-Min-Cache getrennt vom
+  Live-Wetter-Cache). Erreichbar per Swipe rechts vom Uhr-Screen (bisher
+  ungenutzte Richtung dort), zurück per Swipe links/runter oder den
+  Radar-Footer-Button. Web-Portal-Wetterseite bekam dieselbe 3-Tage-Tabelle
+  dazu.
 
-438 Tests grün.
+493 Tests grün.
 
 ## Offene Punkte
 

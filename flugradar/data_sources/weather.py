@@ -10,6 +10,7 @@ import requests
 log = logging.getLogger(__name__)
 
 _REALTIME_URL = "https://api.tomorrow.io/v4/weather/realtime"
+_FORECAST_URL = "https://api.tomorrow.io/v4/weather/forecast"
 
 _WEATHER_CODES = {
     0: "Unknown",
@@ -64,8 +65,27 @@ class WeatherData:
         return f"{kt:.0f}kt"
 
 
+@dataclass
+class DailyForecast:
+    date: str  # ISO date, "YYYY-MM-DD"
+    temp_min_c: float
+    temp_max_c: float
+    weather_code: Optional[int] = None
+    condition: str = ""
+
+    def temp_range_str(self, unit: str = "c") -> str:
+        if unit == "f":
+            lo = self.temp_min_c * 9 / 5 + 32
+            hi = self.temp_max_c * 9 / 5 + 32
+            return f"{lo:.0f}° / {hi:.0f}°F"
+        return f"{self.temp_min_c:.0f}° / {self.temp_max_c:.0f}°C"
+
+
 class WeatherClient:
-    """Fetches current weather from Tomorrow.io with in-memory caching."""
+    """Fetches current + forecast weather from Tomorrow.io, each cached
+    separately in memory (the forecast changes far less often than
+    current conditions, so it gets its own longer-lived cache instead of
+    sharing the realtime one)."""
 
     def __init__(
         self,
@@ -73,15 +93,19 @@ class WeatherClient:
         lat: float,
         lon: float,
         cache_ttl_s: float = 600.0,
+        forecast_cache_ttl_s: float = 1800.0,
     ) -> None:
         self._api_key = api_key
         self._lat = lat
         self._lon = lon
         self._cache_ttl_s = cache_ttl_s
+        self._forecast_cache_ttl_s = forecast_cache_ttl_s
         self._session = requests.Session()
         self._session.headers["User-Agent"] = "SassoRadarTower/0.1"
         self._cache: Optional[WeatherData] = None
         self._cache_ts: float = 0.0
+        self._forecast_cache: list[DailyForecast] = []
+        self._forecast_cache_ts: float = 0.0
 
     def get_weather(self) -> Optional[WeatherData]:
         if self._cache and (time.monotonic() - self._cache_ts) < self._cache_ttl_s:
@@ -93,6 +117,17 @@ class WeatherClient:
         except Exception:
             log.exception("Weather fetch failed, returning cached data")
         return self._cache
+
+    def get_forecast(self, days: int = 3) -> list[DailyForecast]:
+        if self._forecast_cache and (time.monotonic() - self._forecast_cache_ts) < self._forecast_cache_ttl_s:
+            return self._forecast_cache[:days]
+        try:
+            data = self._fetch_forecast(days)
+            self._forecast_cache = data
+            self._forecast_cache_ts = time.monotonic()
+        except Exception:
+            log.exception("Forecast fetch failed, returning cached data")
+        return self._forecast_cache[:days]
 
     def _fetch(self) -> WeatherData:
         params = {
@@ -118,6 +153,32 @@ class WeatherClient:
             pressure_hpa=_opt_float(values, "pressureSeaLevel"),
             cloud_cover_pct=_opt_float(values, "cloudCover"),
         )
+
+    def _fetch_forecast(self, days: int) -> list[DailyForecast]:
+        params = {
+            "location": f"{self._lat},{self._lon}",
+            "apikey": self._api_key,
+            "units": "metric",
+            "timesteps": "1d",
+        }
+        resp = self._session.get(_FORECAST_URL, params=params, timeout=10)
+        resp.raise_for_status()
+        return self._parse_forecast(resp.json(), days)
+
+    def _parse_forecast(self, data: dict, days: int) -> list[DailyForecast]:
+        entries = data.get("timelines", {}).get("daily", [])
+        result = []
+        for entry in entries[:days]:
+            values = entry.get("values", {})
+            code = values.get("weatherCodeMax", values.get("weatherCode"))
+            result.append(DailyForecast(
+                date=(entry.get("time") or "")[:10],
+                temp_min_c=float(values.get("temperatureMin", 0)),
+                temp_max_c=float(values.get("temperatureMax", 0)),
+                weather_code=code,
+                condition=_WEATHER_CODES.get(code, "") if code is not None else "",
+            ))
+        return result
 
     def close(self) -> None:
         self._session.close()

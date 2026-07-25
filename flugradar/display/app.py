@@ -26,6 +26,7 @@ from flugradar.display.screens.detail import DetailScreen
 from flugradar.display.screens.radar import RadarScreen
 from flugradar.display.screens.menu import MenuScreen
 from flugradar.display.screens.tracking import TrackedFlightScreen
+from flugradar.display.screens.weather import WeatherScreen
 from flugradar.display.theme import CLASSIC_AMBER, TOKENS, Theme, ease_out_cubic, resolve_theme
 from flugradar.maps.compositor import MapCompositor
 from flugradar.maps.rainviewer import RainViewerClient
@@ -41,6 +42,7 @@ class ActiveScreen(Enum):
     ABOUT = auto()
     SETTINGS = auto()
     TRACKING = auto()
+    WEATHER = auto()
 
 
 class RadarApp:
@@ -131,6 +133,10 @@ class RadarApp:
             distance_unit=self.settings.distance_unit,
             aircraft_icon_set=self.settings.aircraft_icon_set,
         )
+        weather_scr = WeatherScreen(
+            self.screen_size, theme,
+            temperature_unit=self.settings.temperature_unit,
+        )
         gestures = GestureRecogniser()
 
         if self.settings.tracked_callsign:
@@ -196,7 +202,7 @@ class RadarApp:
                         if event.key == pygame.K_ESCAPE:
                             if self._active in (ActiveScreen.DETAIL, ActiveScreen.ABOUT,
                                                 ActiveScreen.SETTINGS, ActiveScreen.CLOCK,
-                                                ActiveScreen.TRACKING):
+                                                ActiveScreen.TRACKING, ActiveScreen.WEATHER):
                                 self._active = ActiveScreen.RADAR
                             else:
                                 self.running = False
@@ -207,7 +213,7 @@ class RadarApp:
                         self._last_interaction = time.monotonic()
                         self._handle_gesture(
                             gesture, radar, detail, clock_scr, about, menu, tracking_scr,
-                            map_comp, proj, viewport,
+                            weather_scr, map_comp, proj, viewport,
                         )
 
                 now = time.monotonic()
@@ -218,7 +224,7 @@ class RadarApp:
                     if self.settings.check_portal_reload():
                         self._apply_live_settings(
                             proj, radar, detail, clock_scr, about,
-                            menu, tracking_scr, map_comp, viewport,
+                            menu, tracking_scr, weather_scr, map_comp, viewport,
                         )
                         if self.settings.tracked_callsign != old_tracked:
                             self._reset_tracking_lifecycle()
@@ -261,7 +267,7 @@ class RadarApp:
 
                 self._render_active_screen(
                     frame_surface, radar, detail, clock_scr, about, menu, tracking_scr,
-                    map_comp, weather_status,
+                    weather_scr, map_comp, weather_status,
                 )
 
                 if self._active != active_before:
@@ -383,6 +389,10 @@ class RadarApp:
             return
         tracking_scr.set_tracking(None, False, None)
 
+    def _update_weather_screen(self, weather_scr) -> None:
+        forecast = self._weather_client.get_forecast(days=3) if self._weather_client else []
+        weather_scr.set_forecast(forecast, has_key=bool(self.settings.tomorrow_api_key))
+
     def _start_tracking(self, callsign: str) -> None:
         self.settings.save_portal_settings({"tracked_callsign": callsign})
         self.settings.mark_portal_synced()
@@ -401,8 +411,8 @@ class RadarApp:
         self._tracked_last_seen = time.monotonic() if self.settings.tracked_callsign else None
 
     def _apply_live_settings(
-        self, proj, radar, detail, clock_scr, about, menu, tracking_scr, map_comp,
-        viewport=None,
+        self, proj, radar, detail, clock_scr, about, menu, tracking_scr, weather_scr,
+        map_comp, viewport=None,
     ) -> None:
         """Hot-apply changed portal settings without restarting."""
         theme = resolve_theme(self.settings.theme)
@@ -429,12 +439,24 @@ class RadarApp:
         tracking_scr.theme = theme
         tracking_scr.distance_unit = self.settings.distance_unit
         tracking_scr.aircraft_icon_set = self.settings.aircraft_icon_set
+        weather_scr.theme = theme
+        weather_scr.temperature_unit = self.settings.temperature_unit
         if viewport:
             viewport.update_theme(theme)
 
         proj.home_lat = self.settings.home.lat
         proj.home_lon = self.settings.home.lon
         proj.radius_km = self.settings.home.radius_km
+
+        if self._weather_client:
+            self._weather_client.close()
+            self._weather_client = None
+        if self.settings.tomorrow_api_key:
+            self._weather_client = WeatherClient(
+                api_key=self.settings.tomorrow_api_key,
+                lat=self.settings.home.lat,
+                lon=self.settings.home.lon,
+            )
 
         if map_comp:
             if map_comp.tiles is not None:
@@ -454,7 +476,7 @@ class RadarApp:
         )
 
     def _render_active_screen(
-        self, target, radar, detail, clock_scr, about, menu, tracking_scr,
+        self, target, radar, detail, clock_scr, about, menu, tracking_scr, weather_scr,
         map_comp, weather_status,
     ) -> None:
         """Draw whichever screen is active into `target` (not necessarily
@@ -490,6 +512,9 @@ class RadarApp:
         elif self._active == ActiveScreen.TRACKING:
             self._update_tracking_screen(tracking_scr)
             tracking_scr.draw(target)
+        elif self._active == ActiveScreen.WEATHER:
+            self._update_weather_screen(weather_scr)
+            weather_scr.draw(target)
 
     def _compose_frame(self, screen: pygame.Surface, frame: pygame.Surface) -> None:
         """Blit the freshly rendered `frame` onto `screen`, crossfading from
@@ -520,7 +545,7 @@ class RadarApp:
         surface.blit(txt, (x, y))
 
     def _handle_gesture(
-        self, gesture, radar, detail, clock_scr, about, menu, tracking_scr,
+        self, gesture, radar, detail, clock_scr, about, menu, tracking_scr, weather_scr,
         map_comp, proj, viewport,
     ) -> None:
         if self._active == ActiveScreen.RADAR:
@@ -586,6 +611,16 @@ class RadarApp:
                 self._active = ActiveScreen.RADAR
             elif gesture.type == GestureType.SWIPE_LEFT:
                 self._active = ActiveScreen.SETTINGS
+            elif gesture.type == GestureType.SWIPE_RIGHT:
+                self._active = ActiveScreen.WEATHER
+
+        elif self._active == ActiveScreen.WEATHER:
+            if gesture.type == GestureType.TAP:
+                result = weather_scr.handle_tap(gesture.x, gesture.y)
+                if result == "radar":
+                    self._active = ActiveScreen.RADAR
+            elif gesture.type in (GestureType.SWIPE_LEFT, GestureType.SWIPE_DOWN):
+                self._active = ActiveScreen.CLOCK
 
         elif self._active == ActiveScreen.ABOUT:
             if gesture.type == GestureType.TAP:
@@ -608,7 +643,7 @@ class RadarApp:
                     # own write a moment later (which would flicker the map).
                     self.settings.mark_portal_synced()
                     self._apply_live_settings(
-                        proj, radar, detail, clock_scr, about, menu, tracking_scr,
+                        proj, radar, detail, clock_scr, about, menu, tracking_scr, weather_scr,
                         map_comp, viewport,
                     )
             elif gesture.type == GestureType.SWIPE_RIGHT:

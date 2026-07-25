@@ -28,13 +28,35 @@ def create_app(settings: AppSettings | None = None) -> Flask:
     )
     app.config["settings"] = settings
 
-    weather_client: WeatherClient | None = None
-    if settings.tomorrow_api_key:
-        weather_client = WeatherClient(
-            api_key=settings.tomorrow_api_key,
-            lat=settings.home.lat,
-            lon=settings.home.lon,
-        )
+    # Rebuilt lazily rather than constructed once at startup, so a key
+    # entered via the portal takes effect immediately instead of needing a
+    # service restart -- the settings object is shared and mutated in
+    # place by save_portal_settings(), but a client built once at
+    # create_app() time would never see that change.
+    _weather_state: dict[str, object] = {"client": None, "key": None, "lat": None, "lon": None}
+
+    def _get_weather_client() -> WeatherClient | None:
+        key = settings.tomorrow_api_key
+        if not key:
+            if _weather_state["client"]:
+                _weather_state["client"].close()
+                _weather_state["client"] = None
+            return None
+        if (
+            _weather_state["client"] is None
+            or _weather_state["key"] != key
+            or _weather_state["lat"] != settings.home.lat
+            or _weather_state["lon"] != settings.home.lon
+        ):
+            if _weather_state["client"]:
+                _weather_state["client"].close()
+            _weather_state["client"] = WeatherClient(
+                api_key=key, lat=settings.home.lat, lon=settings.home.lon,
+            )
+            _weather_state["key"] = key
+            _weather_state["lat"] = settings.home.lat
+            _weather_state["lon"] = settings.home.lon
+        return _weather_state["client"]
 
     @app.route("/")
     def index():
@@ -143,10 +165,13 @@ def create_app(settings: AppSettings | None = None) -> Flask:
     @app.route("/weather")
     def weather():
         data = None
+        forecast = []
+        weather_client = _get_weather_client()
         if weather_client:
             data = weather_client.get_weather()
+            forecast = weather_client.get_forecast(days=3)
         return render_template(
-            "weather.html", settings=settings, weather=data,
+            "weather.html", settings=settings, weather=data, forecast=forecast,
             has_key=bool(settings.tomorrow_api_key),
         )
 
@@ -156,6 +181,7 @@ def create_app(settings: AppSettings | None = None) -> Flask:
 
     @app.route("/api/weather", methods=["GET"])
     def api_weather():
+        weather_client = _get_weather_client()
         if not weather_client:
             return jsonify({"error": "no API key configured"}), 404
         data = weather_client.get_weather()

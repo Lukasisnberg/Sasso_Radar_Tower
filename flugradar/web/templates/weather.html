@@ -40,6 +40,22 @@
 </div>
 {% endif %}
 
+{% if forecast %}
+<div class="card">
+  <h2>3-Day Forecast</h2>
+  <table class="info-table">
+    <tr><th>Day</th><th>Condition</th><th>Min / Max</th></tr>
+    {% for day in forecast %}
+    <tr>
+      <td>{{ day.date }}</td>
+      <td>{{ day.condition or "—" }}</td>
+      <td>{{ day.temp_range_str(settings.temperature_unit) }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+
 <div class="card">
   <h2>Location</h2>
   <table class="info-table">

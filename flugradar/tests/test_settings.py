@@ -180,6 +180,40 @@ class TestPortalSettings:
         assert s.home.lat == pytest.approx(52.52)
         assert s.home.radius_km == 200.0
 
+    def test_save_updates_tomorrow_api_key_in_memory(self, monkeypatch, tmp_path):
+        """Regression test: _apply_data() previously had no case for
+        tomorrow_api_key, so a key saved via the portal was written to
+        settings.json but never actually applied to the running
+        AppSettings instance -- not right after save, and not even on
+        a fresh restart (since __post_init__ reads through the same
+        _apply_data path)."""
+        portal_file = tmp_path / "settings.json"
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
+        s = AppSettings()
+        assert s.tomorrow_api_key == ""
+        s.save_portal_settings({"tomorrow_api_key": "abc123"})
+        assert s.tomorrow_api_key == "abc123"
+
+    def test_save_updates_fr24_and_airlabs_keys_in_memory(self, monkeypatch, tmp_path):
+        portal_file = tmp_path / "settings.json"
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
+        s = AppSettings()
+        s.save_portal_settings({"fr24_api_key": "fr24", "airlabs_api_key": "al"})
+        assert s.fr24_api_key == "fr24"
+        assert s.airlabs_api_key == "al"
+
+    def test_fresh_instance_picks_up_previously_saved_tomorrow_key(self, monkeypatch, tmp_path):
+        """A key saved by one AppSettings instance (e.g. the web portal
+        process) must be visible to a brand-new AppSettings() constructed
+        later (e.g. the display app on its next start)."""
+        portal_file = tmp_path / "settings.json"
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
+        first = AppSettings()
+        first.save_portal_settings({"tomorrow_api_key": "abc123"})
+
+        second = AppSettings()
+        assert second.tomorrow_api_key == "abc123"
+
 
 class TestLiveReload:
     def test_no_change_returns_false(self, monkeypatch, tmp_path):
@@ -265,6 +299,22 @@ class TestLiveReload:
         assert s.check_portal_reload() is True
         assert s.tracked_callsign == "DLH400"
         assert s.tracking_timeout_s == 1200
+
+    def test_reload_triggers_on_tomorrow_api_key_alone(self, monkeypatch, tmp_path):
+        """check_portal_reload()'s return value drives whether app.py
+        rebuilds the weather client -- if a tomorrow_api_key-only change
+        didn't flip this to True, saving a key via the portal would still
+        silently do nothing until the next unrelated settings change."""
+        portal_file = tmp_path / "settings.json"
+        portal_file.write_text(json.dumps({}))
+        monkeypatch.setattr(settings_mod, "PORTAL_SETTINGS_FILE", portal_file)
+        s = AppSettings()
+        assert s.tomorrow_api_key == ""
+
+        os.utime(portal_file, (0, 0))
+        portal_file.write_text(json.dumps({"tomorrow_api_key": "newkey"}))
+        assert s.check_portal_reload() is True
+        assert s.tomorrow_api_key == "newkey"
 
     def test_mark_portal_synced_prevents_redundant_reload(self, monkeypatch, tmp_path):
         portal_file = tmp_path / "settings.json"

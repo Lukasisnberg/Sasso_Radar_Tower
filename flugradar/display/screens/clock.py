@@ -91,4 +91,7 @@ class ClockScreen:
             y = draw_center_text(surface, weather_str, y, self._font_weather, self.theme.label)
 
         hint_y = cy + int(scaling.visible_radius() * 0.68)
-        draw_center_text(surface, "swipe up for radar", hint_y, self._font_hint, self.theme.hint)
+        draw_center_text(
+            surface, "swipe up: radar · swipe right: forecast",
+            hint_y, self._font_hint, self.theme.hint,
+        )

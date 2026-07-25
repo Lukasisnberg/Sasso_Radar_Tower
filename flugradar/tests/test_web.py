@@ -62,6 +62,44 @@ class TestPages:
         assert r.status_code == 404
 
 
+class TestWeatherKeyLiveReload:
+    """Regression test: /weather and /api/weather used to build their
+    WeatherClient exactly once, at create_app() time -- so a key saved
+    via the /api-keys form updated settings.tomorrow_api_key in memory,
+    but the routes kept using the stale (usually None) client until the
+    web service was restarted. They now rebuild lazily off the live
+    settings object instead."""
+
+    def test_saving_key_makes_weather_page_pick_it_up_without_restart(self, monkeypatch, client):
+        fake_client = MagicMock()
+        fake_client.get_weather.return_value = None
+        fake_client.get_forecast.return_value = []
+        monkeypatch.setattr("flugradar.web.app.WeatherClient", MagicMock(return_value=fake_client))
+
+        r = client.get("/weather")
+        assert b"No Tomorrow.io API key" in r.data
+
+        client.post("/api-keys", data={"tomorrow_api_key": "newkey"})
+
+        r = client.get("/weather")
+        assert b"No Tomorrow.io API key" not in r.data
+        assert b"Weather data currently unavailable" in r.data
+
+    def test_saving_key_makes_api_weather_pick_it_up_without_restart(self, monkeypatch, client):
+        from flugradar.data_sources.weather import WeatherData
+        fake_client = MagicMock()
+        fake_client.get_weather.return_value = WeatherData(temperature_c=20.0, condition="Clear")
+        monkeypatch.setattr("flugradar.web.app.WeatherClient", MagicMock(return_value=fake_client))
+
+        assert client.get("/api/weather").status_code == 404
+
+        client.post("/api-keys", data={"tomorrow_api_key": "newkey"})
+
+        r = client.get("/api/weather")
+        assert r.status_code == 200
+        assert r.get_json()["temperature_c"] == 20.0
+
+
 class TestRadarPost:
     def test_save_location(self, client, monkeypatch, tmp_path):
         portal_file = tmp_path / "settings.json"

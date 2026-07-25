@@ -195,6 +195,12 @@ class AppSettings:
             self.adsbdb_enrich_nearest = int(data["adsbdb_enrich_nearest"])
         if "aircraft_photos_enabled" in data:
             self.aircraft_photos_enabled = _parse_bool(data["aircraft_photos_enabled"])
+        if "fr24_api_key" in data:
+            self.fr24_api_key = data["fr24_api_key"]
+        if "tomorrow_api_key" in data:
+            self.tomorrow_api_key = data["tomorrow_api_key"]
+        if "airlabs_api_key" in data:
+            self.airlabs_api_key = data["airlabs_api_key"]
         if "openaip_api_key" in data:
             self.openaip_api_key = data["openaip_api_key"]
         if "openaip_overlay_enabled" in data:
@@ -286,6 +292,7 @@ class AppSettings:
         old_time_format = self.time_format
         old_tracked_callsign = self.tracked_callsign
         old_tracking_timeout_s = self.tracking_timeout_s
+        old_tomorrow_key = self.tomorrow_api_key
 
         defaults = HomeLocation()
         self.home.lat = defaults.lat
@@ -352,6 +359,7 @@ class AppSettings:
             or self.time_format != old_time_format
             or self.tracked_callsign != old_tracked_callsign
             or self.tracking_timeout_s != old_tracking_timeout_s
+            or self.tomorrow_api_key != old_tomorrow_key
         )
 
     def save_portal_settings(self, updates: dict) -> None:
