@@ -332,8 +332,74 @@ Schritte 1–8 aus dem Bauauftrag (Abschnitt 13) sind abgeschlossen:
     Zoom-Gesten kurzzeitig mehrere Rebuild-Threads gleichzeitig anstoßen
     (kein Leck, nur ein seltener, nutzerausgelöster Nebeneffekt) — beides
     kein tatsächliches Wachstumsproblem, daher nicht verändert.
+- **Wetterscreen nach Mockup** (separat angefragt, `docs/prompt-
+  wetterscreen.md` + `docs/weather-screen-mockup.svg`, in 4 Schritten
+  umgesetzt wie im Auftrag vorgegeben, nach jedem Schritt Tests +
+  Commit + Rückmeldung):
+  - **Schritt 1** (Layoutgerüst): `WeatherScreen` (`flugradar/display/
+    screens/weather.py`) komplett neu aufgebaut — Kopf (Ort + Wochentag/
+    Uhrzeit), aktuelles Wetter (Icon + große Temperatur + Zustand), drei
+    Kernwerte (Wind/Gefühlt/Regen), Haarlinie, gebogene 5-Tage-Vorhersage,
+    Screen-Indikator. Ersetzt die bisherige 3-Tage-Spalten-Ansicht.
+    Positionen als Bruchteile von `scaling.visible_radius()` aus dem
+    Mockup abgelesen statt fester Pixel; Schriftgrößen/Farben aus
+    theme.py-Tokens statt Mockup-Hexwerten; UI-Text Englisch wie der Rest
+    der App. Neu: `render_tracked_text()` (draw_helpers.py, Letter-
+    Spacing für die Versal-Labels), `location_display_name()`
+    (config/locations.py), `WeatherData.wind_speed_str()` (folgt
+    distance_unit statt eigener Windeinheit-Einstellung). **Nachbesserung
+    nach Gerätetest**: "Mostly Clear" überlappte die "21°"-Temperatur, und
+    die Vorhersagereihe geriet in den Fußzeilenbereich — Ursache war, dass
+    vertikale Positionen als unabhängige feste Bruchteile aus dem
+    Mockup-SVG übernommen wurden (SVG-`<text>`-y ist eine Grundlinie,
+    pygame positioniert von der Boxoberkante; bei der 3x größeren
+    Hero-Temperatur driftete das spürbar auseinander). Umgestellt auf
+    sequenzielle, an der tatsächlich gemessenen Höhe des vorherigen Blocks
+    orientierte Positionierung (gleiches Prinzip wie clock.py/detail.py),
+    dazu Hero-Schriftgröße und Abstände gestrafft, mit echten
+    Pixel-Messungen statt Schätzung verifiziert.
+  - **Schritt 2** (Icon-Set): **Weather Icons von Erik Flowers** (SIL OFL
+    1.1, Lizenz live gegen das GitHub-README geprüft) unter
+    `flugradar/assets/icons/weather/` abgelegt (35 SVGs, LICENSE.txt mit
+    vollständigem Lizenztext). `weather_icons.py` von handgezeichneten
+    Pygame-Primitiven auf echten SVG-Loader mit Cache umgestellt (gleiches
+    Prinzip wie `aircraft_icons.py`). Vollständige Tomorrow.io-Code→Icon-
+    Tabelle inkl. Tag-/Nacht-Variante, generischer Fallback ("na"-Icon).
+    Nur das aktuelle Icon bekommt die Theme-Akzentfarbe, Vorhersage-Icons
+    bleiben neutral. Attribution an den vier etablierten Stellen ergänzt.
+  - **Schritt 3** (Tomorrow.io-Anbindung): `WeatherData` um
+    `temperature_apparent_c`/`precipitation_probability_pct` erweitert.
+    `WeatherClient.is_stale`/`weather_age_s()` neu — `get_weather()` gab
+    bei einem fehlgeschlagenen Abruf schon vorher den letzten bekannten
+    Wert zurück, diese beiden Properties lassen den Screen erkennen, ob
+    eine Anzeige frisch oder nachgereicht ist. `WeatherScreen.set_data()`
+    ersetzt die Schritt-1-Beispielwerte durch echte, von `RadarApp`
+    injizierte Daten. Alle drei Pflichtfälle umgesetzt: kein Key (Hinweis
+    statt Wetterblöcke, Kopfzeile bleibt stehen), Abruffehler/offline
+    (letzte Werte + dezentes "· updated 13m ago" direkt in der
+    Kopfzeilen-Unterzeile statt einer eigenen Reihe), fehlende
+    Einzelwerte (jeweiliger Wert ausgelassen, Layout bleibt stabil).
+    Tag/Nacht fürs aktuelle Icon bleibt bei der Uhrzeit-Heuristik aus
+    Schritt 2 — Tomorrow.io liefert im abgefragten Feldsatz keine
+    Sonnenauf-/-untergangszeit, und der Auftrag verlangt nur Tag-/Nacht-
+    Varianten im Icon-*Set*, keine echte Astronomie.
+  - **Schritt 4** (Feinschliff): Hero-Temperatur nutzte noch keine
+    tabellarischen Ziffern (fehlendes `mono=True`, einzige Ausnahme von
+    sonst überall konsequent tabellarischen Zahlenwerten) — behoben,
+    außerdem aus Konsistenzgründen in `_ensure_fonts()` gecacht statt bei
+    jedem `draw()`-Aufruf neu gebaut (durch den Font-Cache aus dem
+    Performance-Durchgang zwar unkritisch, aber stilistisch inkonsistent
+    mit jedem anderen Font auf diesem Screen). Geometrische Regressionstests
+    ergänzt, die die Kopfzeile und die äußeren Vorhersage-Spalten gegen
+    `scaling.circle_half_width_at_row()` prüfen (Abschnitt 15: "nichts vom
+    Kreisrand abgeschnitten") — bei der Vorhersagereihe am unteren Ende
+    geprüft, wo die Sehne am schmalsten ist, nicht am Zeilenanfang. Übrige
+    Abschnitt-15-Punkte (nur Akzentfarbe fürs aktuelle Icon, keine
+    Schatten/Verläufe, Haarlinie mit `TOKENS.hairline_alpha`, einheitliche
+    Übergangsdauer/Easing über den bestehenden `_compose_frame()`-
+    Mechanismus) waren bereits aus den vorherigen Schritten korrekt.
 
-520 Tests grün.
+569 Tests grün.
 
 ## Offene Punkte
 

@@ -120,6 +120,7 @@ class WeatherScreen:
         self._fonts_ready = False
         self._location_font: Optional[pygame.font.Font] = None
         self._subhead_font: Optional[pygame.font.Font] = None
+        self._hero_temp_font: Optional[pygame.font.Font] = None
         self._condition_font: Optional[pygame.font.Font] = None
         self._value_label_font: Optional[pygame.font.Font] = None
         self._value_font: Optional[pygame.font.Font] = None
@@ -148,6 +149,14 @@ class WeatherScreen:
             return
         self._location_font = get_font(scaling.s(TOKENS.font_title))
         self._subhead_font = get_font(scaling.s(TOKENS.font_standard))
+        # Tabular figures (Abschnitt 15: "Tabellarische Ziffern für alle
+        # Temperaturen und Werte, damit bei Aktualisierung nichts
+        # springt") -- same bold+mono combination as the clock screen's
+        # hero time (_HERO_TIME_SCALE), cached here like every other font
+        # instead of rebuilt inline on every draw() call.
+        self._hero_temp_font = get_font(
+            scaling.s(round(TOKENS.font_title * _HERO_TEMP_SCALE)), bold=True, mono=True,
+        )
         self._condition_font = get_font(scaling.s(TOKENS.font_title))
         self._value_label_font = get_font(scaling.s(TOKENS.font_standard))
         self._value_font = get_font(scaling.s(TOKENS.font_standard), mono=True)
@@ -239,9 +248,8 @@ class WeatherScreen:
         draw_weather_icon(surface, wx.weather_code, (icon_cx, icon_cy), icon_r,
                            self.theme.sweep_colour, is_night=_is_night_now())
 
-        temp_font = get_font(scaling.s(round(TOKENS.font_title * _HERO_TEMP_SCALE)), bold=True)
         temp_str = _bare_temp_str(wx.temperature_c, self.temperature_unit)
-        temp_surf = temp_font.render(temp_str, True, self.theme.label)
+        temp_surf = self._hero_temp_font.render(temp_str, True, self.theme.label)
         temp_rect = temp_surf.get_rect(midtop=(self._x(_TEMP_DX_FRAC), self._y(_TEMP_Y_FRAC)))
         surface.blit(temp_surf, temp_rect)
 

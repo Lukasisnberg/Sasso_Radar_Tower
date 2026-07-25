@@ -236,3 +236,62 @@ class TestSetData:
         assert screen.is_stale is True
         assert screen.age_s == 42.0
         assert screen.forecast is fc
+
+
+class TestSchritt15Polish:
+    """Abschnitt 15 (Gestaltung) checks: tabular figures on every number
+    so updates don't jitter, and nothing drawn past the disc's visible
+    chord at the row it sits on."""
+
+    def test_hero_temperature_uses_tabular_figures(self, screen):
+        from flugradar.display.fonts import get_font
+        from flugradar.display.screens.weather import _HERO_TEMP_SCALE
+        from flugradar.display.theme import TOKENS
+
+        screen._ensure_fonts()
+        expected = get_font(
+            scaling.s(round(TOKENS.font_title * _HERO_TEMP_SCALE)), bold=True, mono=True,
+        )
+        assert screen._hero_temp_font is expected
+
+    def test_location_header_stays_within_visible_chord_at_production_size(self):
+        from flugradar.display.draw_helpers import render_tracked_text
+        from flugradar.display.screens.weather import _LOCATION_Y_FRAC
+
+        scaling.init(720)
+        try:
+            screen = WeatherScreen(720, CLASSIC_AMBER, location_label="Sassofortino")
+            screen._ensure_fonts()
+            y = screen._y(_LOCATION_Y_FRAC)
+            budget = scaling.circle_half_width_at_row(y, screen._location_font.get_height()) * 2
+            rendered = render_tracked_text(
+                screen._location_font, "SASSOFORTINO", (255, 255, 255), spacing=scaling.s(3),
+            )
+            assert rendered.get_width() <= budget
+        finally:
+            scaling.init(300)
+
+    def test_forecast_columns_stay_within_visible_chord_at_production_size(self):
+        from flugradar.display.screens.weather import _FORECAST_DX_FRAC
+
+        scaling.init(720)
+        try:
+            screen = WeatherScreen(720, CLASSIC_AMBER, location_label="Sassofortino")
+            screen._ensure_fonts()
+            surf = pygame.Surface((720, 720))
+            screen.set_data(has_key=True, current=_full_weather(), forecast=_full_forecast())
+            y = screen._draw_current(surf)
+            y = screen._draw_values_row(surf, y)
+            y = screen._draw_hairline(surf, y)
+            forecast_bottom = screen._draw_forecast_row(surf, y)
+
+            # Check at the row's *bottom* (the lo-temperature line), not
+            # its top -- the chord only narrows further from the row
+            # start, so the bottom is the actual worst case for a column
+            # sitting at a constant x-offset the whole way down.
+            budget = scaling.circle_half_width_at_row(forecast_bottom, screen._forecast_lo_font.get_height())
+            outer_dx = max(abs(f) for f in _FORECAST_DX_FRAC)
+            outer_offset_px = outer_dx * scaling.visible_radius()
+            assert outer_offset_px < budget
+        finally:
+            scaling.init(300)
