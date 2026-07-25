@@ -6,6 +6,7 @@ from enum import Enum, auto
 
 import pygame
 
+from flugradar.config.locations import location_display_name
 from flugradar.config.settings import AppSettings
 from flugradar.data_sources.adsb_fi import AdsbFiClient
 from flugradar.data_sources.adsbdb import AdsbdbClient
@@ -136,6 +137,9 @@ class RadarApp:
         weather_scr = WeatherScreen(
             self.screen_size, theme,
             temperature_unit=self.settings.temperature_unit,
+            distance_unit=self.settings.distance_unit,
+            time_format=self.settings.time_format,
+            location_label=location_display_name(self.settings.home.lat, self.settings.home.lon),
         )
         gestures = GestureRecogniser()
 
@@ -389,10 +393,6 @@ class RadarApp:
             return
         tracking_scr.set_tracking(None, False, None)
 
-    def _update_weather_screen(self, weather_scr) -> None:
-        forecast = self._weather_client.get_forecast(days=3) if self._weather_client else []
-        weather_scr.set_forecast(forecast, has_key=bool(self.settings.tomorrow_api_key))
-
     def _start_tracking(self, callsign: str) -> None:
         self.settings.save_portal_settings({"tracked_callsign": callsign})
         self.settings.mark_portal_synced()
@@ -441,6 +441,9 @@ class RadarApp:
         tracking_scr.aircraft_icon_set = self.settings.aircraft_icon_set
         weather_scr.theme = theme
         weather_scr.temperature_unit = self.settings.temperature_unit
+        weather_scr.distance_unit = self.settings.distance_unit
+        weather_scr.time_format = self.settings.time_format
+        weather_scr.location_label = location_display_name(self.settings.home.lat, self.settings.home.lon)
         if viewport:
             viewport.update_theme(theme)
 
@@ -513,7 +516,6 @@ class RadarApp:
             self._update_tracking_screen(tracking_scr)
             tracking_scr.draw(target)
         elif self._active == ActiveScreen.WEATHER:
-            self._update_weather_screen(weather_scr)
             weather_scr.draw(target)
 
     def _compose_frame(self, screen: pygame.Surface, frame: pygame.Surface) -> None:

@@ -35,6 +35,32 @@ def draw_center_text(
     return y + h + scaling.s(4)
 
 
+def render_tracked_text(
+    font: pygame.font.Font,
+    text: str,
+    color: tuple[int, int, int],
+    spacing: int = 0,
+) -> pygame.Surface:
+    """Render text with extra letter-spacing.
+
+    Pygame has no native tracking support; this is used for the all-caps
+    labels the round-display screens favour (e.g. the weather screen's
+    location name and screen-indicator label) where the mockup calls for
+    visibly loosened spacing that plain font.render() can't produce.
+    """
+    if spacing <= 0 or len(text) <= 1:
+        return font.render(text, True, color)
+    glyphs = [font.render(ch, True, color) for ch in text]
+    total_w = sum(g.get_width() for g in glyphs) + spacing * (len(glyphs) - 1)
+    height = max((g.get_height() for g in glyphs), default=font.get_height())
+    surf = pygame.Surface((max(1, total_w), height), pygame.SRCALPHA)
+    x = 0
+    for g in glyphs:
+        surf.blit(g, (x, 0))
+        x += g.get_width() + spacing
+    return surf
+
+
 def draw_dashed_circle(
     surface: pygame.Surface,
     center: tuple[int, int],

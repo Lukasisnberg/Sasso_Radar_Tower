@@ -64,6 +64,18 @@ class WeatherData:
         kt = self.wind_speed_ms * 1.94384
         return f"{kt:.0f}kt"
 
+    def wind_speed_str(self, distance_unit: str = "km") -> str:
+        """Wind speed in whichever unit family the display's distance
+        setting already uses (km -> km/h, sm -> mph, nm -> kt) -- there's
+        no separate wind-unit setting, so it follows distance_unit."""
+        if self.wind_speed_ms is None:
+            return ""
+        if distance_unit == "sm":
+            return f"{self.wind_speed_ms * 2.23694:.0f} mph"
+        if distance_unit == "nm":
+            return f"{self.wind_speed_ms * 1.94384:.0f} kt"
+        return f"{self.wind_speed_ms * 3.6:.0f} km/h"
+
 
 @dataclass
 class DailyForecast:

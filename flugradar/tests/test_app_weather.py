@@ -1,6 +1,6 @@
-"""RadarApp wiring for the Weather screen: navigation gestures, forecast
-feeding, and rebuilding the Tomorrow.io client on a live settings change
-(the actual fix for "saved a key in the portal but it's not picked up")."""
+"""RadarApp wiring for the Weather screen: navigation gestures, and
+rebuilding the Tomorrow.io client on a live settings change (the actual
+fix for "saved a key in the portal but it's not picked up")."""
 
 from unittest.mock import MagicMock
 
@@ -9,7 +9,6 @@ import pytest
 
 from flugradar.config import settings as settings_mod
 from flugradar.config.settings import AppSettings
-from flugradar.data_sources.weather import DailyForecast
 from flugradar.display import scaling
 from flugradar.display.app import ActiveScreen, RadarApp
 from flugradar.display.gestures import Gesture, GestureType
@@ -45,26 +44,6 @@ def _fake_screens():
         "about": MagicMock(), "menu": MagicMock(), "tracking_scr": MagicMock(),
         "weather_scr": MagicMock(), "proj": MagicMock(),
     }
-
-
-class TestUpdateWeatherScreen:
-    def test_no_client_reports_no_key(self, app, settings):
-        weather_scr = MagicMock()
-        app._weather_client = None
-        settings.tomorrow_api_key = ""
-        app._update_weather_screen(weather_scr)
-        weather_scr.set_forecast.assert_called_once_with([], has_key=False)
-
-    def test_client_forwards_forecast_and_has_key(self, app, settings):
-        weather_scr = MagicMock()
-        settings.tomorrow_api_key = "abc123"
-        forecast = [DailyForecast(date="2026-07-25", temp_min_c=10, temp_max_c=20)]
-        fake_client = MagicMock()
-        fake_client.get_forecast.return_value = forecast
-        app._weather_client = fake_client
-        app._update_weather_screen(weather_scr)
-        fake_client.get_forecast.assert_called_once_with(days=3)
-        weather_scr.set_forecast.assert_called_once_with(forecast, has_key=True)
 
 
 class TestClockToWeatherNavigation:
@@ -152,12 +131,26 @@ class TestApplyLiveSettingsWeatherClient:
         )
         assert app._weather_client is None
 
-    def test_updates_weather_screen_theme_and_temperature_unit(self, app, settings):
+    def test_updates_weather_screen_theme_and_units(self, app, settings):
         f = _fake_screens()
         settings.temperature_unit = "f"
+        settings.distance_unit = "sm"
+        settings.time_format = "12h"
         app._apply_live_settings(
             f["proj"], f["radar"], f["detail"], f["clock_scr"], f["about"],
             f["menu"], f["tracking_scr"], f["weather_scr"], None,
         )
         assert f["weather_scr"].temperature_unit == "f"
+        assert f["weather_scr"].distance_unit == "sm"
+        assert f["weather_scr"].time_format == "12h"
         assert f["weather_scr"].theme is app._theme
+
+    def test_updates_weather_screen_location_label(self, app, settings):
+        f = _fake_screens()
+        settings.home.lat = 43.02583
+        settings.home.lon = 11.11222
+        app._apply_live_settings(
+            f["proj"], f["radar"], f["detail"], f["clock_scr"], f["about"],
+            f["menu"], f["tracking_scr"], f["weather_scr"], None,
+        )
+        assert f["weather_scr"].location_label == "Sassofortino"

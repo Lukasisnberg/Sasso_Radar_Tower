@@ -46,3 +46,15 @@ def current_location_key(lat: float, lon: float) -> str | None:
         if abs(loc.lat - lat) < MATCH_EPSILON_DEG and abs(loc.lon - lon) < MATCH_EPSILON_DEG:
             return loc.key
     return None
+
+
+def location_display_name(lat: float, lon: float) -> str:
+    """Short place name for on-screen headers (e.g. the weather screen) --
+    the preset's name without its country suffix, or a plain coordinate
+    readout for a custom (portal-set) location matching neither preset."""
+    key = current_location_key(lat, lon)
+    if key:
+        loc = resolve_location(key)
+        if loc:
+            return loc.label.split(",")[0].strip()
+    return f"{lat:.2f}, {lon:.2f}"
