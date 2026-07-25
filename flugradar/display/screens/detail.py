@@ -87,7 +87,7 @@ class DetailScreen:
         buttons.append("radar")
         return buttons
 
-    def _build_rows(self, ac: Aircraft) -> list[tuple[str, pygame.font.Font, tuple[int, int, int]]]:
+    def _build_header_rows(self, ac: Aircraft) -> list[tuple[str, pygame.font.Font, tuple[int, int, int]]]:
         rows = []
 
         flight_id = display_flight_id(
@@ -101,14 +101,20 @@ class DetailScreen:
         if airline_name:
             rows.append((airline_name, self._body_font, self.theme.muted))
 
-        if ac.origin and ac.destination:
-            rows.append((f"{format_route_endpoint(ac.origin)}  →", self._body_font, self.theme.route))
-            rows.append((format_route_endpoint(ac.destination), self._body_font, self.theme.route))
-        elif ac.origin:
+        # Origin+destination together are drawn separately (_draw_route),
+        # since whether they fit on one line depends on the actual row
+        # width at this y -- only known at draw time, not while building
+        # this flat, font-only row list. A single known endpoint has no
+        # such ambiguity and stays a plain row.
+        if ac.origin and not ac.destination:
             rows.append((f"From {format_route_endpoint(ac.origin)}", self._body_font, self.theme.route))
-        elif ac.destination:
+        elif ac.destination and not ac.origin:
             rows.append((f"To {format_route_endpoint(ac.destination)}", self._body_font, self.theme.route))
 
+        return rows
+
+    def _build_detail_rows(self, ac: Aircraft) -> list[tuple[str, pygame.font.Font, tuple[int, int, int]]]:
+        rows = []
         meta_parts = []
         if ac.aircraft_type:
             meta_parts.append(ac.aircraft_type)
@@ -148,6 +154,40 @@ class DetailScreen:
 
         return rows
 
+    def _draw_rows(
+        self, surface: pygame.Surface,
+        rows: list[tuple[str, pygame.font.Font, tuple[int, int, int]]],
+        y: int, chrome_top: int, bottom: int, line_gap: int,
+    ) -> int:
+        for text, font, color in rows:
+            h = font.get_height()
+            if chrome_top - h <= y <= bottom:
+                draw_center_text(surface, text, int(y), font, color)
+            y += h + line_gap
+        return y
+
+    def _draw_route(
+        self, surface: pygame.Surface, ac: Aircraft,
+        y: int, chrome_top: int, bottom: int, line_gap: int,
+    ) -> int:
+        """Origin and destination on one line ('City (CODE)  →  City
+        (CODE)') when it fits the chord width at this row; only falls
+        back to the old two-row layout (one endpoint per line) when it
+        doesn't -- not unconditionally, so the common case isn't wasting
+        a whole extra row."""
+        origin = format_route_endpoint(ac.origin)
+        dest = format_route_endpoint(ac.destination)
+        font = self._body_font
+        h = font.get_height()
+        combined = f"{origin}  →  {dest}"
+        max_w = scaling.circle_half_width_at_row(y, h) * 2
+
+        if font.size(combined)[0] <= max_w:
+            return self._draw_rows(surface, [(combined, font, self.theme.route)], y, chrome_top, bottom, line_gap)
+
+        two_rows = [(f"{origin}  →", font, self.theme.route), (dest, font, self.theme.route)]
+        return self._draw_rows(surface, two_rows, y, chrome_top, bottom, line_gap)
+
     def draw(self, surface: pygame.Surface) -> None:
         self._ensure_fonts()
         surface.fill(self.theme.background)
@@ -186,12 +226,12 @@ class DetailScreen:
                     surface.blit(photo, rect)
                 y += rect.height + scaling.s(4)
 
-        rows = self._build_rows(ac)
-        for text, font, color in rows:
-            h = font.get_height()
-            if chrome_top - h <= y <= bottom:
-                draw_center_text(surface, text, int(y), font, color)
-            y += h + line_gap
+        y = self._draw_rows(surface, self._build_header_rows(ac), y, chrome_top, bottom, line_gap)
+
+        if ac.origin and ac.destination:
+            y = self._draw_route(surface, ac, y, chrome_top, bottom, line_gap)
+
+        y = self._draw_rows(surface, self._build_detail_rows(ac), y, chrome_top, bottom, line_gap)
 
         if ac.is_emergency:
             y += scaling.s(6)
