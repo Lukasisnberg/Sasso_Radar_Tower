@@ -3,7 +3,7 @@
 {% block content %}
 <header class="page-header">
   <h1>System</h1>
-  <p class="context">Status, update, restart</p>
+  <p class="context">Status, Update, Neustart</p>
 </header>
 
 {% if message %}
@@ -14,7 +14,7 @@
   <h2>Info</h2>
   <table class="info-table">
     <tr><td>Version</td><td>{{ version }}</td></tr>
-    <tr><td>Location</td><td>{{ settings.home.lat }}, {{ settings.home.lon }}</td></tr>
+    <tr><td>Standort</td><td>{{ settings.home.lat }}, {{ settings.home.lon }}</td></tr>
     <tr><td>Radius</td><td>{{ settings.home.radius_km }} km</td></tr>
   </table>
 </section>
@@ -22,27 +22,27 @@
 <section class="section">
   <h2>Update</h2>
   <p style="font-size:13px;color:var(--text-muted);">
-    Pulls the latest code from GitHub, checks it imports cleanly, and
-    restarts both services. Rolls back automatically and leaves the
-    running app untouched if anything fails along the way.
+    Zieht den neuesten Code von GitHub, prüft ihn auf sauberen Import
+    und startet beide Dienste neu. Bricht bei jedem Fehlschlag automatisch
+    ab und lässt die laufende App unangetastet.
   </p>
   <form method="post" class="btn-group">
-    <button type="submit" name="action" value="update" class="btn">Update now</button>
+    <button type="submit" name="action" value="update" class="btn">Jetzt aktualisieren</button>
   </form>
   {% if update_log %}
   <p style="font-size:12px;color:var(--text-muted);margin-top:10px;">
-    Last attempt: {{ update_log }}
+    Letzter Versuch: {{ update_log }}
   </p>
   {% endif %}
 </section>
 
 <section class="section">
-  <h2>Actions</h2>
+  <h2>Aktionen</h2>
   <form method="post" class="btn-group">
     <button type="submit" name="action" value="restart" class="btn btn-danger"
-            onclick="return confirm('Restart the device now?');">Restart</button>
+            onclick="return confirm('Gerät jetzt neu starten?');">Neustart</button>
     <button type="submit" name="action" value="shutdown" class="btn btn-danger"
-            onclick="return confirm('Shut down the device now? You will need physical access to power it back on.');">Shutdown</button>
+            onclick="return confirm('Gerät jetzt herunterfahren? Zum Wiedereinschalten ist physischer Zugriff nötig.');">Herunterfahren</button>
   </form>
 </section>
 {% endblock %}

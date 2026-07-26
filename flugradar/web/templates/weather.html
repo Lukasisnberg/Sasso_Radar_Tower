@@ -1,43 +1,43 @@
 {% extends "base.html" %}
-{% block title %}Weather - SRT{% endblock %}
+{% block title %}Wetter - SRT{% endblock %}
 {% block content %}
 <header class="page-header">
-  <h1>Weather</h1>
-  <p class="context">Current conditions &amp; forecast</p>
+  <h1>Wetter</h1>
+  <p class="context">Aktuelle Bedingungen &amp; Vorhersage</p>
 </header>
 
 {% if not has_key %}
 <div class="alert alert-info">
-  No Tomorrow.io API key configured. Add one on the
-  <a href="{{ url_for('api_keys') }}">API Keys</a> page.
+  Kein Tomorrow.io-API-Schlüssel hinterlegt. Einen unter
+  <a href="{{ url_for('api_keys') }}">API-Schlüssel</a> ergänzen.
 </div>
 {% elif not weather %}
 <div class="alert alert-info">
-  Weather data currently unavailable.
+  Wetterdaten derzeit nicht verfügbar.
 </div>
 {% else %}
 <section class="section">
-  <h2>Current Conditions</h2>
+  <h2>Aktuelle Bedingungen</h2>
   <table class="info-table">
-    <tr><td>Temperature</td><td>{{ "%.1f"|format(weather.temperature_c) }} °C</td></tr>
-    <tr><td>Condition</td><td>{{ weather.condition or "—" }}</td></tr>
+    <tr><td>Temperatur</td><td>{{ "%.1f"|format(weather.temperature_c) }} °C</td></tr>
+    <tr><td>Zustand</td><td>{{ weather.condition or "—" }}</td></tr>
     {% if weather.humidity is not none %}
-    <tr><td>Humidity</td><td>{{ "%.0f"|format(weather.humidity) }} %</td></tr>
+    <tr><td>Luftfeuchtigkeit</td><td>{{ "%.0f"|format(weather.humidity) }} %</td></tr>
     {% endif %}
     {% if weather.wind_speed_ms is not none %}
     <tr><td>Wind</td><td>{{ "%.1f"|format(weather.wind_speed_ms) }} m/s ({{ weather.wind_str }})</td></tr>
     {% endif %}
     {% if weather.wind_direction_deg is not none %}
-    <tr><td>Wind Direction</td><td>{{ "%.0f"|format(weather.wind_direction_deg) }}°</td></tr>
+    <tr><td>Windrichtung</td><td>{{ "%.0f"|format(weather.wind_direction_deg) }}°</td></tr>
     {% endif %}
     {% if weather.visibility_km is not none %}
-    <tr><td>Visibility</td><td>{{ "%.1f"|format(weather.visibility_km) }} km</td></tr>
+    <tr><td>Sichtweite</td><td>{{ "%.1f"|format(weather.visibility_km) }} km</td></tr>
     {% endif %}
     {% if weather.pressure_hpa is not none %}
-    <tr><td>Pressure</td><td>{{ "%.0f"|format(weather.pressure_hpa) }} hPa</td></tr>
+    <tr><td>Luftdruck</td><td>{{ "%.0f"|format(weather.pressure_hpa) }} hPa</td></tr>
     {% endif %}
     {% if weather.cloud_cover_pct is not none %}
-    <tr><td>Cloud Cover</td><td>{{ "%.0f"|format(weather.cloud_cover_pct) }} %</td></tr>
+    <tr><td>Bewölkung</td><td>{{ "%.0f"|format(weather.cloud_cover_pct) }} %</td></tr>
     {% endif %}
   </table>
 </section>
@@ -45,9 +45,9 @@
 
 {% if forecast %}
 <section class="section">
-  <h2>3-Day Forecast</h2>
+  <h2>3-Tage-Vorhersage</h2>
   <table class="info-table">
-    <tr><th>Day</th><th>Condition</th><th>Min / Max</th></tr>
+    <tr><th>Tag</th><th>Zustand</th><th>Min / Max</th></tr>
     {% for day in forecast %}
     <tr>
       <td>{{ day.date }}</td>
@@ -60,10 +60,10 @@
 {% endif %}
 
 <section class="section">
-  <h2>Location</h2>
+  <h2>Standort</h2>
   <table class="info-table">
-    <tr><td>Latitude</td><td>{{ settings.home.lat }}</td></tr>
-    <tr><td>Longitude</td><td>{{ settings.home.lon }}</td></tr>
+    <tr><td>Breitengrad</td><td>{{ settings.home.lat }}</td></tr>
+    <tr><td>Längengrad</td><td>{{ settings.home.lon }}</td></tr>
   </table>
 </section>
 {% endblock %}

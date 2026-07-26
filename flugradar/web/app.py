@@ -149,13 +149,13 @@ def create_app(settings: AppSettings | None = None) -> Flask:
         action = request.form.get("action") if request.method == "POST" else None
         message = None
         if action == "restart":
-            message = "Restart initiated..."
+            message = "Neustart eingeleitet..."
             system_action("reboot")
         elif action == "shutdown":
-            message = "Shutdown initiated..."
+            message = "Herunterfahren eingeleitet..."
             system_action("shutdown")
         elif action == "update":
-            message = "Update started in the background — check below in a minute."
+            message = "Update im Hintergrund gestartet — unten in einer Minute nachsehen."
             trigger_update_async()
         return render_template(
             "system.html", settings=settings, version=__version__, message=message,

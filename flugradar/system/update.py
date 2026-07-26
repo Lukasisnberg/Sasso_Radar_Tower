@@ -57,24 +57,24 @@ def apply_update() -> UpdateResult:
     try:
         fetch = _run(["git", "fetch", "origin", "main"])
     except (subprocess.TimeoutExpired, OSError) as exc:
-        return UpdateResult(False, f"fetch failed: {exc}")
+        return UpdateResult(False, f"Abruf fehlgeschlagen: {exc}")
     if fetch.returncode != 0:
-        return UpdateResult(False, f"fetch failed: {fetch.stderr.strip()}")
+        return UpdateResult(False, f"Abruf fehlgeschlagen: {fetch.stderr.strip()}")
 
     status = _run(["git", "status", "--porcelain"])
     if status.stdout.strip():
-        return UpdateResult(False, "local changes present in the install dir, refusing to overwrite")
+        return UpdateResult(False, "lokale Änderungen im Installationsverzeichnis vorhanden, Überschreiben verweigert")
 
     previous_sha = _run(["git", "rev-parse", "HEAD"]).stdout.strip()
     target_sha = _run(["git", "rev-parse", "origin/main"]).stdout.strip()
     if not previous_sha or not target_sha:
-        return UpdateResult(False, "could not resolve current/remote commit")
+        return UpdateResult(False, "aktueller/entfernter Commit konnte nicht ermittelt werden")
     if previous_sha == target_sha:
-        return UpdateResult(True, "already up to date")
+        return UpdateResult(True, "bereits aktuell")
 
     reset = _run(["git", "reset", "--hard", "origin/main"])
     if reset.returncode != 0:
-        return UpdateResult(False, f"checkout of {target_sha[:8]} failed: {reset.stderr.strip()}")
+        return UpdateResult(False, f"Checkout von {target_sha[:8]} fehlgeschlagen: {reset.stderr.strip()}")
 
     try:
         pip = _run(
@@ -83,11 +83,11 @@ def apply_update() -> UpdateResult:
         )
     except subprocess.TimeoutExpired:
         _rollback(previous_sha)
-        return UpdateResult(False, f"dependency install timed out, rolled back to {previous_sha[:8]}")
+        return UpdateResult(False, f"Zeitüberschreitung bei der Abhängigkeitsinstallation, zurückgesetzt auf {previous_sha[:8]}")
     if pip.returncode != 0:
         _rollback(previous_sha)
         return UpdateResult(
-            False, f"dependency install failed, rolled back to {previous_sha[:8]}: {pip.stderr.strip()[-500:]}",
+            False, f"Abhängigkeitsinstallation fehlgeschlagen, zurückgesetzt auf {previous_sha[:8]}: {pip.stderr.strip()[-500:]}",
         )
 
     sanity = _run(
@@ -97,7 +97,7 @@ def apply_update() -> UpdateResult:
     if sanity.returncode != 0:
         _rollback(previous_sha)
         return UpdateResult(
-            False, f"new code at {target_sha[:8]} failed to import, rolled back to {previous_sha[:8]}: "
+            False, f"Neuer Code bei {target_sha[:8]} ließ sich nicht importieren, zurückgesetzt auf {previous_sha[:8]}: "
             f"{sanity.stderr.strip()[-500:]}",
         )
 
@@ -111,7 +111,7 @@ def apply_update() -> UpdateResult:
     _run(["sudo", "systemctl", "restart", "flugradar-web.service"], timeout=_RESTART_TIMEOUT_S)
     _run(["sudo", "systemctl", "restart", "flugradar-display.service"], timeout=_RESTART_TIMEOUT_S)
 
-    return UpdateResult(True, f"updated {previous_sha[:8]} -> {target_sha[:8]}")
+    return UpdateResult(True, f"aktualisiert {previous_sha[:8]} -> {target_sha[:8]}")
 
 
 def run_and_log() -> None:
@@ -119,7 +119,7 @@ def run_and_log() -> None:
     try:
         result = apply_update()
     except Exception as exc:  # noqa: BLE001 -- this is the top of a detached process, must not crash silently
-        result = UpdateResult(False, f"unexpected error: {exc!r}")
+        result = UpdateResult(False, f"unerwarteter Fehler: {exc!r}")
         log.exception("Update crashed")
     with open(LOG_FILE, "a") as f:
         stamp = datetime.datetime.now().isoformat(timespec="seconds")

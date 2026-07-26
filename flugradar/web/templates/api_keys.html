@@ -1,26 +1,26 @@
 {% extends "base.html" %}
-{% block title %}API Keys - SRT{% endblock %}
+{% block title %}API-Schlüssel - SRT{% endblock %}
 {% block content %}
 <header class="page-header">
-  <h1>API Keys</h1>
-  <p class="context">Stored locally, used only by their respective provider</p>
+  <h1>API-Schlüssel</h1>
+  <p class="context">Lokal gespeichert, nur vom jeweiligen Anbieter genutzt</p>
 </header>
 
 {% if request.args.get('saved') %}
-<p class="save-confirm" data-autofade>Saved</p>
+<p class="save-confirm" data-autofade>Gespeichert</p>
 {% endif %}
 
 <div class="alert alert-info">
-  Keys are stored locally and never sent to third parties other than
-  the respective API provider.
+  Schlüssel werden lokal gespeichert und niemals an Dritte weitergegeben —
+  außer an den jeweiligen API-Anbieter selbst.
 </div>
 
 <form method="post">
   <section class="section">
     <h2>FlightRadar24</h2>
     <div class="form-group">
-      <label for="fr24_api_key">FR24 API Key
-        <span class="field-state{% if settings.fr24_api_key %} is-set{% endif %}">{% if settings.fr24_api_key %}Key set{% else %}Not set{% endif %}</span>
+      <label for="fr24_api_key">FR24-API-Schlüssel
+        <span class="field-state{% if settings.fr24_api_key %} is-set{% endif %}">{% if settings.fr24_api_key %}Schlüssel hinterlegt{% else %}Kein Schlüssel{% endif %}</span>
       </label>
       <input type="password" id="fr24_api_key" name="fr24_api_key"
              value="{{ settings.fr24_api_key }}"
@@ -29,10 +29,10 @@
   </section>
 
   <section class="section">
-    <h2>Tomorrow.io (Weather)</h2>
+    <h2>Tomorrow.io (Wetter)</h2>
     <div class="form-group">
-      <label for="tomorrow_api_key">Tomorrow API Key
-        <span class="field-state{% if settings.tomorrow_api_key %} is-set{% endif %}">{% if settings.tomorrow_api_key %}Key set{% else %}Not set{% endif %}</span>
+      <label for="tomorrow_api_key">Tomorrow-API-Schlüssel
+        <span class="field-state{% if settings.tomorrow_api_key %} is-set{% endif %}">{% if settings.tomorrow_api_key %}Schlüssel hinterlegt{% else %}Kein Schlüssel{% endif %}</span>
       </label>
       <input type="password" id="tomorrow_api_key" name="tomorrow_api_key"
              value="{{ settings.tomorrow_api_key }}"
@@ -43,8 +43,8 @@
   <section class="section">
     <h2>AirLabs</h2>
     <div class="form-group">
-      <label for="airlabs_api_key">AirLabs API Key
-        <span class="field-state{% if settings.airlabs_api_key %} is-set{% endif %}">{% if settings.airlabs_api_key %}Key set{% else %}Not set{% endif %}</span>
+      <label for="airlabs_api_key">AirLabs-API-Schlüssel
+        <span class="field-state{% if settings.airlabs_api_key %} is-set{% endif %}">{% if settings.airlabs_api_key %}Schlüssel hinterlegt{% else %}Kein Schlüssel{% endif %}</span>
       </label>
       <input type="password" id="airlabs_api_key" name="airlabs_api_key"
              value="{{ settings.airlabs_api_key }}"
@@ -53,21 +53,22 @@
   </section>
 
   <section class="section">
-    <h2>adsbdb (free, no key required)</h2>
+    <h2>adsbdb (kostenlos, kein Schlüssel nötig)</h2>
     <div class="alert alert-info">
-      adsbdb.com needs no registration or API key. It's used automatically
-      for route/airline/owner enrichment whenever no AirLabs key is set
-      above — AirLabs still wins if you have a key.
+      adsbdb.com braucht weder Registrierung noch API-Schlüssel. Wird
+      automatisch für Routen-/Airline-/Halter-Anreicherung genutzt, wenn
+      oben kein AirLabs-Schlüssel hinterlegt ist — AirLabs hat weiterhin
+      Vorrang, falls vorhanden.
     </div>
     <div class="form-group">
       <label for="adsbdb_enabled">
         <input type="checkbox" id="adsbdb_enabled" name="adsbdb_enabled"
                value="1" {% if settings.adsbdb_enabled %}checked{% endif %}>
-        Enable adsbdb enrichment
+        adsbdb-Anreicherung aktivieren
       </label>
     </div>
     <div class="form-group">
-      <label for="adsbdb_enrich_nearest">Background-enrich nearest N aircraft</label>
+      <label for="adsbdb_enrich_nearest">Nächste N Flugzeuge im Hintergrund anreichern</label>
       <input type="number" id="adsbdb_enrich_nearest" name="adsbdb_enrich_nearest"
              value="{{ settings.adsbdb_enrich_nearest }}" min="0" step="1">
     </div>
@@ -75,33 +76,33 @@
       <label for="aircraft_photos_enabled">
         <input type="checkbox" id="aircraft_photos_enabled" name="aircraft_photos_enabled"
                value="1" {% if settings.aircraft_photos_enabled %}checked{% endif %}>
-        Show adsbdb aircraft photo as fallback (no per-photo photographer credit available)
+        adsbdb-Flugzeugfoto als Ersatz anzeigen (kein Fotografennachweis pro Foto verfügbar)
       </label>
     </div>
   </section>
 
   <section class="section">
-    <h2>openAIP (aviation map overlay)</h2>
+    <h2>openAIP (Luftfahrt-Karten-Overlay)</h2>
     <div class="alert alert-info">
-      Adds airspaces/airports/navaids as a transparent overlay on top of
-      the map background. Requires a free openAIP account — get a client
-      key at <a href="https://www.openaip.net" target="_blank">openaip.net</a>
-      (profile → API Clients). Data is licensed
+      Blendet Lufträume/Flughäfen/Navaids als transparentes Overlay über
+      die Kartenbasis ein. Erfordert einen kostenlosen openAIP-Account —
+      Client-Schlüssel unter <a href="https://www.openaip.net" target="_blank">openaip.net</a>
+      erstellen (Profil → API Clients). Daten lizenziert unter
       <a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a>
-      — non-commercial use only.
+      — nur nicht-kommerzielle Nutzung.
     </div>
     <div class="form-group">
-      <label for="openaip_api_key">openAIP API Key
-        <span class="field-state{% if settings.openaip_api_key %} is-set{% endif %}">{% if settings.openaip_api_key %}Key set{% else %}Not set{% endif %}</span>
+      <label for="openaip_api_key">openAIP-API-Schlüssel
+        <span class="field-state{% if settings.openaip_api_key %} is-set{% endif %}">{% if settings.openaip_api_key %}Schlüssel hinterlegt{% else %}Kein Schlüssel{% endif %}</span>
       </label>
       <input type="password" id="openaip_api_key" name="openaip_api_key"
              value="{{ settings.openaip_api_key }}"
-             placeholder="required for the overlay">
+             placeholder="für das Overlay erforderlich">
     </div>
   </section>
 
   <div class="btn-group">
-    <button type="submit" class="btn">Save</button>
+    <button type="submit" class="btn">Speichern</button>
   </div>
 </form>
 {% endblock %}

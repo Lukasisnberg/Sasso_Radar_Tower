@@ -30,7 +30,7 @@ class TestPages:
     def test_radar_get(self, client):
         r = client.get("/radar")
         assert r.status_code == 200
-        assert b"Latitude" in r.data
+        assert b"Breitengrad" in r.data
 
     def test_display_get(self, client):
         r = client.get("/display")
@@ -45,7 +45,7 @@ class TestPages:
     def test_system_get(self, client):
         r = client.get("/system")
         assert r.status_code == 200
-        assert b"Restart" in r.data
+        assert b"Neustart" in r.data
 
     def test_about_get(self, client):
         r = client.get("/about")
@@ -55,7 +55,7 @@ class TestPages:
     def test_weather_get_no_key(self, client):
         r = client.get("/weather")
         assert r.status_code == 200
-        assert b"No Tomorrow.io API key" in r.data
+        assert "Kein Tomorrow.io-API-Schlüssel".encode() in r.data
 
     def test_weather_api_no_key(self, client):
         r = client.get("/api/weather")
@@ -77,13 +77,13 @@ class TestWeatherKeyLiveReload:
         monkeypatch.setattr("flugradar.web.app.WeatherClient", MagicMock(return_value=fake_client))
 
         r = client.get("/weather")
-        assert b"No Tomorrow.io API key" in r.data
+        assert "Kein Tomorrow.io-API-Schlüssel".encode() in r.data
 
         client.post("/api-keys", data={"tomorrow_api_key": "newkey"})
 
         r = client.get("/weather")
-        assert b"No Tomorrow.io API key" not in r.data
-        assert b"Weather data currently unavailable" in r.data
+        assert "Kein Tomorrow.io-API-Schlüssel".encode() not in r.data
+        assert "Wetterdaten derzeit nicht verfügbar".encode() in r.data
 
     def test_saving_key_makes_api_weather_pick_it_up_without_restart(self, monkeypatch, client):
         from flugradar.data_sources.weather import WeatherData
@@ -333,10 +333,10 @@ class TestSystemUpdate:
 
     def test_shows_last_update_log_line(self, client, monkeypatch, tmp_path):
         log_file = tmp_path / "update.log"
-        log_file.write_text("2026-07-25T12:00:00 OK: already up to date\n")
+        log_file.write_text("2026-07-25T12:00:00 OK: bereits aktuell\n")
         monkeypatch.setattr("flugradar.web.app._UPDATE_LOG_FILE", log_file)
         r = client.get("/system")
-        assert b"already up to date" in r.data
+        assert b"bereits aktuell" in r.data
 
     def test_no_log_file_yet_does_not_crash(self, client, monkeypatch, tmp_path):
         monkeypatch.setattr("flugradar.web.app._UPDATE_LOG_FILE", tmp_path / "missing.log")

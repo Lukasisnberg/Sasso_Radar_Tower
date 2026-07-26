@@ -3,26 +3,26 @@
 {% block content %}
 <header class="page-header">
   <h1>Sasso Radar Tower</h1>
-  <p class="context">Dashboard</p>
+  <p class="context">Übersicht</p>
 </header>
 
 <section class="section">
-  <h2>Settings</h2>
+  <h2>Einstellungen</h2>
   <div class="nav-list">
-    <a href="{{ url_for('radar') }}">Radar Settings <span class="arrow">&rarr;</span></a>
-    <a href="{{ url_for('display') }}">Display <span class="arrow">&rarr;</span></a>
-    <a href="{{ url_for('weather') }}">Weather <span class="arrow">&rarr;</span></a>
-    <a href="{{ url_for('api_keys') }}">API Keys <span class="arrow">&rarr;</span></a>
+    <a href="{{ url_for('radar') }}">Radar-Einstellungen <span class="arrow">&rarr;</span></a>
+    <a href="{{ url_for('display') }}">Darstellung <span class="arrow">&rarr;</span></a>
+    <a href="{{ url_for('weather') }}">Wetter <span class="arrow">&rarr;</span></a>
+    <a href="{{ url_for('api_keys') }}">API-Schlüssel <span class="arrow">&rarr;</span></a>
     <a href="{{ url_for('system') }}">System <span class="arrow">&rarr;</span></a>
   </div>
 </section>
 
 <section class="section">
-  <h2>Quick Status</h2>
+  <h2>Kurzstatus</h2>
   <table class="info-table">
-    <tr><td>Location</td><td>{{ settings.home.lat }}, {{ settings.home.lon }}</td></tr>
+    <tr><td>Standort</td><td>{{ settings.home.lat }}, {{ settings.home.lon }}</td></tr>
     <tr><td>Radius</td><td>{{ settings.home.radius_km }} km</td></tr>
-    <tr><td>Unit</td><td>{{ settings.distance_unit }}</td></tr>
+    <tr><td>Einheit</td><td>{{ settings.distance_unit }}</td></tr>
     <tr><td>Version</td><td>{{ version }}</td></tr>
   </table>
 </section>

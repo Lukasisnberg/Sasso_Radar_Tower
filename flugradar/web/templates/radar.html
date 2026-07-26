@@ -1,26 +1,26 @@
 {% extends "base.html" %}
-{% block title %}Radar Settings - SRT{% endblock %}
+{% block title %}Radar-Einstellungen - SRT{% endblock %}
 {% block content %}
 <header class="page-header">
-  <h1>Radar Settings</h1>
-  <p class="context">Location, filters, map, tracking</p>
+  <h1>Radar-Einstellungen</h1>
+  <p class="context">Standort, Filter, Karte, Tracking</p>
 </header>
 
 {% if request.args.get('saved') %}
-<p class="save-confirm" data-autofade>Saved</p>
+<p class="save-confirm" data-autofade>Gespeichert</p>
 {% endif %}
 
 <form method="post">
   <section class="section">
-    <h2>Home Location</h2>
+    <h2>Standort</h2>
     <div class="form-row">
       <div class="form-group">
-        <label for="home_lat">Latitude</label>
+        <label for="home_lat">Breitengrad</label>
         <input type="number" step="0.0001" id="home_lat" name="home_lat"
                value="{{ settings.home.lat }}">
       </div>
       <div class="form-group">
-        <label for="home_lon">Longitude</label>
+        <label for="home_lon">Längengrad</label>
         <input type="number" step="0.0001" id="home_lon" name="home_lon"
                value="{{ settings.home.lon }}">
       </div>
@@ -28,7 +28,7 @@
   </section>
 
   <section class="section">
-    <h2>Range &amp; Filter</h2>
+    <h2>Reichweite &amp; Filter</h2>
     <div class="form-row-3">
       <div class="form-group">
         <label for="radius_km">Radius (km)</label>
@@ -36,7 +36,7 @@
                value="{{ settings.home.radius_km | int }}">
       </div>
       <div class="form-group">
-        <label for="distance_unit">Unit</label>
+        <label for="distance_unit">Einheit</label>
         <select id="distance_unit" name="distance_unit">
           <option value="km" {% if settings.distance_unit == 'km' %}selected{% endif %}>km</option>
           <option value="sm" {% if settings.distance_unit == 'sm' %}selected{% endif %}>sm</option>
@@ -44,7 +44,7 @@
         </select>
       </div>
       <div class="form-group">
-        <label for="min_altitude_ft">Min Alt (ft)</label>
+        <label for="min_altitude_ft">Mindesthöhe (ft)</label>
         <input type="number" step="100" id="min_altitude_ft" name="min_altitude_ft"
                value="{{ settings.min_altitude_ft }}">
       </div>
@@ -53,21 +53,21 @@
       <label for="highlight_emergency">
         <input type="checkbox" id="highlight_emergency" name="highlight_emergency"
                value="1" {% if settings.highlight_emergency %}checked{% endif %}>
-        Highlight emergency squawks
+        Notfall-Codes hervorheben
       </label>
     </div>
     <div class="form-group">
       <label for="highlight_military">
         <input type="checkbox" id="highlight_military" name="highlight_military"
                value="1" {% if settings.highlight_military %}checked{% endif %}>
-        Highlight military traffic
+        Militärverkehr hervorheben
       </label>
     </div>
     <div class="form-group">
       <label for="only_highlighted">
         <input type="checkbox" id="only_highlighted" name="only_highlighted"
                value="1" {% if settings.only_highlighted %}checked{% endif %}>
-        Show only highlighted (emergency/military) traffic
+        Nur hervorgehobenen (Notfall/Militär) Verkehr anzeigen
       </label>
     </div>
   </section>
@@ -75,12 +75,12 @@
   <section class="section">
     <h2>Karte</h2>
     <div class="form-group">
-      <label for="map_provider">Base map</label>
+      <label for="map_provider">Basiskarte</label>
       <select id="map_provider" name="map_provider">
-        <option value="carto_dark" {% if settings.map_provider == 'carto_dark' %}selected{% endif %}>CARTO Dark</option>
-        <option value="carto_light" {% if settings.map_provider == 'carto_light' %}selected{% endif %}>CARTO Light</option>
+        <option value="carto_dark" {% if settings.map_provider == 'carto_dark' %}selected{% endif %}>CARTO Dunkel</option>
+        <option value="carto_light" {% if settings.map_provider == 'carto_light' %}selected{% endif %}>CARTO Hell</option>
         <option value="osm" {% if settings.map_provider == 'osm' %}selected{% endif %}>OpenStreetMap</option>
-        <option value="none" {% if settings.map_provider == 'none' %}selected{% endif %}>No map</option>
+        <option value="none" {% if settings.map_provider == 'none' %}selected{% endif %}>Keine Karte</option>
       </select>
     </div>
     <div class="form-group">
@@ -88,11 +88,11 @@
         <input type="checkbox" id="openaip_overlay_enabled" name="openaip_overlay_enabled"
                value="1" {% if settings.openaip_overlay_enabled %}checked{% endif %}
                {% if not settings.openaip_api_key %}disabled{% endif %}>
-        openAIP aviation overlay (airspaces/airports/navaids)
+        openAIP-Luftraum-Overlay (Lufträume/Flughäfen/Navaids)
       </label>
       {% if not settings.openaip_api_key %}
       <p style="font-size:13px;color:var(--text-muted);">
-        Needs an API key — set one under <a href="{{ url_for('api_keys') }}">API Keys</a> first.
+        Benötigt einen API-Schlüssel — zuerst unter <a href="{{ url_for('api_keys') }}">API-Schlüssel</a> hinterlegen.
       </p>
       {% endif %}
     </div>
@@ -100,33 +100,33 @@
       <label for="rainviewer_enabled">
         <input type="checkbox" id="rainviewer_enabled" name="rainviewer_enabled"
                value="1" {% if settings.rainviewer_enabled %}checked{% endif %}>
-        RainViewer rain radar overlay (no key required)
+        RainViewer-Regenradar-Overlay (kein Schlüssel nötig)
       </label>
     </div>
     <div class="form-group">
-      <label for="map_brightness">Map brightness (%)</label>
+      <label for="map_brightness">Kartenhelligkeit (%)</label>
       <input type="range" id="map_brightness" name="map_brightness" min="0" max="100" step="5"
              value="{{ settings.map_brightness }}">
     </div>
   </section>
 
   <section class="section">
-    <h2>Flight Tracking</h2>
+    <h2>Flugverfolgung</h2>
     <p style="font-size:13px;color:var(--text-muted);">
-      Follow one flight on the tracking screen. Also settable from the
-      device (flight detail &rarr; "Track" in the footer). Ends
-      automatically once the flight lands or isn't received for the
-      timeout below.
+      Einen Flug auf dem Tracking-Screen verfolgen. Auch am Gerät
+      einstellbar (Flug-Detail &rarr; "VERFOLGEN" in der Fußzeile). Endet
+      automatisch, sobald der Flug landet oder innerhalb der
+      untenstehenden Zeitspanne nicht mehr empfangen wird.
     </p>
     <div class="form-row">
       <div class="form-group">
-        <label for="tracked_callsign">Callsign</label>
+        <label for="tracked_callsign">Rufzeichen</label>
         <input type="text" id="tracked_callsign" name="tracked_callsign"
-               value="{{ settings.tracked_callsign }}" placeholder="e.g. DLH400"
+               value="{{ settings.tracked_callsign }}" placeholder="z. B. DLH400"
                style="text-transform:uppercase;">
       </div>
       <div class="form-group">
-        <label for="tracking_timeout_s">Timeout (min)</label>
+        <label for="tracking_timeout_s">Zeitüberschreitung (Min)</label>
         <input type="number" id="tracking_timeout_s" name="tracking_timeout_min"
                min="1" step="1" value="{{ (settings.tracking_timeout_s / 60) | round | int }}">
       </div>
@@ -134,14 +134,14 @@
   </section>
 
   <div class="btn-group">
-    <button type="submit" class="btn">Save</button>
+    <button type="submit" class="btn">Speichern</button>
   </div>
 </form>
 
 <section class="section">
-  <h2>Quick Presets</h2>
+  <h2>Schnellauswahl</h2>
   <p style="font-size:13px;color:var(--text-muted);">
-    Same two fixed locations as the on-device Standort menu (Ausbaustufe 2, Schritt 4).
+    Dieselben zwei festen Standorte wie im Standort-Menü am Gerät (Ausbaustufe 2, Schritt 4).
   </p>
   <div class="preset-grid">
     {% for loc in locations %}

@@ -56,7 +56,7 @@ class TestUpToDate:
         with patch.object(update_mod, "_run", side_effect=self._rev_parse_same):
             result = update_mod.apply_update()
         assert result.ok is True
-        assert "up to date" in result.message
+        assert "bereits aktuell" in result.message
 
     @staticmethod
     def _rev_parse_same(cmd, timeout=None):
@@ -77,7 +77,7 @@ class TestDirtyWorkingTree:
         with patch.object(update_mod, "_run", side_effect=fake):
             result = update_mod.apply_update()
         assert result.ok is False
-        assert "local changes" in result.message
+        assert "lokale Änderungen" in result.message
 
 
 class TestFetchFailure:
@@ -90,7 +90,7 @@ class TestFetchFailure:
         with patch.object(update_mod, "_run", side_effect=fake):
             result = update_mod.apply_update()
         assert result.ok is False
-        assert "fetch failed" in result.message
+        assert "Abruf fehlgeschlagen" in result.message
 
 
 def _rev_parse(sha_for_head: str, sha_for_remote: str):
@@ -167,7 +167,7 @@ class TestPipFailureRollsBack:
             result = update_mod.apply_update()
 
         assert result.ok is False
-        assert "rolled back" in result.message
+        assert "zurückgesetzt" in result.message
         assert _OLD_SHA[:8] in result.message
         rollback_calls = [c for c in calls if c[:3] == ["git", "reset", "--hard"] and c[-1] == _OLD_SHA]
         assert len(rollback_calls) == 1
@@ -193,8 +193,8 @@ class TestSanityCheckFailureRollsBack:
             result = update_mod.apply_update()
 
         assert result.ok is False
-        assert "failed to import" in result.message
-        assert "rolled back" in result.message
+        assert "ließ sich nicht importieren" in result.message
+        assert "zurückgesetzt" in result.message
         assert not any(c[:2] == ["sudo", "systemctl"] for c in calls)
 
 
@@ -219,12 +219,12 @@ class TestRunAndLog:
         monkeypatch.setattr(update_mod, "LOG_FILE", tmp_path / "update.log")
         with patch.object(
             update_mod, "apply_update",
-            return_value=update_mod.UpdateResult(True, "already up to date"),
+            return_value=update_mod.UpdateResult(True, "bereits aktuell"),
         ):
             update_mod.run_and_log()
         content = (tmp_path / "update.log").read_text()
         assert "OK" in content
-        assert "already up to date" in content
+        assert "bereits aktuell" in content
 
     def test_unexpected_exception_is_caught_and_logged(self, tmp_path, monkeypatch):
         monkeypatch.setattr(update_mod, "LOG_FILE", tmp_path / "update.log")
