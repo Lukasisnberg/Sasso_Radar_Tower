@@ -34,8 +34,8 @@ class TestWeatherData:
         assert w.wind_str == ""
 
     def test_condition_from_code(self):
-        w = WeatherData(temperature_c=15, weather_code=1000, condition="Clear")
-        assert w.condition == "Clear"
+        w = WeatherData(temperature_c=15, weather_code=1000, condition="Klar")
+        assert w.condition == "Klar"
 
     def test_wind_speed_str_km(self):
         w = WeatherData(temperature_c=20, wind_speed_ms=10 / 3.6)
@@ -79,7 +79,7 @@ class TestWeatherClient:
         assert result.temperature_c == 18.5
         assert result.humidity == 65
         assert result.wind_speed_ms == 3.2
-        assert result.condition == "Partly Cloudy"
+        assert result.condition == "Teilweise bewölkt"
         assert result.pressure_hpa == 1013.25
         assert result.cloud_cover_pct == 40
         assert result.temperature_apparent_c == 17.2
@@ -276,9 +276,9 @@ class TestWeatherClientForecast:
         assert result[0].date == "2026-07-25"
         assert result[0].temp_min_c == 14.2
         assert result[0].temp_max_c == 26.8
-        assert result[0].condition == "Partly Cloudy"
-        assert result[1].condition == "Rain"
-        assert result[2].condition == "Thunderstorm"
+        assert result[0].condition == "Teilweise bewölkt"
+        assert result[1].condition == "Regen"
+        assert result[2].condition == "Gewitter"
         client.close()
 
     def test_parse_forecast_respects_days_limit(self):
@@ -347,9 +347,9 @@ class TestWeatherClientForecast:
 
 class TestWeatherCodes:
     def test_known_codes(self):
-        assert _WEATHER_CODES[1000] == "Clear"
-        assert _WEATHER_CODES[8000] == "Thunderstorm"
-        assert _WEATHER_CODES[5000] == "Snow"
+        assert _WEATHER_CODES[1000] == "Klar"
+        assert _WEATHER_CODES[8000] == "Gewitter"
+        assert _WEATHER_CODES[5000] == "Schnee"
 
     def test_all_codes_are_strings(self):
         for code, label in _WEATHER_CODES.items():

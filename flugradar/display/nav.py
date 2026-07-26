@@ -258,7 +258,10 @@ def draw_footer_buttons(
         elif kind == "radar":
             _draw_radar_icon(surface, (rect.centerx, icon_cy), icon_size, icon_color, theme)
 
-        labels = {"prev": "PREV", "next": "NEXT", "radar": "RADAR"}
+        labels = {
+            "prev": "ZURÜCK", "next": "WEITER", "radar": "RADAR",
+            "track": "FOLGEN", "untrack": "STOPP", "stop": "STOPP",
+        }
         label = labels.get(kind, kind.upper())
         label_font = get_font(scaling.s(TOKENS.font_value))
         label_color = theme.sweep_colour if accent else theme.hint
