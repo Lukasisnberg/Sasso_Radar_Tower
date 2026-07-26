@@ -30,5 +30,11 @@
     Sasso Radar Tower v{{ version | default('?') }} &mdash;
     Data: <a href="https://adsb.fi" target="_blank">adsb.fi</a>
   </footer>
+
+  <script>
+    document.querySelectorAll('[data-autofade]').forEach(function (el) {
+      setTimeout(function () { el.style.opacity = '0'; }, 2500);
+    });
+  </script>
 </body>
 </html>
