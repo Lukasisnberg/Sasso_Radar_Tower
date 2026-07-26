@@ -36,7 +36,7 @@
                value="{{ settings.home.radius_km | int }}">
       </div>
       <div class="form-group">
-        <label for="distance_unit">Einheit</label>
+        <label for="distance_unit">Distanz</label>
         <select id="distance_unit" name="distance_unit">
           <option value="km" {% if settings.distance_unit == 'km' %}selected{% endif %}>km</option>
           <option value="sm" {% if settings.distance_unit == 'sm' %}selected{% endif %}>sm</option>
@@ -53,21 +53,21 @@
       <label for="highlight_emergency">
         <input type="checkbox" id="highlight_emergency" name="highlight_emergency"
                value="1" {% if settings.highlight_emergency %}checked{% endif %}>
-        Notfall-Codes hervorheben
+        Notfall hervorheben
       </label>
     </div>
     <div class="form-group">
       <label for="highlight_military">
         <input type="checkbox" id="highlight_military" name="highlight_military"
                value="1" {% if settings.highlight_military %}checked{% endif %}>
-        Militärverkehr hervorheben
+        Militär hervorheben
       </label>
     </div>
     <div class="form-group">
       <label for="only_highlighted">
         <input type="checkbox" id="only_highlighted" name="only_highlighted"
                value="1" {% if settings.only_highlighted %}checked{% endif %}>
-        Nur hervorgehobenen (Notfall/Militär) Verkehr anzeigen
+        Nur Hervorgehobene anzeigen
       </label>
     </div>
   </section>
@@ -75,10 +75,10 @@
   <section class="section">
     <h2>Karte</h2>
     <div class="form-group">
-      <label for="map_provider">Basiskarte</label>
+      <label for="map_provider">Anbieter</label>
       <select id="map_provider" name="map_provider">
-        <option value="carto_dark" {% if settings.map_provider == 'carto_dark' %}selected{% endif %}>CARTO Dunkel</option>
-        <option value="carto_light" {% if settings.map_provider == 'carto_light' %}selected{% endif %}>CARTO Hell</option>
+        <option value="carto_dark" {% if settings.map_provider == 'carto_dark' %}selected{% endif %}>CARTO dunkel</option>
+        <option value="carto_light" {% if settings.map_provider == 'carto_light' %}selected{% endif %}>CARTO hell</option>
         <option value="osm" {% if settings.map_provider == 'osm' %}selected{% endif %}>OpenStreetMap</option>
         <option value="none" {% if settings.map_provider == 'none' %}selected{% endif %}>Keine Karte</option>
       </select>
@@ -114,7 +114,7 @@
     <h2>Flugverfolgung</h2>
     <p style="font-size:13px;color:var(--text-muted);">
       Einen Flug auf dem Tracking-Screen verfolgen. Auch am Gerät
-      einstellbar (Flug-Detail &rarr; "VERFOLGEN" in der Fußzeile). Endet
+      einstellbar (Flug-Detail &rarr; "FOLGEN" in der Fußzeile). Endet
       automatisch, sobald der Flug landet oder innerhalb der
       untenstehenden Zeitspanne nicht mehr empfangen wird.
     </p>

@@ -399,7 +399,98 @@ Schritte 1–8 aus dem Bauauftrag (Abschnitt 13) sind abgeschlossen:
     Übergangsdauer/Easing über den bestehenden `_compose_frame()`-
     Mechanismus) waren bereits aus den vorherigen Schritten korrekt.
 
-569 Tests grün.
+- **Web-Portal-Redesign** (nicht Teil von `docs/prompt-ausbaustufe-2.md`,
+  separat angefragt anhand von `docs/prompt-portal-design.md`, in 5
+  Schritten wie im Auftrag vorgegeben umgesetzt): reiner Gestaltungs-
+  Durchgang übers Flask-Portal (`flugradar/web/`), keine Änderung an
+  Routen/Formularfeldnamen/Speicherlogik.
+  - **Schritt 1**: CSS-Custom-Properties in `style.css` an `theme.py`s
+    `CLASSIC_AMBER`-Hexwerten ausgerichtet, Inter lokal per `@font-face`
+    (kein CDN), Grundraster (`.page-header`/`.section`/`.nav-list`)
+    exemplarisch aufs Dashboard angewendet. Alte `.card`-Klassen bleiben
+    vorerst bestehen, lösen aber schon die neuen Token auf, damit
+    unmigrierte Seiten sofort korrekt aussehen. Neue
+    `flugradar/tests/test_web_design.py` bindet die Farbwerte testbar an
+    `theme.py`.
+  - **Schritt 2**: übrige sechs Seiten auf dasselbe `.page-header`/
+    `.section`-Raster gezogen, dabei `.card`/`.home-grid`/`.home-link`
+    als jetzt toten Code entfernt.
+  - **Schritt 3**: Eingabefelder/Auswahllisten von gefülltem Kasten auf
+    Haarlinien-Unterstreichung umgestellt, Checkboxen zu schlichten
+    flachen Toggle-Switches, Regler von der dicken Browser-Leiste auf
+    eine dünne Linie mit Akzent-Punkt. Dabei einen echten Bug gefunden:
+    die geteilte `width:100%`-Regel zog auch Checkboxen auf volle
+    Zeilenbreite, wodurch das Label auf eine zweite Zeile umbrach.
+  - **Schritt 4**: Speicherbestätigung von gerahmtem Banner auf eine
+    ruhige, selbst ausblendende Textzeile umgestellt; API-Key-Felder
+    zeigen jetzt „Key set"/„Not set"; Restart/Shutdown bekamen einen
+    zuvor komplett fehlenden `confirm()`-Bestätigungsschritt plus beide
+    die Warnfarbe (der Auftrag nennt explizit beide als destruktiv).
+  - **Schritt 5** (Geräte-Abgleich): sollte ursprünglich nur Farben/
+    Begriffe zwischen Portal und Gerätemenü abgleichen — dabei aber
+    festgestellt, dass das Gerätemenü (`menu.py`) bereits komplett
+    Deutsch ist, während Portal und alle anderen Gerätescreens Englisch
+    sind. Kein Wording-, sondern ein Sprachunterschied. Auf Nachfrage
+    beim Nutzer: die gesamte Anwendung soll Deutsch werden — das ist die
+    unten dokumentierte Lokalisierung, kein einfacher Begriffsabgleich
+    mehr.
+- **Vollständige deutsche Lokalisierung** (ausgelöst durch obigen Fund,
+  separat vom Nutzer bestätigt: „Bitte die gesamte Anwendung in Deutscher
+  Sprache", danach „und so weiter und alles fertig machen" — alle
+  Phasen ohne weitere Rückfrage durchgezogen). Direkte Hardcodierung
+  der deutschen Texte wie in `menu.py` bereits etabliert, kein i18n-
+  Framework (genau eine Zielsprache). In fünf Phasen umgesetzt:
+  - **Phase 1**: alle acht Web-Portal-Templates, `app.py`s drei
+    Statustexte, die `confirm()`-Dialogtexte. Dabei über den Plan hinaus
+    erweitert: `flugradar/system/update.py` hat mehrere
+    `UpdateResult`-Statusmeldungen (nicht nur „already up to date"), die
+    alle in dieselbe Portal-Logzeile einfließen — nur eine zu übersetzen
+    hätte das Feature halb-deutsch gelassen, also alle mitübersetzt.
+  - **Phase 2**: `_WEATHER_CODES`-Tabelle (`data_sources/weather.py`,
+    einzige Quelle für Wetter-Zustandstexte, wirkt sich automatisch auf
+    Uhr-/Wetter-Screen und Radar-Statuszeile aus) sowie `nav.py`s
+    Fußzeilen-Label-Dict (bisher fiel `track`/`untrack`/`stop` auf den
+    englischen `kind.upper()`-Fallback zurück, da dafür schlicht kein
+    Eintrag existierte). Per Headless-Pygame-Renderbild
+    (`SDL_VIDEODRIVER=dummy`) geprüft: die zunächst vorgesehene
+    Bezeichnung „VERFOLGEN" wird im gängigen 3-Button-Footer auf
+    „VERFOLG…" abgeschnitten — durch das kürzere „FOLGEN" ersetzt, das
+    überall sauber passt.
+  - **Phase 3**: `route_progress.py`s `vertical_rate_label()` liefert
+    jetzt „Steigflug"/„Sinkflug"/„Horizontalflug" statt „climbing"/
+    „descending"/„level" — `tracking.py`s Vergleichsstelle (steuert, ob
+    das Steig-/Sink-Tag in der Telemetriezeile erscheint) im selben
+    Commit mitgeändert, da direkt gekoppelt. `tracking.py`s vier
+    Sonderfall-Meldungen sowie `detail.py`s „Kein Verkehr"/„Von"/„Nach"/
+    „NOTFALL" übersetzt; Luftfahrt-Kürzel (HDG, V/S, Squawk, kt, fpm, ft)
+    bewusst unverändert (Nutzerentscheidung: international gebräuchlich).
+  - **Phase 4**: Kompassbuchstaben in `renderer.py` von N/E/S/W auf
+    N/O/S/W (deutsche Konvention: O für Ost), Radar-Statuszeile
+    übersetzt. Neue `flugradar/display/de_dates.py` mit Wochentags-/
+    Monatsnamen-Lookup-Tabellen — bewusst *kein* `locale.setlocale()`,
+    da nirgends im Code aufgerufen und fragil (bräuchte `de_DE.UTF-8`
+    auf dem Pi generiert); stattdessen dieselbe Art fest hinterlegter
+    Tabelle wie `_WEATHER_CODES`. `clock.py` nutzt sie jetzt für Datum
+    und lässt `%p` (AM/PM) im 12h-Modus komplett weg (im Deutschen
+    unüblich). `weather.py`s Spaltenbeschriftungen („GEFÜHLT WIE" u. a.)
+    per Headless-Renderbild auf Breite geprüft, bevor final übernommen.
+    `about.py`s Attributionszeilen übersetzt (nur das Label-Wort vor dem
+    Doppelpunkt, Domains/Lizenznamen unverändert).
+  - **Phase 5** (Abschlussabgleich): systematischer Vergleich jedes
+    Gerätemenü-Labels gegen die entsprechende Portal-Bezeichnung ergab
+    mehrere echte Diskrepanzen für dieselbe Einstellung — "Basiskarte"
+    vs. "Anbieter" (`map_provider`), "Einheit" vs. "Distanz"
+    (`distance_unit`), "Notfall-Codes hervorheben" vs. "Notfall
+    hervorheben", "Militärverkehr hervorheben" vs. "Militär hervorheben",
+    "Sweep-Animation" vs. "Sweep", "Flugzeug-Beschriftung" vs.
+    "Beschriftung", sowie "Luftfahrt-Overlay"/"Luftfahrt-Karten-Overlay"
+    (About-Seite, API-Keys-Seite) vs. "openAIP-Luftraum" (Gerätemenü,
+    Radar-Seite) — auf die jeweils im Gerätemenü etablierte Bezeichnung
+    vereinheitlicht. Außerdem ein stehengebliebenes "VERFOLGEN" in
+    `radar.html`s Hilfetext gefunden (Rest von vor der FOLGEN-Entscheidung
+    in Phase 2) und korrigiert.
+
+584 Tests grün.
 
 ## Offene Punkte
 
