@@ -263,7 +263,7 @@ def draw_footer_buttons(
             "track": "FOLGEN", "untrack": "STOPP", "stop": "STOPP",
         }
         label = labels.get(kind, kind.upper())
-        label_font = get_font(scaling.s(TOKENS.font_value))
+        label_font = get_font(scaling.s(TOKENS.font_standard))
         label_color = theme.sweep_colour if accent else theme.hint
         text = fit_text(label, label_font, rect.width - scaling.s(6))
         rendered = label_font.render(text, True, label_color)
