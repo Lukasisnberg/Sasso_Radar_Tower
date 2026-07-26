@@ -1,9 +1,12 @@
 {% extends "base.html" %}
 {% block title %}About - SRT{% endblock %}
 {% block content %}
-<h1>About</h1>
+<header class="page-header">
+  <h1>About</h1>
+  <p class="context">Version, data sources, attribution</p>
+</header>
 
-<div class="card">
+<section class="section">
   <h2>Sasso Radar Tower</h2>
   <table class="info-table">
     <tr><td>Version</td><td>{{ version }}</td></tr>
@@ -20,9 +23,9 @@
     <tr><td>Weather Icons</td><td><a href="https://erikflowers.github.io/weather-icons/" target="_blank">Weather Icons by Erik Flowers</a> (SIL OFL 1.1)</td></tr>
     <tr><td>Display</td><td>720 x 720 round DSI LCD</td></tr>
   </table>
-</div>
+</section>
 
-<div class="card">
+<section class="section">
   <h2>Attribution</h2>
   <p style="font-size:13px;color:var(--text-muted);">
     ADS-B data provided by <a href="https://adsb.fi" target="_blank">adsb.fi</a>.
@@ -41,5 +44,5 @@
     Rain radar data by <a href="https://www.rainviewer.com" target="_blank">RainViewer</a>.
     {% endif %}
   </p>
-</div>
+</section>
 {% endblock %}

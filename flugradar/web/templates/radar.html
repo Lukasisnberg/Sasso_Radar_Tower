@@ -1,14 +1,17 @@
 {% extends "base.html" %}
 {% block title %}Radar Settings - SRT{% endblock %}
 {% block content %}
-<h1>Radar Settings</h1>
+<header class="page-header">
+  <h1>Radar Settings</h1>
+  <p class="context">Location, filters, map, tracking</p>
+</header>
 
 {% if request.args.get('saved') %}
 <div class="alert alert-success">Settings saved.</div>
 {% endif %}
 
 <form method="post">
-  <div class="card">
+  <section class="section">
     <h2>Home Location</h2>
     <div class="form-row">
       <div class="form-group">
@@ -22,9 +25,9 @@
                value="{{ settings.home.lon }}">
       </div>
     </div>
-  </div>
+  </section>
 
-  <div class="card">
+  <section class="section">
     <h2>Range &amp; Filter</h2>
     <div class="form-row-3">
       <div class="form-group">
@@ -67,9 +70,9 @@
         Show only highlighted (emergency/military) traffic
       </label>
     </div>
-  </div>
+  </section>
 
-  <div class="card">
+  <section class="section">
     <h2>Karte</h2>
     <div class="form-group">
       <label for="map_provider">Base map</label>
@@ -105,9 +108,9 @@
       <input type="range" id="map_brightness" name="map_brightness" min="0" max="100" step="5"
              value="{{ settings.map_brightness }}">
     </div>
-  </div>
+  </section>
 
-  <div class="card">
+  <section class="section">
     <h2>Flight Tracking</h2>
     <p style="font-size:13px;color:var(--text-muted);">
       Follow one flight on the tracking screen. Also settable from the
@@ -128,14 +131,14 @@
                min="1" step="1" value="{{ (settings.tracking_timeout_s / 60) | round | int }}">
       </div>
     </div>
-  </div>
+  </section>
 
   <div class="btn-group">
     <button type="submit" class="btn">Save</button>
   </div>
 </form>
 
-<div class="card">
+<section class="section">
   <h2>Quick Presets</h2>
   <p style="font-size:13px;color:var(--text-muted);">
     Same two fixed locations as the on-device Standort menu (Ausbaustufe 2, Schritt 4).
@@ -147,7 +150,7 @@
     </button>
     {% endfor %}
   </div>
-</div>
+</section>
 
 <style>
 .preset-grid {

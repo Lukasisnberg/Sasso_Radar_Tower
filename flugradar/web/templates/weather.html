@@ -1,7 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Weather - SRT{% endblock %}
 {% block content %}
-<h1>Weather</h1>
+<header class="page-header">
+  <h1>Weather</h1>
+  <p class="context">Current conditions &amp; forecast</p>
+</header>
 
 {% if not has_key %}
 <div class="alert alert-info">
@@ -13,7 +16,7 @@
   Weather data currently unavailable.
 </div>
 {% else %}
-<div class="card">
+<section class="section">
   <h2>Current Conditions</h2>
   <table class="info-table">
     <tr><td>Temperature</td><td>{{ "%.1f"|format(weather.temperature_c) }} °C</td></tr>
@@ -37,11 +40,11 @@
     <tr><td>Cloud Cover</td><td>{{ "%.0f"|format(weather.cloud_cover_pct) }} %</td></tr>
     {% endif %}
   </table>
-</div>
+</section>
 {% endif %}
 
 {% if forecast %}
-<div class="card">
+<section class="section">
   <h2>3-Day Forecast</h2>
   <table class="info-table">
     <tr><th>Day</th><th>Condition</th><th>Min / Max</th></tr>
@@ -53,14 +56,14 @@
     </tr>
     {% endfor %}
   </table>
-</div>
+</section>
 {% endif %}
 
-<div class="card">
+<section class="section">
   <h2>Location</h2>
   <table class="info-table">
     <tr><td>Latitude</td><td>{{ settings.home.lat }}</td></tr>
     <tr><td>Longitude</td><td>{{ settings.home.lon }}</td></tr>
   </table>
-</div>
+</section>
 {% endblock %}

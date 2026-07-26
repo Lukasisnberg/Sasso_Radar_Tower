@@ -1,7 +1,10 @@
 {% extends "base.html" %}
 {% block title %}API Keys - SRT{% endblock %}
 {% block content %}
-<h1>API Keys</h1>
+<header class="page-header">
+  <h1>API Keys</h1>
+  <p class="context">Stored locally, used only by their respective provider</p>
+</header>
 
 {% if request.args.get('saved') %}
 <div class="alert alert-success">Settings saved.</div>
@@ -13,7 +16,7 @@
 </div>
 
 <form method="post">
-  <div class="card">
+  <section class="section">
     <h2>FlightRadar24</h2>
     <div class="form-group">
       <label for="fr24_api_key">FR24 API Key</label>
@@ -21,9 +24,9 @@
              value="{{ settings.fr24_api_key }}"
              placeholder="optional">
     </div>
-  </div>
+  </section>
 
-  <div class="card">
+  <section class="section">
     <h2>Tomorrow.io (Weather)</h2>
     <div class="form-group">
       <label for="tomorrow_api_key">Tomorrow API Key</label>
@@ -31,9 +34,9 @@
              value="{{ settings.tomorrow_api_key }}"
              placeholder="optional">
     </div>
-  </div>
+  </section>
 
-  <div class="card">
+  <section class="section">
     <h2>AirLabs</h2>
     <div class="form-group">
       <label for="airlabs_api_key">AirLabs API Key</label>
@@ -41,9 +44,9 @@
              value="{{ settings.airlabs_api_key }}"
              placeholder="optional">
     </div>
-  </div>
+  </section>
 
-  <div class="card">
+  <section class="section">
     <h2>adsbdb (free, no key required)</h2>
     <div class="alert alert-info">
       adsbdb.com needs no registration or API key. It's used automatically
@@ -69,9 +72,9 @@
         Show adsbdb aircraft photo as fallback (no per-photo photographer credit available)
       </label>
     </div>
-  </div>
+  </section>
 
-  <div class="card">
+  <section class="section">
     <h2>openAIP (aviation map overlay)</h2>
     <div class="alert alert-info">
       Adds airspaces/airports/navaids as a transparent overlay on top of
@@ -87,7 +90,7 @@
              value="{{ settings.openaip_api_key }}"
              placeholder="required for the overlay">
     </div>
-  </div>
+  </section>
 
   <div class="btn-group">
     <button type="submit" class="btn">Save</button>

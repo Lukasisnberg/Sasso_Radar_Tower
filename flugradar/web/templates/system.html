@@ -1,22 +1,25 @@
 {% extends "base.html" %}
 {% block title %}System - SRT{% endblock %}
 {% block content %}
-<h1>System</h1>
+<header class="page-header">
+  <h1>System</h1>
+  <p class="context">Status, update, restart</p>
+</header>
 
 {% if message %}
 <div class="alert alert-success">{{ message }}</div>
 {% endif %}
 
-<div class="card">
+<section class="section">
   <h2>Info</h2>
   <table class="info-table">
     <tr><td>Version</td><td>{{ version }}</td></tr>
     <tr><td>Location</td><td>{{ settings.home.lat }}, {{ settings.home.lon }}</td></tr>
     <tr><td>Radius</td><td>{{ settings.home.radius_km }} km</td></tr>
   </table>
-</div>
+</section>
 
-<div class="card">
+<section class="section">
   <h2>Update</h2>
   <p style="font-size:13px;color:var(--text-muted);">
     Pulls the latest code from GitHub, checks it imports cleanly, and
@@ -31,13 +34,13 @@
     Last attempt: {{ update_log }}
   </p>
   {% endif %}
-</div>
+</section>
 
-<div class="card">
+<section class="section">
   <h2>Actions</h2>
   <form method="post" class="btn-group">
     <button type="submit" name="action" value="restart" class="btn">Restart</button>
     <button type="submit" name="action" value="shutdown" class="btn btn-danger">Shutdown</button>
   </form>
-</div>
+</section>
 {% endblock %}

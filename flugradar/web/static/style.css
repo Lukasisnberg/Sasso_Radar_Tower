@@ -211,11 +211,10 @@ footer {
 }
 
 /* ============================================================
-   Legacy component classes (.card/.form-group/.btn/.alert/...) --
-   still used by pages this pass hasn't migrated to the system above
-   yet. Kept working (structure unchanged) but recomputed onto the
-   same tokens, so every page shows the correct palette immediately
-   even before its own step lands.
+   Legacy component classes (.form-group/.btn/.alert/...) -- every
+   page now uses the .page-header/.section grid above; these classes
+   are the form controls and feedback elements Schritt 3/4 of the
+   redesign still unify. Kept working, resolving onto the same tokens.
    ============================================================ */
 
 h1 {
@@ -224,25 +223,6 @@ h1 {
   font-weight: 600;
   margin-bottom: 20px;
   letter-spacing: 0.5px;
-}
-
-.card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 20px;
-  margin-bottom: 16px;
-}
-
-.card h2 {
-  color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  margin-bottom: 16px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--border);
 }
 
 .form-group {
@@ -346,43 +326,7 @@ h1 {
   color: var(--text-muted);
 }
 
-.home-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 20px;
-}
-
-.home-link {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 20px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  text-decoration: none;
-  color: var(--text);
-  transition: border-color 0.15s ease;
-}
-
-.home-link:hover {
-  border-color: var(--accent);
-  text-decoration: none;
-}
-
-.home-link .icon {
-  font-size: 28px;
-  margin-bottom: 8px;
-}
-
-.home-link .label {
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
 @media (max-width: 480px) {
   .form-row, .form-row-3 { grid-template-columns: 1fr; }
-  .home-grid { grid-template-columns: 1fr; }
   nav.top-nav .links { gap: 10px; }
 }
