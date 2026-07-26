@@ -3,11 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b0d0f">
   <title>{% block title %}Sasso Radar Tower{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-  <nav>
+  <nav class="top-nav">
     <div class="container">
       <a class="brand" href="{{ url_for('index') }}">SRT</a>
       <div class="links">

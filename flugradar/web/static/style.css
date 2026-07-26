@@ -1,18 +1,78 @@
+/* ============================================================
+   Sasso Radar Tower -- Web Portal
+   Design tokens mirror flugradar/display/theme.py's CLASSIC_AMBER
+   theme + design-token module (same hex values, same 4-tier type
+   scale, same hairline-divider language) so the portal and the
+   on-device panel read as one application, not two different tools.
+   See docs/prompt-portal-design.md.
+
+   Fonts are vendored locally under static/fonts/ (Inter, SIL OFL --
+   see static/fonts/LICENSE.txt) rather than loaded from a CDN: the
+   portal runs on the local network, sometimes with no internet at
+   all. If the font files are ever missing, @font-face simply fails
+   to match and the browser falls through to the next family in the
+   stack below -- no broken page, no JS needed for that fallback.
+   ============================================================ */
+
+@font-face {
+  font-family: "Inter";
+  src: url("fonts/Inter-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Inter";
+  src: url("fonts/Inter-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
+  /* Colours -- identical hex values to theme.py's CLASSIC_AMBER theme. */
   --bg: #0b0d0f;
-  --bg-card: #12161a;
-  --border: #1e2830;
-  --text: #edeff1;
-  --text-muted: #6a7a80;
-  --accent: #64d2b4;
-  --accent-dim: #3a8a70;
-  --danger: #c83c3c;
+  --surface: #1a1c1d;         /* theme.surface -- raised elements, sparingly */
+  --surface-accent: #252112;  /* theme.surface_accent -- warm-tinted surface */
+  --text: #ebebe9;            /* theme.label -- primary text */
+  --text-muted: #b4b9b6;      /* theme.muted -- secondary text */
+  --text-hint: #969b98;       /* theme.hint -- labels, timestamps, captions */
+  --hairline: rgba(116, 99, 38, 0.24);  /* theme.radar_ring @ TOKENS.hairline_alpha */
+  --accent: #d2b446;          /* theme.sweep_colour -- the one accent colour */
+  --danger: #c83c3c;          /* theme.emergency -- destructive actions only */
   --danger-dim: #802828;
-  --input-bg: #080a0c;
-  --input-border: #1e2830;
-  --success-bg: #0a1614;
-  --success-border: #3a8a70;
-  --radius: 6px;
+
+  /* Backward-compatible aliases for the pre-redesign component classes
+     (.card/.form-group/.btn/.alert) that later steps of this pass still
+     migrate one page at a time -- recomputed from the tokens above so
+     even an unmigrated page picks up the correct palette immediately,
+     rather than looking broken or stuck on the old teal accent until
+     its own step lands. */
+  --bg-card: var(--surface);
+  --border: var(--hairline);
+  --input-bg: #08090a;
+  --input-border: var(--hairline);
+  --success-bg: var(--surface-accent);
+  --success-border: var(--accent);
+  --radius: 2px; /* flat, not bubbly -- see "keine runden bunten Buttons" */
+
+  /* Type -- same 4-tier hierarchy as the display's font_title/value/
+     standard/small, sized for a normal-DPI browser rather than the
+     round display's reference-size scaling system. */
+  --font-title: 20px;
+  --font-value: 16px;
+  --font-standard: 14px;
+  --font-small: 12px;
+
+  /* Spacing grid -- everything is a multiple of one base unit. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 40px;
+
+  --max-width: 640px;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -22,64 +82,141 @@ body {
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
-  font-size: 14px;
+  font-size: var(--font-standard);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  font-variant-numeric: tabular-nums; /* every number, everywhere -- nothing jitters */
 }
 
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
 .container {
-  max-width: 640px;
+  max-width: var(--max-width);
   margin: 0 auto;
-  padding: 20px 16px;
+  padding: var(--space-4) var(--space-3);
 }
 
-nav {
-  background: var(--bg-card);
-  border-bottom: 1px solid var(--border);
-  padding: 12px 0;
-  position: sticky;
-  top: 0;
-  z-index: 10;
+/* --- top navigation: quiet, text-based, the accent marks the current
+   page -- no tabs, no bordered buttons (Layout: "keine schweren Tabs,
+   keine Buttons mit Rahmen"). --- */
+nav.top-nav {
+  border-bottom: 1px solid var(--hairline);
+  padding: var(--space-3) 0;
 }
 
-nav .container {
+nav.top-nav .container {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
   padding-top: 0;
   padding-bottom: 0;
 }
 
-nav .brand {
-  color: var(--accent);
+nav.top-nav .brand {
+  color: var(--text-muted);
   font-weight: 600;
-  font-size: 15px;
-  letter-spacing: 1.5px;
+  font-size: var(--font-small);
+  letter-spacing: 0.15em;
   text-transform: uppercase;
 }
 
-nav .links {
+nav.top-nav .links {
   display: flex;
-  gap: 16px;
+  gap: var(--space-3);
   flex-wrap: wrap;
 }
 
-nav .links a {
-  color: var(--text-muted);
-  font-size: 13px;
-  padding: 4px 0;
-  letter-spacing: 0.3px;
+nav.top-nav .links a {
+  color: var(--text-hint);
+  font-size: var(--font-small);
+  letter-spacing: 0.03em;
+  padding: var(--space-1) 0;
   transition: color 0.15s ease;
 }
 
-nav .links a:hover,
-nav .links a.active {
-  color: var(--accent);
-  text-decoration: none;
+nav.top-nav .links a:hover { color: var(--text); text-decoration: none; }
+nav.top-nav .links a.active { color: var(--accent); }
+
+/* --- page header: small, quiet, uppercase title with letter-spacing --
+   not a big bold headline (Layout: "kleiner, ruhiger Titel ... keine
+   große fette Überschrift"). --- */
+.page-header { margin-bottom: var(--space-4); }
+
+.page-header h1 {
+  font-size: var(--font-standard);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
 }
+
+.page-header .context {
+  font-size: var(--font-small);
+  color: var(--text-hint);
+  margin-top: var(--space-1);
+}
+
+/* --- sections: hairline dividers instead of bordered/shadowed cards
+   (Grundprinzipien: "Haarlinien statt Kästen und Schatten"). --- */
+.section {
+  padding: var(--space-4) 0;
+  border-top: 1px solid var(--hairline);
+}
+
+.section:first-child { border-top: none; padding-top: 0; }
+
+.section h2 {
+  font-size: var(--font-small);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-hint);
+  margin-bottom: var(--space-3);
+}
+
+/* --- info tables: shared by the dashboard/about/weather/system pages --- */
+.info-table { width: 100%; }
+.info-table tr td { padding: var(--space-2) 0; border-bottom: 1px solid var(--hairline); }
+.info-table tr:last-child td { border-bottom: none; }
+.info-table td:first-child { color: var(--text-muted); width: 45%; font-size: var(--font-small); }
+
+/* --- dashboard quick-nav: a plain hairline-separated link list instead
+   of a grid of big coloured icon tiles (Grundprinzipien: "keine
+   dekorativen Elemente ohne Funktion"). --- */
+.nav-list { display: flex; flex-direction: column; }
+
+.nav-list a {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--hairline);
+  color: var(--text);
+}
+
+.nav-list a:last-child { border-bottom: none; }
+.nav-list a:hover { color: var(--accent); text-decoration: none; }
+.nav-list .arrow { color: var(--text-hint); }
+
+footer {
+  text-align: center;
+  padding: var(--space-4);
+  color: var(--text-hint);
+  font-size: var(--font-small);
+  border-top: 1px solid var(--hairline);
+  margin-top: var(--space-5);
+}
+
+/* ============================================================
+   Legacy component classes (.card/.form-group/.btn/.alert/...) --
+   still used by pages this pass hasn't migrated to the system above
+   yet. Kept working (structure unchanged) but recomputed onto the
+   same tokens, so every page shows the correct palette immediately
+   even before its own step lands.
+   ============================================================ */
 
 h1 {
   color: var(--text);
@@ -204,29 +341,9 @@ h1 {
 }
 
 .alert-info {
-  background: #0a1218;
-  border: 1px solid #1e3040;
-  color: #80b0c8;
-}
-
-.info-table {
-  width: 100%;
-  font-variant-numeric: tabular-nums;
-}
-
-.info-table tr td {
-  padding: 6px 0;
-  border-bottom: 1px solid var(--border);
-}
-
-.info-table tr:last-child td {
-  border-bottom: none;
-}
-
-.info-table td:first-child {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
   color: var(--text-muted);
-  width: 40%;
-  font-size: 13px;
 }
 
 .home-grid {
@@ -264,17 +381,8 @@ h1 {
   color: var(--text-muted);
 }
 
-footer {
-  text-align: center;
-  padding: 20px;
-  color: var(--text-muted);
-  font-size: 11px;
-  border-top: 1px solid var(--border);
-  margin-top: 40px;
-}
-
 @media (max-width: 480px) {
   .form-row, .form-row-3 { grid-template-columns: 1fr; }
   .home-grid { grid-template-columns: 1fr; }
-  nav .links { gap: 10px; }
+  nav.top-nav .links { gap: 10px; }
 }
