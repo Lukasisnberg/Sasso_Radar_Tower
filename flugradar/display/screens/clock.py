@@ -9,6 +9,7 @@ from typing import Optional
 import pygame
 
 from flugradar.display import nav, scaling
+from flugradar.display.de_dates import month_name, weekday_full
 from flugradar.display.draw_helpers import draw_center_text
 from flugradar.display.fonts import get_font
 from flugradar.display.theme import TOKENS, Theme
@@ -61,11 +62,10 @@ class ClockScreen:
         now = time.localtime()
         if self.time_format == "12h":
             time_str = time.strftime("%I:%M", now).lstrip("0") or "0"
-            seconds_str = time.strftime(":%S %p", now)
         else:
             time_str = time.strftime("%H:%M", now)
-            seconds_str = time.strftime(":%S", now)
-        date_str = time.strftime("%A, %d %B %Y", now)
+        seconds_str = time.strftime(":%S", now)
+        date_str = f"{weekday_full(now.tm_wday)}, {now.tm_mday:02d}. {month_name(now.tm_mon)} {now.tm_year}"
 
         time_surf = self._font_time.render(time_str, True, self.theme.label)
         sec_surf = self._font_sec.render(seconds_str, True, self.theme.muted)
@@ -92,6 +92,6 @@ class ClockScreen:
 
         hint_y = cy + int(scaling.visible_radius() * 0.68)
         draw_center_text(
-            surface, "swipe up: radar · swipe right: forecast",
+            surface, "hoch wischen: Radar · rechts wischen: Vorhersage",
             hint_y, self._font_hint, self.theme.hint,
         )

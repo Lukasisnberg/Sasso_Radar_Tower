@@ -204,7 +204,7 @@ class TestBareTempStr:
 class TestWeekdayLabel:
     def test_valid_date_returns_uppercase_abbreviation(self):
         label = _weekday_label("2026-01-03")
-        assert len(label) == 3
+        assert len(label) == 2  # German weekday abbreviations are 2 letters (Mo/Di/Mi/...)
         assert label == label.upper()
 
     def test_malformed_date_falls_back(self):

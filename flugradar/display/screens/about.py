@@ -58,18 +58,18 @@ class AboutScreen:
             f"{_hostname()} · {_ip_address()}",
             f"http://{_hostname()}.local:5000",
             "",
-            f"Display {self.size}×{self.size}",
-            "Data: adsb.fi (opendata)",
-            "Enrichment: adsbdb.com (opendata)",
-            "Maps: CARTO / OpenStreetMap",
-            "Photos: planespotters.net",
+            f"Bildschirm {self.size}×{self.size}",
+            "Daten: adsb.fi (opendata)",
+            "Anreicherung: adsbdb.com (opendata)",
+            "Karten: CARTO / OpenStreetMap",
+            "Fotos: planespotters.net",
             "Icons: adsb-radar.com",
-            "Weather icons: erikflowers.github.io (SIL OFL 1.1)",
+            "Wettericons: erikflowers.github.io (SIL OFL 1.1)",
         ]
         if self.openaip_enabled:
-            lines.append("Aviation overlay: openAIP.net (CC BY-NC 4.0)")
+            lines.append("Luftraum-Overlay: openAIP.net (CC BY-NC 4.0)")
         if self.rainviewer_enabled:
-            lines.append("Rain radar: RainViewer.com")
+            lines.append("Regenradar: RainViewer.com")
 
         for line in lines:
             if not line:
@@ -95,7 +95,7 @@ def _hostname() -> str:
     try:
         return socket.gethostname()
     except Exception:
-        return "unknown"
+        return "unbekannt"
 
 
 def _ip_address() -> str:
@@ -106,4 +106,4 @@ def _ip_address() -> str:
         s.close()
         return addr
     except Exception:
-        return "no network"
+        return "kein Netzwerk"

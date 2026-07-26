@@ -108,7 +108,7 @@ class RadarRenderer:
         self._ensure_fonts()
         cx, cy = int(self.proj.centre[0]), int(self.proj.centre[1])
         edge = self.size // 2 - 2
-        cardinals = {0: "N", 90: "E", 180: "S", 270: "W"}
+        cardinals = {0: "N", 90: "O", 180: "S", 270: "W"}
         for deg in range(0, 360, 10):
             angle_rad = math.radians(deg - 90)
             is_cardinal = deg in cardinals
@@ -397,7 +397,7 @@ class RadarRenderer:
         self._ensure_fonts()
         dist_val = km_to_unit(radius_km, self.distance_unit)
         ulbl = unit_label(self.distance_unit)
-        parts = [f"{count} aircraft", f"{dist_val:.0f}{ulbl} range"]
+        parts = [f"{count} Flugzeuge", f"{dist_val:.0f}{ulbl} Reichweite"]
         if weather_str:
             parts.append(weather_str)
         parts.append("adsb.fi")

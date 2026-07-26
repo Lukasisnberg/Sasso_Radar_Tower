@@ -10,9 +10,8 @@ the bottom.
 The SVG is a position/proportion reference only -- it is never rendered
 or embedded, the screen is rebuilt in pygame like every other screen.
 Where its hex colours disagree with theme.py's tokens, the tokens win
-(the mockup shows intent, not binding values); UI text stays English to
-match every other screen in the app, even though the mockup itself is
-labelled in German.
+(the mockup shows intent, not binding values); UI text is German to
+match every other screen in the app and the mockup's own labelling.
 
 Reached by swiping right from the Clock screen; mirrors the existing
 "swipe right to enter, swipe left/down to return" pattern already used
@@ -27,6 +26,7 @@ import pygame
 from flugradar.data_sources.route_progress import format_duration
 from flugradar.data_sources.weather import DailyForecast, WeatherData
 from flugradar.display import nav, scaling
+from flugradar.display.de_dates import weekday_short
 from flugradar.display.draw_helpers import render_tracked_text
 from flugradar.display.fonts import get_font
 from flugradar.display.theme import TOKENS, Theme
@@ -180,9 +180,9 @@ class WeatherScreen:
         header_bottom = self._draw_header(surface)
 
         if not self.has_key:
-            self._draw_message(surface, header_bottom, "No Tomorrow.io key configured", "Add one in the portal")
+            self._draw_message(surface, header_bottom, "Kein Tomorrow.io-Schlüssel konfiguriert", "Im Portal hinzufügen")
         elif self.current is None:
-            self._draw_message(surface, header_bottom, "Weather unavailable")
+            self._draw_message(surface, header_bottom, "Wetter nicht verfügbar")
         else:
             y = self._draw_current(surface)
             y = self._draw_values_row(surface, y)
@@ -209,14 +209,14 @@ class WeatherScreen:
             clock_str = time.strftime("%I:%M", now).lstrip("0") or "0"
         else:
             clock_str = time.strftime("%H:%M", now)
-        subhead = f"{time.strftime('%a', now)} · {clock_str}"
+        subhead = f"{weekday_short(now.tm_wday)} · {clock_str}"
         # A stale reading (fetch failed, showing the last known values)
         # gets a quiet age disclaimer folded into the same line, rather
         # than a whole extra row -- there's no vertical room to spare
         # (see the gap constants above) and this is meant to be
         # unobtrusive ("dezenter Hinweis") anyway.
         if self.has_key and self.current is not None and self.is_stale and self.age_s is not None:
-            subhead += f" · updated {format_duration(self.age_s)} ago"
+            subhead += f" · vor {format_duration(self.age_s)} aktualisiert"
         sub_surf = self._subhead_font.render(subhead, True, self.theme.hint)
         sub_rect = sub_surf.get_rect(midtop=(cx, self._y(_SUBHEAD_Y_FRAC)))
         surface.blit(sub_surf, sub_rect)
@@ -272,8 +272,8 @@ class WeatherScreen:
             if wx.precipitation_probability_pct is not None else ""
         columns = (
             ("WIND", wx.wind_speed_str(self.distance_unit)),
-            ("FEELS LIKE", feels_like),
-            ("RAIN", rain),
+            ("GEFÜHLT WIE", feels_like),
+            ("REGEN", rain),
         )
         label_y = start_y + scaling.s(_VALUES_ROW_GAP)
         label_h = self._value_label_font.get_height()
@@ -346,7 +346,7 @@ class WeatherScreen:
             colour = self.theme.sweep_colour if i == 0 else self.theme.page_dot_inactive
             pygame.draw.circle(surface, colour, (x0 + i * gap, dot_y), dot_r)
 
-        label_surf = render_tracked_text(self._indicator_font, "WEATHER", self.theme.hint, spacing=scaling.s(2))
+        label_surf = render_tracked_text(self._indicator_font, "WETTER", self.theme.hint, spacing=scaling.s(2))
         label_y = dot_y + scaling.s(_INDICATOR_LABEL_GAP)
         surface.blit(label_surf, label_surf.get_rect(midtop=(cx, label_y)))
 
@@ -369,7 +369,8 @@ def _bare_temp_str(temp_c: float, unit: str) -> str:
 
 def _weekday_label(date_str: str) -> str:
     try:
-        return time.strftime("%a", time.strptime(date_str, "%Y-%m-%d")).upper()
+        parsed = time.strptime(date_str, "%Y-%m-%d")
+        return weekday_short(parsed.tm_wday).upper()
     except ValueError:
         return "—"
 
