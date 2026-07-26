@@ -102,21 +102,21 @@ class TestFormatDuration:
 
 class TestVerticalRateLabel:
     def test_climbing(self):
-        assert vertical_rate_label(1500) == "climbing"
+        assert vertical_rate_label(1500) == "Steigflug"
 
     def test_descending(self):
-        assert vertical_rate_label(-1200) == "descending"
+        assert vertical_rate_label(-1200) == "Sinkflug"
 
     def test_level_flight(self):
-        assert vertical_rate_label(0) == "level"
+        assert vertical_rate_label(0) == "Horizontalflug"
 
     def test_small_noise_reads_as_level(self):
-        assert vertical_rate_label(50) == "level"
-        assert vertical_rate_label(-50) == "level"
+        assert vertical_rate_label(50) == "Horizontalflug"
+        assert vertical_rate_label(-50) == "Horizontalflug"
 
     def test_none_is_empty(self):
         assert vertical_rate_label(None) == ""
 
     def test_custom_threshold(self):
-        assert vertical_rate_label(150, level_threshold_fpm=200) == "level"
-        assert vertical_rate_label(250, level_threshold_fpm=200) == "climbing"
+        assert vertical_rate_label(150, level_threshold_fpm=200) == "Horizontalflug"
+        assert vertical_rate_label(250, level_threshold_fpm=200) == "Steigflug"

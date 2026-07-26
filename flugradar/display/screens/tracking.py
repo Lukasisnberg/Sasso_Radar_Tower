@@ -98,11 +98,11 @@ class TrackedFlightScreen:
         y = top
 
         if self.aircraft is None:
-            y = draw_center_text(surface, "No flight tracked", y, self._font_title, self.theme.label)
+            y = draw_center_text(surface, "Kein Flug verfolgt", y, self._font_title, self.theme.label)
             y += scaling.s(6)
             for line in (
-                "Select a flight on the radar, open its",
-                "detail view, and tap \"Track\" in the footer.",
+                "Ein Flugzeug im Radar auswählen, die Detailansicht",
+                "öffnen und unten auf \"FOLGEN\" tippen.",
             ):
                 y = draw_center_text(surface, line, y, self._font_body, self.theme.muted)
             nav.draw_footer_buttons(surface, self._footer_buttons_state(), self.theme)
@@ -129,10 +129,10 @@ class TrackedFlightScreen:
             y = draw_center_text(surface, airline_name, y, self._font_detail, self.theme.muted)
 
         if not self.is_current:
-            age = "just now" if (self.last_seen_ago_s or 0) < 60 else f"{format_duration(self.last_seen_ago_s)} ago"
+            age = "gerade eben" if (self.last_seen_ago_s or 0) < 60 else f"vor {format_duration(self.last_seen_ago_s)}"
             y += scaling.s(2)
             y = draw_center_text(
-                surface, f"No current data · last seen {age}", y, self._font_detail, self.theme.emergency,
+                surface, f"Keine aktuellen Daten · zuletzt gesehen {age}", y, self._font_detail, self.theme.emergency,
             )
 
         y += scaling.s(8)
@@ -146,10 +146,10 @@ class TrackedFlightScreen:
             label += "  →  "
             label += format_route_endpoint(ac.destination) if ac.destination else "?"
             y = draw_center_text(surface, label, y, self._font_body, self.theme.route)
-            y = draw_center_text(surface, "Route position unknown", y, self._font_detail, self.theme.hint)
+            y = draw_center_text(surface, "Routenposition unbekannt", y, self._font_detail, self.theme.hint)
             y += scaling.s(6)
         else:
-            y = draw_center_text(surface, "Route unknown", y, self._font_detail, self.theme.hint)
+            y = draw_center_text(surface, "Route unbekannt", y, self._font_detail, self.theme.hint)
             y += scaling.s(6)
 
         rows = self._telemetry_rows(ac)
@@ -197,7 +197,7 @@ class TrackedFlightScreen:
         remaining_km = remaining_distance_km(cur_lat, cur_lon, dest_lat, dest_lon)
         eta_s = remaining_time_s(remaining_km, ac.ground_speed_kt)
         dist_val = km_to_unit(remaining_km, self.distance_unit)
-        summary = f"{dist_val:.0f} {unit_label(self.distance_unit)} remaining · ETA {format_duration(eta_s)}"
+        summary = f"{dist_val:.0f} {unit_label(self.distance_unit)} verbleibend · ETA {format_duration(eta_s)}"
         row_y = draw_center_text(surface, summary, row_y, self._font_num, self.theme.info_text)
         return row_y
 
@@ -211,7 +211,7 @@ class TrackedFlightScreen:
         if ac.ground_speed_kt is not None:
             parts.append(f"{ac.ground_speed_kt:.0f} kt")
         vs_label = vertical_rate_label(ac.vertical_rate_fpm)
-        if vs_label and vs_label != "level":
+        if vs_label and vs_label != "Horizontalflug":
             parts.append(vs_label)
         if parts:
             colour = altitude_tag_color(ac.vertical_rate_fpm, self.theme)

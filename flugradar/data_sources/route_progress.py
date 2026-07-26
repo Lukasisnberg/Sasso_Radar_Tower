@@ -59,7 +59,7 @@ def vertical_rate_label(vertical_rate_fpm: Optional[int], level_threshold_fpm: i
     if vertical_rate_fpm is None:
         return ""
     if vertical_rate_fpm > level_threshold_fpm:
-        return "climbing"
+        return "Steigflug"
     if vertical_rate_fpm < -level_threshold_fpm:
-        return "descending"
-    return "level"
+        return "Sinkflug"
+    return "Horizontalflug"

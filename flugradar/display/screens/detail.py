@@ -113,9 +113,9 @@ class DetailScreen:
         # this flat, font-only row list. A single known endpoint has no
         # such ambiguity and stays a plain row.
         if ac.origin and not ac.destination:
-            rows.append((f"From {format_route_endpoint(ac.origin)}", self._body_font, self.theme.route))
+            rows.append((f"Von {format_route_endpoint(ac.origin)}", self._body_font, self.theme.route))
         elif ac.destination and not ac.origin:
-            rows.append((f"To {format_route_endpoint(ac.destination)}", self._body_font, self.theme.route))
+            rows.append((f"Nach {format_route_endpoint(ac.destination)}", self._body_font, self.theme.route))
 
         return rows
 
@@ -210,7 +210,7 @@ class DetailScreen:
         if ac is None:
             nav.draw_breadcrumb(surface, ["Radar", "Detail"], self.theme)
             nav.draw_footer_buttons(surface, ["radar"], self.theme)
-            draw_center_text(surface, "No traffic", scaling.center_y(), self._body_font, self.theme.muted)
+            draw_center_text(surface, "Kein Verkehr", scaling.center_y(), self._body_font, self.theme.muted)
             return
 
         crumb_label = display_flight_id(
@@ -250,7 +250,7 @@ class DetailScreen:
         if ac.is_emergency:
             y += scaling.s(6)
             if chrome_top <= y <= bottom:
-                draw_center_text(surface, f"⚠ EMERGENCY {ac.squawk}", int(y), self._title_font, self.theme.emergency)
+                draw_center_text(surface, f"⚠ NOTFALL {ac.squawk}", int(y), self._title_font, self.theme.emergency)
 
         total_h = y + self._scroll.offset - chrome_top
         self._scroll.max_offset = max(0, total_h - (bottom - chrome_top))

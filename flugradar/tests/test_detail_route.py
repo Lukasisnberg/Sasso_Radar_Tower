@@ -86,14 +86,14 @@ class TestSingleEndpointUnaffected:
         rows = screen._build_header_rows(ac)
         route_rows = [r for r in rows if "FRA" in r[0]]
         assert len(route_rows) == 1
-        assert route_rows[0][0].startswith("From ")
+        assert route_rows[0][0].startswith("Von ")
 
     def test_destination_only_is_a_single_row_from_header(self, screen):
         ac = Aircraft(icao_hex="a", callsign="DLH1", origin=None, destination="MUC")
         rows = screen._build_header_rows(ac)
         route_rows = [r for r in rows if "MUC" in r[0]]
         assert len(route_rows) == 1
-        assert route_rows[0][0].startswith("To ")
+        assert route_rows[0][0].startswith("Nach ")
 
     def test_neither_known_adds_no_route_row(self, screen):
         ac = Aircraft(icao_hex="a", callsign="DLH1", origin=None, destination=None)
