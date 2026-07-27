@@ -141,7 +141,7 @@ class RadarApp:
             time_format=self.settings.time_format,
             location_label=location_display_name(self.settings.home.lat, self.settings.home.lon),
         )
-        gestures = GestureRecogniser()
+        gestures = GestureRecogniser(self.screen_size)
 
         if self.settings.tracked_callsign:
             self._tracked_last_seen = time.monotonic()

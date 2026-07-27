@@ -522,6 +522,20 @@ Schritte 1–8 aus dem Bauauftrag (Abschnitt 13) sind abgeschlossen:
      SONAME `libSDL2-2.0.so.0` über Minor-Versionen hinweg stabil hält.
      Live am Gerät bestätigt (Radar-UI füllt das gesamte runde Panel,
      keine Taskleiste/Fensterrahmen mehr).
+- **Touch nach Kiosk-Umstieg kaputt** (direkter Nebenbefund des obigen
+  Fixes, beim Reboot-Test bemerkt): Radar lief, aber Antippen löste nichts
+  aus. Ursache lag nicht am Touch-Chip (Goodix liefert Rohereignisse
+  nachweislich weiterhin einwandfrei, per direktem `/dev/input/event*`-
+  Mitschnitt bestätigt), sondern an `GestureRecogniser`
+  (`flugradar/display/gestures.py`): die hörte ausschließlich auf
+  `pygame.MOUSEBUTTONDOWN`/`UP`. Unter `desktop`/Xwayland übersetzt
+  Wayland/libinput Touch automatisch in Mausereignisse, das lief also nie
+  auf; unter `kiosk`/`kmsdrm` liefert SDL native `FINGERDOWN`/`FINGERUP`
+  mit normalisierten (0..1) Koordinaten, die die App nie abfragte. Beide
+  Eventarten laufen jetzt durch dieselbe Tap-/Swipe-Logik
+  (`GestureRecogniser` braucht dafür `screen_size` im Konstruktor, um die
+  normalisierten Finger-Koordinaten in Pixel umzurechnen); `app.py`
+  entsprechend angepasst. Live am Gerät bestätigt.
 
 ## Offene Punkte
 

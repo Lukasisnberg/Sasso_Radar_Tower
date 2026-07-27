@@ -13,9 +13,12 @@ def init_pygame():
     pygame.quit()
 
 
+_SCREEN_SIZE = 720
+
+
 @pytest.fixture
 def gr():
-    return GestureRecogniser()
+    return GestureRecogniser(_SCREEN_SIZE)
 
 
 def _mouse_down(pos):
@@ -24,6 +27,18 @@ def _mouse_down(pos):
 
 def _mouse_up(pos):
     return pygame.event.Event(pygame.MOUSEBUTTONUP, button=1, pos=pos)
+
+
+def _finger_down(pos):
+    return pygame.event.Event(
+        pygame.FINGERDOWN, x=pos[0] / _SCREEN_SIZE, y=pos[1] / _SCREEN_SIZE
+    )
+
+
+def _finger_up(pos):
+    return pygame.event.Event(
+        pygame.FINGERUP, x=pos[0] / _SCREEN_SIZE, y=pos[1] / _SCREEN_SIZE
+    )
 
 
 def _scroll(y):
@@ -60,6 +75,23 @@ class TestSwipe:
         gr.process_event(_mouse_down((100, 100)))
         g = gr.process_event(_mouse_up((105, 200)))
         assert g.type == GestureType.SWIPE_DOWN
+
+
+class TestFingerTouch:
+    """Real panel input: SDL delivers FINGERDOWN/UP, not MOUSEBUTTONDOWN/UP."""
+
+    def test_simple_tap(self, gr):
+        assert gr.process_event(_finger_down((100, 100))) is None
+        g = gr.process_event(_finger_up((102, 101)))
+        assert g is not None
+        assert g.type == GestureType.TAP
+        assert g.x == 100 and g.y == 100
+
+    def test_swipe_right(self, gr):
+        gr.process_event(_finger_down((100, 100)))
+        g = gr.process_event(_finger_up((200, 105)))
+        assert g is not None
+        assert g.type == GestureType.SWIPE_RIGHT
 
 
 class TestZoom:
