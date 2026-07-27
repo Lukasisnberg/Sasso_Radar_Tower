@@ -492,6 +492,37 @@ Schritte 1–8 aus dem Bauauftrag (Abschnitt 13) sind abgeschlossen:
 
 584 Tests grün.
 
+- **Echter Kiosk-Modus zum Laufen gebracht** (separat angefragt, im
+  Anschluss an einen DSI-Displaybringup mit Wackelkontakt-Ursache).
+  `DISPLAY_BACKEND=kiosk` (`SDL_VIDEODRIVER=kmsdrm`) scheiterte bisher
+  immer mit `pygame.error: kmsdrm not available`, und zwar aus zwei
+  unabhängigen Gründen übereinander:
+  1. Das laufende `labwc`/`lightdm` hielt den DRM-Ausgang bereits als
+     Compositor — ein zweiter Prozess kann KMS/DRM nicht gleichzeitig
+     exklusiv übernehmen. Behoben durch einen echten Boot-ohne-Desktop:
+     `systemctl set-default multi-user.target` + `systemctl disable
+     lightdm`, `flugradar-display.service` hängt jetzt an
+     `multi-user.target` statt an `graphical(-session).target`
+     (`install.sh`, `/etc/systemd/system/flugradar-display.service`).
+     Reiner Nebeneffekt: der bisherige `DISPLAY_BACKEND=desktop`-Modus
+     (Xwayland/labwc, für Pi Connect/Fernwartung) braucht seitdem einen
+     manuell gestarteten `lightdm` — SSH und Web-Portal sind davon
+     unberührt.
+  2. Selbst ohne Compositor blieb derselbe Fehler bestehen — Ursache war,
+     dass das über pip installierte `pygame`-Wheel seine **eigene**,
+     mitgelieferte SDL2 (`pygame.libs/libSDL2-2-*.so`, 2.28.4) mitbringt,
+     die nur mit `wayland`/`dummy`/`offscreen` kompiliert ist, kein
+     `kmsdrm` (per `strings` gegenverglichen mit der System-SDL2 aus apt,
+     2.32.4, die `kmsdrm` sehr wohl enthält — daher auch nie ein einziger
+     `/dev/dri`-Zugriff im strace, das gebündelte SDL2 kennt den
+     Treibernamen schlicht nicht). Behoben durch
+     `LD_PRELOAD=/usr/lib/aarch64-linux-gnu/libSDL2-2.0.so.0` nur im
+     `kiosk`-Zweig von `flugradar-display-start.sh` (erzwingt die
+     System-SDL2 statt der gebündelten) — ABI-kompatibel, da SDL2 die
+     SONAME `libSDL2-2.0.so.0` über Minor-Versionen hinweg stabil hält.
+     Live am Gerät bestätigt (Radar-UI füllt das gesamte runde Panel,
+     keine Taskleiste/Fensterrahmen mehr).
+
 ## Offene Punkte
 
 - FAA VFR Sectional Charts (Abschnitt 5.3) weiterhin nicht gebaut — kein

@@ -96,8 +96,8 @@ info "Installing systemd services..."
 cat > /etc/systemd/system/flugradar-display.service <<UNIT
 [Unit]
 Description=Sasso Radar Tower — Display
-After=graphical-session.target
-Wants=graphical-session.target
+After=multi-user.target
+Wants=multi-user.target
 
 [Service]
 Type=simple
@@ -110,7 +110,7 @@ StandardOutput=journal
 StandardError=journal
 
 [Install]
-WantedBy=graphical.target
+WantedBy=multi-user.target
 UNIT
 
 cat > /etc/systemd/system/flugradar-web.service <<UNIT
@@ -162,6 +162,11 @@ case "${DISPLAY_BACKEND}" in
         export SDL_VIDEODRIVER=kmsdrm
         unset DISPLAY
         unset XAUTHORITY
+        # pygame's bundled SDL2 (pygame.libs/) ships without KMSDRM support —
+        # force the system SDL2 (has it compiled in) via LD_PRELOAD instead.
+        if [[ -e /usr/lib/aarch64-linux-gnu/libSDL2-2.0.so.0 ]]; then
+            export LD_PRELOAD=/usr/lib/aarch64-linux-gnu/libSDL2-2.0.so.0
+        fi
         ;;
     *)
         echo "[SRT] Unknown DISPLAY_BACKEND='${DISPLAY_BACKEND}' — use 'desktop' or 'kiosk'" >&2
@@ -225,7 +230,11 @@ echo "  Portal:    http://$(hostname).local:5000"
 echo "  Logs:      journalctl -u flugradar-display -f"
 echo ""
 echo "  Display mode: DISPLAY_BACKEND=desktop (default)"
-echo "  Switch to kiosk: set DISPLAY_BACKEND=kiosk in ${ENV_FILE}"
+echo "  Switch to kiosk: set DISPLAY_BACKEND=kiosk in ${ENV_FILE}, then also:"
+echo "    sudo systemctl disable lightdm"
+echo "    sudo systemctl set-default multi-user.target"
+echo "  (kiosk mode needs exclusive DRM access — the desktop compositor must not"
+echo "   auto-start, or SDL's kmsdrm driver will fail to grab the display)"
 echo ""
 echo "  Start now: sudo systemctl start flugradar-display flugradar-web"
 echo "  Reboot to launch automatically."

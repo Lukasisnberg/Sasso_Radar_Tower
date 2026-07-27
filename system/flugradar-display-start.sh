@@ -25,6 +25,11 @@ case "${DISPLAY_BACKEND}" in
         export SDL_VIDEODRIVER=kmsdrm
         unset DISPLAY
         unset XAUTHORITY
+        # pygame's bundled SDL2 (pygame.libs/) ships without KMSDRM support —
+        # force the system SDL2 (has it compiled in) via LD_PRELOAD instead.
+        if [[ -e /usr/lib/aarch64-linux-gnu/libSDL2-2.0.so.0 ]]; then
+            export LD_PRELOAD=/usr/lib/aarch64-linux-gnu/libSDL2-2.0.so.0
+        fi
         ;;
     *)
         echo "[SRT] Unknown DISPLAY_BACKEND='${DISPLAY_BACKEND}' — use 'desktop' or 'kiosk'" >&2
