@@ -67,8 +67,25 @@ sudo bash install.sh
 Installs system dependencies, creates a Python virtualenv, copies the
 project to `~/sasso-radar-tower`, and registers two systemd services
 (`system/systemd/flugradar-display.service`,
-`flugradar-web.service`) that start on boot. Two display backends,
-switchable via `DISPLAY_BACKEND` in `.env`:
+`flugradar-web.service`) that start on boot. It also adds the two DSI
+overlays needed for the round panel to `/boot/firmware/config.txt`
+(`dtoverlay=vc4-kms-v3d` and `dtoverlay=vc4-kms-dsi-waveshare-panel`).
+
+**Before setting up a second/new Pi**, confirm those overlay lines still
+match the currently-running device — Waveshare's DSI overlay sometimes
+needs a size/model parameter that isn't obvious from the datasheet alone,
+and the safest source of truth is the config that's already proven to
+work:
+
+```bash
+ssh <user>@<hostname>.local "cat /boot/firmware/config.txt"
+```
+
+Compare the `dtoverlay=vc4-kms-dsi-waveshare-panel` line against what
+`install.sh` writes; if the working device has extra parameters on that
+line, add them to `install.sh` before running it on the new Pi.
+
+Two display backends, switchable via `DISPLAY_BACKEND` in `.env`:
 
 - `desktop` — runs over the existing X11/Xwayland desktop session
   (default; compatible with screen-sharing tools like Pi Connect while
