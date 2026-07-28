@@ -109,21 +109,23 @@ re-sync the project directory manually instead (e.g. `rsync -a
 --exclude='.git' --exclude='.venv' ./ ~/sasso-radar-tower/`) and restart
 both services.
 
-### WLAN setup via QR code
+### WLAN setup on-device
 
 If the Pi can't reach a known WLAN, `flugradar-network-watchdog` (its own
-systemd service, starting early at boot before the display) opens a
-`SassoRadar-Setup` hotspot and the display switches to a QR code — scan it
-to join the hotspot, then pick a real network from the page that opens
-(`http://<pi-ip>/wifi-setup`) and enter its password. Two separate
-tolerances, both configurable via `.env`:
+systemd service, starting early at boot before the display) switches the
+display to a dedicated WLAN screen — a scrollable list of nearby networks,
+tap to select, on-screen keyboard for the password. The Pi joins the
+network directly (`nmcli device wifi connect`); no hotspot, no phone, no
+second device involved. Also reachable any time via the on-device menu
+(System → WLAN einrichten). Two separate tolerances, both configurable
+via `.env`:
 
 - **At boot**: no connection after `WIFI_BOOT_GRACE_S` (default 45s) →
-  setup mode immediately. Skipped entirely (setup mode starts right away)
-  if NetworkManager has no saved WLAN profile at all yet.
+  WLAN screen shown immediately. Skipped entirely (shown right away) if
+  NetworkManager has no saved WLAN profile at all yet.
 - **While running**: a working connection drops → tolerate the outage for
   `WIFI_OUTAGE_TOLERANCE_S` (default 5 min, e.g. a router reboot) before
-  falling back to setup mode; resets if the connection returns on its own.
+  showing the WLAN screen; resets if the connection returns on its own.
 
 Uses NetworkManager (`nmcli`) directly, no hostapd/dnsmasq of its own.
 

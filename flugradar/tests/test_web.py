@@ -7,7 +7,6 @@ import pytest
 
 from flugradar.config import settings as settings_mod
 from flugradar.config.settings import AppSettings
-from flugradar.system import network_watchdog as network_watchdog_mod
 from flugradar.web.app import create_app
 
 
@@ -343,76 +342,6 @@ class TestSystemUpdate:
         monkeypatch.setattr("flugradar.web.app._UPDATE_LOG_FILE", tmp_path / "missing.log")
         r = client.get("/system")
         assert r.status_code == 200
-
-    def test_wifi_setup_button_triggers_hotspot(self, client, monkeypatch):
-        mock_trigger = MagicMock()
-        monkeypatch.setattr(network_watchdog_mod, "trigger_wifi_setup", mock_trigger)
-        r = client.post("/system", data={"action": "wifi_setup"})
-        assert r.status_code == 200
-        mock_trigger.assert_called_once_with()
-        assert "kurzzeitig nicht erreichbar".encode() in r.data
-
-    def test_wifi_setup_does_not_trigger_on_plain_get(self, client, monkeypatch):
-        mock_trigger = MagicMock()
-        monkeypatch.setattr(network_watchdog_mod, "trigger_wifi_setup", mock_trigger)
-        client.get("/system")
-        mock_trigger.assert_not_called()
-
-
-class TestWifiSetup:
-    def test_get_lists_networks_sorted_no_duplicates(self, client, monkeypatch):
-        monkeypatch.setattr(
-            network_watchdog_mod, "scan_networks",
-            lambda: [
-                {"ssid": "StrongWifi", "signal": 80, "secured": True},
-                {"ssid": "WeakWifi", "signal": 20, "secured": False},
-            ],
-        )
-        r = client.get("/wifi-setup")
-        assert r.status_code == 200
-        assert b"StrongWifi" in r.data
-        assert b"WeakWifi" in r.data
-        # strongest network listed before the weaker one
-        assert r.data.index(b"StrongWifi") < r.data.index(b"WeakWifi")
-
-    def test_post_success_shows_confirmation_and_does_not_restart_hotspot(self, client, monkeypatch):
-        monkeypatch.setattr(network_watchdog_mod, "scan_networks", lambda: [])
-        monkeypatch.setattr(network_watchdog_mod, "connect_to_wifi", lambda ssid, pw: (True, "ok"))
-        mock_start_hotspot = MagicMock()
-        monkeypatch.setattr(network_watchdog_mod, "start_hotspot", mock_start_hotspot)
-
-        r = client.post("/wifi-setup", data={"ssid": "HomeWifi", "password": "secret123"})
-
-        assert r.status_code == 200
-        assert "HomeWifi".encode() in r.data
-        mock_start_hotspot.assert_not_called()
-
-    def test_post_failure_shows_error_and_restarts_hotspot(self, client, monkeypatch):
-        monkeypatch.setattr(network_watchdog_mod, "scan_networks", lambda: [])
-        monkeypatch.setattr(
-            network_watchdog_mod, "connect_to_wifi",
-            lambda ssid, pw: (False, "Secrets were required, but not provided"),
-        )
-        mock_start_hotspot = MagicMock()
-        monkeypatch.setattr(network_watchdog_mod, "start_hotspot", mock_start_hotspot)
-
-        r = client.post("/wifi-setup", data={"ssid": "HomeWifi", "password": "wrong"})
-
-        assert r.status_code == 200
-        assert "fehlgeschlagen".encode() in r.data
-        mock_start_hotspot.assert_called_once()
-
-    def test_post_without_ssid_shows_error(self, client, monkeypatch):
-        monkeypatch.setattr(network_watchdog_mod, "scan_networks", lambda: [])
-        r = client.post("/wifi-setup", data={"ssid": "", "password": ""})
-        assert r.status_code == 200
-        assert "auswählen".encode() in r.data
-
-    def test_captive_portal_probes_redirect_to_wifi_setup(self, client):
-        for path in ("/generate_204", "/hotspot-detect.html", "/connecttest.txt"):
-            r = client.get(path)
-            assert r.status_code == 302
-            assert r.headers["Location"].endswith("/wifi-setup")
 
 
 class TestRestApi:

@@ -12,7 +12,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-display = ["pygame>=2.5", "numpy>=1.24", "qrcode>=7.4"]
+display = ["pygame>=2.5", "numpy>=1.24"]
 web = ["flask>=3.0"]
 dev = ["pytest>=7.4", "responses>=0.24"]
 
@@ -20,7 +20,7 @@ dev = ["pytest>=7.4", "responses>=0.24"]
 flugradar-cli = "flugradar.cli:main"
 flugradar-display = "flugradar.main:main"
 flugradar-web = "flugradar.web.run:main"
-flugradar-network-watchdog = "flugradar.system.network_watchdog:main"
+flugradar-network-watchdog = "flugradar.system.network:main"
 
 [tool.setuptools.packages.find]
 include = ["flugradar*"]

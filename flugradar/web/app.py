@@ -10,27 +10,9 @@ from flugradar import __version__
 from flugradar.config.locations import LOCATIONS
 from flugradar.config.settings import AppSettings, PORTAL_SETTINGS_FILE
 from flugradar.data_sources.weather import WeatherClient
-from flugradar.system import network_watchdog
 from flugradar.system.actions import system_action
 from flugradar.system.update import LOG_FILE as _UPDATE_LOG_FILE
 from flugradar.system.update import trigger_update_async
-
-# Common OS captive-portal probe URLs -- redirecting them to /wifi-setup is
-# what makes a phone pop its "sign in to network" browser automatically
-# when it joins the setup hotspot. Best-effort: this only fires if the
-# probe's DNS lookup actually resolves to us in the first place, which
-# needs the dnsmasq-shared wildcard config install.sh writes
-# (/etc/NetworkManager/dnsmasq-shared.d/) -- without it, the fixed URL
-# shown on the display / QR follow-up text is the fallback.
-_CAPTIVE_PORTAL_PROBES = [
-    "/generate_204",          # Android
-    "/gen_204",
-    "/hotspot-detect.html",   # iOS / macOS
-    "/library/test/success.html",
-    "/connecttest.txt",       # Windows
-    "/ncsi.txt",
-    "/success.txt",           # Firefox
-]
 
 log = logging.getLogger(__name__)
 
@@ -176,54 +158,9 @@ def create_app(settings: AppSettings | None = None) -> Flask:
         elif action == "update":
             message = "Update im Hintergrund gestartet — unten in einer Minute nachsehen."
             trigger_update_async()
-        elif action == "wifi_setup":
-            message = (
-                "WLAN-Setup-Hotspot wird geöffnet — dieses Portal ist gleich "
-                "kurzzeitig nicht erreichbar, bis ein neues Netzwerk eingerichtet ist."
-            )
-            network_watchdog.trigger_wifi_setup()
         return render_template(
             "system.html", settings=settings, version=__version__, message=message,
             update_log=_last_update_log_line(),
-        )
-
-    @app.route("/wifi-setup", methods=["GET", "POST"])
-    def wifi_setup():
-        message = None
-        error = None
-        if request.method == "POST":
-            ssid = request.form.get("ssid", "").strip()
-            password = request.form.get("password", "")
-            if not ssid:
-                error = "Bitte ein WLAN auswählen."
-            else:
-                ok, detail = network_watchdog.connect_to_wifi(ssid, password)
-                if ok:
-                    message = (
-                        f"Verbindung zu {ssid} hergestellt. Der Setup-Hotspot wird "
-                        "in Kürze beendet -- die Statusanzeige auf dem Gerät zeigt "
-                        "das Ergebnis, sobald dieses Telefon die Verbindung verliert."
-                    )
-                else:
-                    error = f"Verbindung zu {ssid} fehlgeschlagen: {detail or 'unbekannter Fehler'}"
-                    # nmcli's connect attempt drops our own hotspot on the same
-                    # radio even when it then fails -- bring it back up so this
-                    # phone can retry instead of being stranded with no network.
-                    cfg = network_watchdog.WatchdogConfig.from_env()
-                    network_watchdog.start_hotspot(cfg.hotspot_ssid, cfg.hotspot_password)
-        networks = network_watchdog.scan_networks()
-        return render_template(
-            "wifi_setup.html", networks=networks, message=message, error=error,
-        )
-
-    def _redirect_to_wifi_setup():
-        return redirect(url_for("wifi_setup"))
-
-    for _probe_path in _CAPTIVE_PORTAL_PROBES:
-        app.add_url_rule(
-            _probe_path,
-            f"captive_probe_{_probe_path.strip('/').replace('/', '_')}",
-            _redirect_to_wifi_setup,
         )
 
     @app.route("/weather")

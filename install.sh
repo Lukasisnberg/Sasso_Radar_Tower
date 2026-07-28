@@ -248,11 +248,13 @@ if [[ -f "${CONFIG_TXT}" ]]; then
     fi
 fi
 
-# --- WLAN setup: sudoers + captive-portal DNS ---
-# nmcli needs root to change network state (hotspot/connect), but
-# flugradar-network-watchdog and flugradar-web run as the regular user like
-# every other service here -- narrowly scoped to the nmcli binary itself
-# rather than a blanket NOPASSWD:ALL.
+# --- WLAN setup: sudoers for nmcli ---
+# nmcli needs root to scan/connect, but flugradar-network-watchdog and the
+# display app run as the regular user like every other service here --
+# narrowly scoped to the nmcli binary itself rather than a blanket
+# NOPASSWD:ALL. The WLAN setup screen (flugradar/display/screens/wifi.py)
+# connects the Pi directly to the target network -- no more hotspot, so
+# no captive-portal DNS trickery is needed here either.
 info "Adding sudoers rule for nmcli..."
 SUDOERS_FILE="/etc/sudoers.d/flugradar-nmcli"
 cat > "${SUDOERS_FILE}" <<SUDOERS
@@ -261,23 +263,10 @@ SUDOERS
 chmod 440 "${SUDOERS_FILE}"
 visudo -cf "${SUDOERS_FILE}" || { error "Generated sudoers file is invalid, removing it."; rm -f "${SUDOERS_FILE}"; }
 
-# Makes phones actually pop their "sign in to network" browser when they
-# join the setup hotspot: NetworkManager's hotspot mode runs its own
-# dnsmasq instance (gateway 10.42.0.1 by default), but doesn't otherwise
-# answer DNS queries with anything useful since there's no upstream
-# internet behind an AP-only hotspot. This wildcard drop-in makes every
-# hostname resolve to the hotspot itself, so the OS's captive-portal probe
-# requests (see _CAPTIVE_PORTAL_PROBES in flugradar/web/app.py) actually
-# reach flugradar-web instead of timing out.
-if [[ -d /etc/NetworkManager ]]; then
-    DNSMASQ_SHARED_DIR="/etc/NetworkManager/dnsmasq-shared.d"
-    mkdir -p "${DNSMASQ_SHARED_DIR}"
-    cat > "${DNSMASQ_SHARED_DIR}/sasso-radar-captive.conf" <<'DNSMASQ'
-# Sasso Radar Tower -- WLAN setup hotspot: answer every DNS query with the
-# hotspot's own gateway IP (NetworkManager's shared/hotspot default).
-address=/#/10.42.0.1
-DNSMASQ
-fi
+# Remove a leftover from the earlier hotspot-based approach, if present --
+# harmless to leave (nothing creates a "shared" NetworkManager connection
+# anymore to ever trigger it), but stale config serves no purpose now.
+rm -f /etc/NetworkManager/dnsmasq-shared.d/sasso-radar-captive.conf
 
 # --- Kiosk mode systemd wiring ---
 # kmsdrm needs exclusive DRM access -- the desktop compositor (lightdm) must
