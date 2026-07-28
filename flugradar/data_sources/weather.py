@@ -118,8 +118,10 @@ class WeatherClient:
         self._session.headers["User-Agent"] = "SassoRadarTower/0.1"
         self._cache: Optional[WeatherData] = None
         self._cache_ts: float = 0.0
+        self._last_attempt_ts: float = 0.0
         self._forecast_cache: list[DailyForecast] = []
         self._forecast_cache_ts: float = 0.0
+        self._forecast_last_attempt_ts: float = 0.0
         # Tracks the *current-conditions* fetch specifically (not the
         # forecast) -- that's the "right now" data the weather screen
         # shows most prominently, so it's the one that gets an "as of"
@@ -128,13 +130,22 @@ class WeatherClient:
         self._last_fetch_failed: bool = False
 
     def get_weather(self) -> Optional[WeatherData]:
-        if self._cache and (time.monotonic() - self._cache_ts) < self._cache_ttl_s:
+        now = time.monotonic()
+        if self._cache and (now - self._cache_ts) < self._cache_ttl_s:
             self._last_fetch_failed = False
             return self._cache
+        # get_weather() is called every render frame regardless of which
+        # screen is active -- without this, a failing fetch (e.g. a rate
+        # limit) would be retried every single frame forever, since a
+        # failure never used to advance _cache_ts. Reuse the same TTL as
+        # a retry backoff for failed attempts.
+        if self._last_attempt_ts and (now - self._last_attempt_ts) < self._cache_ttl_s:
+            return self._cache
+        self._last_attempt_ts = now
         try:
             data = self._fetch()
             self._cache = data
-            self._cache_ts = time.monotonic()
+            self._cache_ts = now
             self._last_fetch_failed = False
         except Exception:
             log.exception("Weather fetch failed, returning cached data")
@@ -158,12 +169,16 @@ class WeatherClient:
         return time.monotonic() - self._cache_ts
 
     def get_forecast(self, days: int = 3) -> list[DailyForecast]:
-        if self._forecast_cache and (time.monotonic() - self._forecast_cache_ts) < self._forecast_cache_ttl_s:
+        now = time.monotonic()
+        if self._forecast_cache and (now - self._forecast_cache_ts) < self._forecast_cache_ttl_s:
             return self._forecast_cache[:days]
+        if self._forecast_last_attempt_ts and (now - self._forecast_last_attempt_ts) < self._forecast_cache_ttl_s:
+            return self._forecast_cache[:days]
+        self._forecast_last_attempt_ts = now
         try:
             data = self._fetch_forecast(days)
             self._forecast_cache = data
-            self._forecast_cache_ts = time.monotonic()
+            self._forecast_cache_ts = now
         except Exception:
             log.exception("Forecast fetch failed, returning cached data")
         return self._forecast_cache[:days]

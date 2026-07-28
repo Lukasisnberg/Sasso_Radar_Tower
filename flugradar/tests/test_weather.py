@@ -148,6 +148,26 @@ class TestWeatherClient:
         assert client.get_weather() is None
         client.close()
 
+    @patch("flugradar.data_sources.weather.requests.Session")
+    def test_failed_fetch_is_not_retried_on_the_very_next_call(self, mock_session_cls):
+        """get_weather() runs every render frame -- a failing fetch (e.g. a
+        rate limit) must not be retried on every single one of them, or it
+        stalls the render loop with a blocking request each frame."""
+        mock_session = MagicMock()
+        mock_session.get.side_effect = ConnectionError("offline")
+        mock_session_cls.return_value = mock_session
+
+        client = WeatherClient("test-key", 47.0, 8.0, cache_ttl_s=300)
+        assert client.get_weather() is None
+        assert mock_session.get.call_count == 1
+
+        # Called again immediately, as the render loop would next frame --
+        # must not hit the network again before the backoff elapses.
+        assert client.get_weather() is None
+        assert mock_session.get.call_count == 1
+
+        client.close()
+
 
 class TestWeatherClientStaleness:
     """Backs the weather screen's "last known values + age hint" offline
