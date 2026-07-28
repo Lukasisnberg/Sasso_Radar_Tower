@@ -214,9 +214,29 @@ if [[ -f "${CONFIG_TXT}" ]]; then
         echo "# Sasso Radar Tower — display config" >> "${CONFIG_TXT}"
         echo "dtoverlay=vc4-kms-v3d" >> "${CONFIG_TXT}"
     fi
+    # Waveshare 4" round DSI panel driver (docs/ANFORDERUNGEN.md Abschnitt 2).
+    # Without this the KMS overlay above drives the generic HDMI/composite
+    # pipeline but never talks to the physical round panel.
+    if ! grep -q "dtoverlay=vc4-kms-dsi-waveshare-panel" "${CONFIG_TXT}"; then
+        info "Adding Waveshare DSI panel overlay to ${CONFIG_TXT}..."
+        echo "dtoverlay=vc4-kms-dsi-waveshare-panel" >> "${CONFIG_TXT}"
+    fi
     if ! grep -q "disable_splash" "${CONFIG_TXT}"; then
         echo "disable_splash=1" >> "${CONFIG_TXT}"
     fi
+fi
+
+# --- Kiosk mode systemd wiring ---
+# kmsdrm needs exclusive DRM access -- the desktop compositor (lightdm) must
+# not auto-start, or SDL's kmsdrm driver fails to grab the display. Only
+# touch this on a rerun where DISPLAY_BACKEND=kiosk is already set in the
+# env file -- a first-time install always defaults to desktop mode and
+# should not silently kill the desktop session underneath the user.
+CURRENT_BACKEND="$(grep -E '^DISPLAY_BACKEND=' "${ENV_FILE}" 2>/dev/null | tail -n1 | cut -d= -f2- | tr -d '[:space:]')"
+if [[ "${CURRENT_BACKEND}" == "kiosk" ]]; then
+    info "DISPLAY_BACKEND=kiosk found in ${ENV_FILE} -- disabling desktop compositor..."
+    systemctl disable lightdm 2>/dev/null || warn "Could not disable lightdm (may not be installed)."
+    systemctl set-default multi-user.target || warn "Could not set default target to multi-user.target."
 fi
 
 # --- Summary ---
@@ -229,13 +249,18 @@ echo "  Config:    ${ENV_FILE}"
 echo "  Portal:    http://$(hostname).local:5000"
 echo "  Logs:      journalctl -u flugradar-display -f"
 echo ""
-echo "  Display mode: DISPLAY_BACKEND=desktop (default)"
-echo "  Switch to kiosk: set DISPLAY_BACKEND=kiosk in ${ENV_FILE}, then also:"
-echo "    sudo systemctl disable lightdm"
-echo "    sudo systemctl set-default multi-user.target"
-echo "  (kiosk mode needs exclusive DRM access — the desktop compositor must not"
-echo "   auto-start, or SDL's kmsdrm driver will fail to grab the display)"
+if [[ "${CURRENT_BACKEND}" == "kiosk" ]]; then
+    echo "  Display mode: kiosk (lightdm disabled, boot target set to multi-user.target)"
+else
+    echo "  Display mode: DISPLAY_BACKEND=${CURRENT_BACKEND:-desktop} (default)"
+    echo "  Switch to kiosk for the finished, permanently-mounted display:"
+    echo "    1. set DISPLAY_BACKEND=kiosk in ${ENV_FILE}"
+    echo "    2. re-run: sudo bash install.sh"
+    echo "  (this disables lightdm and sets the boot target to multi-user.target,"
+    echo "   which kmsdrm needs for exclusive DRM access)"
+fi
 echo ""
+echo "  Reboot required if the DSI panel overlay or KMS overlay was just added."
 echo "  Start now: sudo systemctl start flugradar-display flugradar-web"
 echo "  Reboot to launch automatically."
 echo ""

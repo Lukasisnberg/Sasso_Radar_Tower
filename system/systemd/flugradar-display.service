@@ -3,8 +3,8 @@
 
 [Unit]
 Description=Sasso Radar Tower — Display
-After=graphical-session.target
-Wants=graphical-session.target
+After=multi-user.target
+Wants=multi-user.target
 
 [Service]
 Type=simple
@@ -17,4 +17,4 @@ StandardOutput=journal
 StandardError=journal
 
 [Install]
-WantedBy=graphical.target
+WantedBy=multi-user.target
