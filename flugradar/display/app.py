@@ -234,7 +234,7 @@ class RadarApp:
                         self._last_interaction = time.monotonic()
                         self._handle_gesture(
                             gesture, radar, detail, clock_scr, about, menu, tracking_scr,
-                            weather_scr, map_comp, proj, viewport,
+                            weather_scr, wifi_setup_scr, map_comp, proj, viewport,
                         )
 
                 now = time.monotonic()
@@ -622,7 +622,7 @@ class RadarApp:
 
     def _handle_gesture(
         self, gesture, radar, detail, clock_scr, about, menu, tracking_scr, weather_scr,
-        map_comp, proj, viewport,
+        wifi_setup_scr, map_comp, proj, viewport,
     ) -> None:
         if self._active == ActiveScreen.RADAR:
             if gesture.type == GestureType.TAP:
