@@ -97,17 +97,35 @@ To deploy a code update to an existing install, use the **Update** button
 (web portal → System, or on-device → Settings → System → Update). It
 pulls the latest `main` from GitHub into `~/sasso-radar-tower`
 (a real git clone, not just a copy — `install.sh` sets this up),
-reinstalls dependencies, checks the new code imports cleanly, and
-restarts both services — rolling back to the previous commit
-automatically if any of that fails, so a bad push can't leave an
-unattended device (e.g. a permanently-mounted living-room display)
-stuck in a broken state. Logs to
+reinstalls dependencies, checks the new code imports cleanly, and reboots
+the device — rolling back to the previous commit automatically if any of
+that fails (before ever touching a running service), so a bad push can't
+leave an unattended device (e.g. a permanently-mounted living-room
+display) stuck in a broken state. Logs to
 `~/.local/share/flugradar/update.log`.
 
 For a from-source dev checkout that isn't set up as `~/sasso-radar-tower`,
 re-sync the project directory manually instead (e.g. `rsync -a
 --exclude='.git' --exclude='.venv' ./ ~/sasso-radar-tower/`) and restart
 both services.
+
+### WLAN setup via QR code
+
+If the Pi can't reach a known WLAN, `flugradar-network-watchdog` (its own
+systemd service, starting early at boot before the display) opens a
+`SassoRadar-Setup` hotspot and the display switches to a QR code — scan it
+to join the hotspot, then pick a real network from the page that opens
+(`http://<pi-ip>/wifi-setup`) and enter its password. Two separate
+tolerances, both configurable via `.env`:
+
+- **At boot**: no connection after `WIFI_BOOT_GRACE_S` (default 45s) →
+  setup mode immediately. Skipped entirely (setup mode starts right away)
+  if NetworkManager has no saved WLAN profile at all yet.
+- **While running**: a working connection drops → tolerate the outage for
+  `WIFI_OUTAGE_TOLERANCE_S` (default 5 min, e.g. a router reboot) before
+  falling back to setup mode; resets if the connection returns on its own.
+
+Uses NetworkManager (`nmcli`) directly, no hostapd/dnsmasq of its own.
 
 ## Tests
 

@@ -436,6 +436,12 @@ h1 {
   color: var(--text-muted);
 }
 
+.alert-error {
+  background: var(--surface);
+  border: 1px solid var(--danger);
+  color: var(--danger);
+}
+
 /* Save/status confirmations: a quiet line of accent-coloured text, not a
    bordered banner (Rückmeldungen: "dezent und ruhig ... kein grelles
    grünes Erfolgsbanner"). Fades out on its own after a few seconds via

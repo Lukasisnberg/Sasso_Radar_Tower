@@ -1,0 +1,20 @@
+# Template — install.sh generates the actual service file with correct paths.
+# This file serves as reference only.
+
+[Unit]
+Description=Sasso Radar Tower — WLAN Setup Watchdog
+After=network.target
+Before=flugradar-display.service
+
+[Service]
+Type=simple
+User=%u
+EnvironmentFile=-/home/%u/.env
+ExecStart=/home/%u/sasso-radar-tower/.venv/bin/flugradar-network-watchdog
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -42,6 +42,7 @@ apt-get install -y -qq \
     fonts-dejavu-core \
     plymouth \
     python3-pil \
+    network-manager \
     git
 
 # UI typeface (Ausbaustufe 2, Schritt 3 -- docs/prompt-ausbaustufe-2.md):
@@ -133,6 +134,26 @@ StandardError=journal
 WantedBy=multi-user.target
 UNIT
 
+cat > /etc/systemd/system/flugradar-network-watchdog.service <<UNIT
+[Unit]
+Description=Sasso Radar Tower — WLAN Setup Watchdog
+After=network.target
+Before=flugradar-display.service
+
+[Service]
+Type=simple
+User=${SRT_USER}
+EnvironmentFile=-${ENV_FILE}
+ExecStart=${VENV_DIR}/bin/flugradar-network-watchdog
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+
 # --- Display start wrapper script ---
 cat > "${INSTALL_DIR}/system/flugradar-display-start.sh" <<'WRAPPER'
 #!/usr/bin/env bash
@@ -184,6 +205,7 @@ chown "${SRT_USER}:${SRT_USER}" "${INSTALL_DIR}/system/flugradar-display-start.s
 systemctl daemon-reload
 systemctl enable flugradar-display.service
 systemctl enable flugradar-web.service
+systemctl enable flugradar-network-watchdog.service
 
 # --- Plymouth boot splash ---
 info "Installing boot splash theme..."
@@ -226,6 +248,37 @@ if [[ -f "${CONFIG_TXT}" ]]; then
     fi
 fi
 
+# --- WLAN setup: sudoers + captive-portal DNS ---
+# nmcli needs root to change network state (hotspot/connect), but
+# flugradar-network-watchdog and flugradar-web run as the regular user like
+# every other service here -- narrowly scoped to the nmcli binary itself
+# rather than a blanket NOPASSWD:ALL.
+info "Adding sudoers rule for nmcli..."
+SUDOERS_FILE="/etc/sudoers.d/flugradar-nmcli"
+cat > "${SUDOERS_FILE}" <<SUDOERS
+${SRT_USER} ALL=(root) NOPASSWD: /usr/bin/nmcli
+SUDOERS
+chmod 440 "${SUDOERS_FILE}"
+visudo -cf "${SUDOERS_FILE}" || { error "Generated sudoers file is invalid, removing it."; rm -f "${SUDOERS_FILE}"; }
+
+# Makes phones actually pop their "sign in to network" browser when they
+# join the setup hotspot: NetworkManager's hotspot mode runs its own
+# dnsmasq instance (gateway 10.42.0.1 by default), but doesn't otherwise
+# answer DNS queries with anything useful since there's no upstream
+# internet behind an AP-only hotspot. This wildcard drop-in makes every
+# hostname resolve to the hotspot itself, so the OS's captive-portal probe
+# requests (see _CAPTIVE_PORTAL_PROBES in flugradar/web/app.py) actually
+# reach flugradar-web instead of timing out.
+if [[ -d /etc/NetworkManager ]]; then
+    DNSMASQ_SHARED_DIR="/etc/NetworkManager/dnsmasq-shared.d"
+    mkdir -p "${DNSMASQ_SHARED_DIR}"
+    cat > "${DNSMASQ_SHARED_DIR}/sasso-radar-captive.conf" <<'DNSMASQ'
+# Sasso Radar Tower -- WLAN setup hotspot: answer every DNS query with the
+# hotspot's own gateway IP (NetworkManager's shared/hotspot default).
+address=/#/10.42.0.1
+DNSMASQ
+fi
+
 # --- Kiosk mode systemd wiring ---
 # kmsdrm needs exclusive DRM access -- the desktop compositor (lightdm) must
 # not auto-start, or SDL's kmsdrm driver fails to grab the display. Only
@@ -244,7 +297,7 @@ echo ""
 info "Installation complete!"
 echo ""
 echo "  User:      ${SRT_USER}"
-echo "  Services:  flugradar-display, flugradar-web"
+echo "  Services:  flugradar-display, flugradar-web, flugradar-network-watchdog"
 echo "  Config:    ${ENV_FILE}"
 echo "  Portal:    http://$(hostname).local:5000"
 echo "  Logs:      journalctl -u flugradar-display -f"

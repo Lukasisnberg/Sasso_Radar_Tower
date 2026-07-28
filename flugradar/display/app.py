@@ -28,10 +28,12 @@ from flugradar.display.screens.radar import RadarScreen
 from flugradar.display.screens.menu import MenuScreen
 from flugradar.display.screens.tracking import TrackedFlightScreen
 from flugradar.display.screens.weather import WeatherScreen
+from flugradar.display.screens.wifi_setup import WifiSetupScreen
 from flugradar.display.theme import CLASSIC_AMBER, TOKENS, Theme, ease_out_cubic, resolve_theme
 from flugradar.maps.compositor import MapCompositor
 from flugradar.maps.rainviewer import RainViewerClient
 from flugradar.maps.tiles import TileManager, resolve_provider_key
+from flugradar.system import network_watchdog
 
 log = logging.getLogger(__name__)
 
@@ -44,6 +46,7 @@ class ActiveScreen(Enum):
     SETTINGS = auto()
     TRACKING = auto()
     WEATHER = auto()
+    WIFI_SETUP = auto()
 
 
 class RadarApp:
@@ -73,6 +76,8 @@ class RadarApp:
         self._rainviewer_client: RainViewerClient | None = None
         self._last_interaction: float = 0.0
         self._last_reload_check: float = 0.0
+        self._last_wifi_check: float = 0.0
+        self._wifi_success_since: float | None = None
         self._theme: Theme | None = None
         self._prev_frame_copy: pygame.Surface | None = None
         self._transition_from: pygame.Surface | None = None
@@ -142,10 +147,21 @@ class RadarApp:
             time_format=self.settings.time_format,
             location_label=location_display_name(self.settings.home.lat, self.settings.home.lon),
         )
+        wifi_setup_scr = WifiSetupScreen(self.screen_size, theme)
         gestures = GestureRecogniser(self.screen_size)
 
         if self.settings.tracked_callsign:
             self._tracked_last_seen = time.monotonic()
+
+        # If the network watchdog already opened its setup hotspot before
+        # this process even started (e.g. it had a head start during boot),
+        # go straight to the WLAN setup screen instead of briefly showing
+        # the radar with no data first.
+        initial_wifi_status = network_watchdog.read_status()
+        if initial_wifi_status:
+            wifi_setup_scr.set_status(initial_wifi_status)
+            if initial_wifi_status.get("state") == network_watchdog.SetupState.SETUP_MODE:
+                self._active = ActiveScreen.WIFI_SETUP
 
         viewport = (
             CircularViewport(self.screen_size, self.rotation_deg, theme=theme)
@@ -229,10 +245,14 @@ class RadarApp:
                     if self.settings.check_portal_reload():
                         self._apply_live_settings(
                             proj, radar, detail, clock_scr, about,
-                            menu, tracking_scr, weather_scr, map_comp, viewport,
+                            menu, tracking_scr, weather_scr, wifi_setup_scr, map_comp, viewport,
                         )
                         if self.settings.tracked_callsign != old_tracked:
                             self._reset_tracking_lifecycle()
+
+                if now - self._last_wifi_check >= 2.0:
+                    self._last_wifi_check = now
+                    self._poll_wifi_status(wifi_setup_scr, now)
 
                 if (
                     self.settings.auto_clock_s > 0
@@ -272,7 +292,7 @@ class RadarApp:
 
                 self._render_active_screen(
                     frame_surface, radar, detail, clock_scr, about, menu, tracking_scr,
-                    weather_scr, map_comp, weather_status,
+                    weather_scr, wifi_setup_scr, map_comp, weather_status,
                 )
 
                 if self._active != active_before:
@@ -438,7 +458,7 @@ class RadarApp:
 
     def _apply_live_settings(
         self, proj, radar, detail, clock_scr, about, menu, tracking_scr, weather_scr,
-        map_comp, viewport=None,
+        wifi_setup_scr, map_comp, viewport=None,
     ) -> None:
         """Hot-apply changed portal settings without restarting."""
         theme = resolve_theme(self.settings.theme)
@@ -470,6 +490,7 @@ class RadarApp:
         weather_scr.distance_unit = self.settings.distance_unit
         weather_scr.time_format = self.settings.time_format
         weather_scr.location_label = location_display_name(self.settings.home.lat, self.settings.home.lon)
+        wifi_setup_scr.theme = theme
         if viewport:
             viewport.update_theme(theme)
 
@@ -504,9 +525,33 @@ class RadarApp:
             self.settings.home.radius_km,
         )
 
+    def _poll_wifi_status(self, wifi_setup_scr, now: float) -> None:
+        """Reads the shared status file the network watchdog writes to
+        (flugradar/system/network_watchdog.py) and forces a screen switch
+        in or out of WLAN setup -- independent of the normal swipe order,
+        same idea as auto-returning to the clock screen on inactivity."""
+        status = network_watchdog.read_status()
+        if status is None:
+            return
+        wifi_setup_scr.set_status(status)
+        state = status.get("state")
+        if state == network_watchdog.SetupState.SETUP_MODE:
+            self._wifi_success_since = None
+            if self._active != ActiveScreen.WIFI_SETUP:
+                self._active = ActiveScreen.WIFI_SETUP
+            return
+        if self._active == ActiveScreen.WIFI_SETUP:
+            # briefly show "Verbunden mit X" before leaving, instead of
+            # jumping back to radar the instant the state flips
+            if self._wifi_success_since is None:
+                self._wifi_success_since = now
+            elif now - self._wifi_success_since >= WifiSetupScreen.SUCCESS_DISPLAY_S:
+                self._active = ActiveScreen.RADAR
+                self._wifi_success_since = None
+
     def _render_active_screen(
         self, target, radar, detail, clock_scr, about, menu, tracking_scr, weather_scr,
-        map_comp, weather_status,
+        wifi_setup_scr, map_comp, weather_status,
     ) -> None:
         """Draw whichever screen is active into `target` (not necessarily
         the visible display surface -- see `_compose_frame`)."""
@@ -544,6 +589,8 @@ class RadarApp:
         elif self._active == ActiveScreen.WEATHER:
             self._update_weather_screen(weather_scr)
             weather_scr.draw(target)
+        elif self._active == ActiveScreen.WIFI_SETUP:
+            wifi_setup_scr.draw(target)
 
     def _compose_frame(self, screen: pygame.Surface, frame: pygame.Surface) -> None:
         """Blit the freshly rendered `frame` onto `screen`, crossfading from
@@ -673,7 +720,7 @@ class RadarApp:
                     self.settings.mark_portal_synced()
                     self._apply_live_settings(
                         proj, radar, detail, clock_scr, about, menu, tracking_scr, weather_scr,
-                        map_comp, viewport,
+                        wifi_setup_scr, map_comp, viewport,
                     )
             elif gesture.type == GestureType.SWIPE_RIGHT:
                 if menu.go_back() == "radar":
