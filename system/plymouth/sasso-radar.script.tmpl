@@ -1,10 +1,11 @@
-/* Sasso Radar Tower — Plymouth boot splash script
+/* Sasso Radar Tower — Plymouth boot splash script template.
  *
- * Template, not the final script -- generate_logo.py substitutes the
- * {{...}} colour placeholders from the currently configured theme
- * (amber/mono, flugradar/display/theme.py) and writes the result to
- * sasso-radar.script in the installed theme directory. Edit this file,
- * not a generated copy.
+ * This is *this* file, sasso-radar.script.tmpl, not the installed
+ * sasso-radar.script -- generate_logo.py fills in the colour
+ * placeholders below from the currently configured theme (amber/mono,
+ * flugradar/display/theme.py) and writes the result to the installed
+ * theme directory. Edit this .tmpl file, never a generated copy -- it
+ * gets overwritten on every install.sh run.
  */
 
 Window.SetBackgroundTopColor({{BG_R}}, {{BG_G}}, {{BG_B}});
