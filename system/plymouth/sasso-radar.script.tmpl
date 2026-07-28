@@ -1,0 +1,43 @@
+/* Sasso Radar Tower — Plymouth boot splash script
+ *
+ * Template, not the final script -- generate_logo.py substitutes the
+ * {{...}} colour placeholders from the currently configured theme
+ * (amber/mono, flugradar/display/theme.py) and writes the result to
+ * sasso-radar.script in the installed theme directory. Edit this file,
+ * not a generated copy.
+ */
+
+Window.SetBackgroundTopColor({{BG_R}}, {{BG_G}}, {{BG_B}});
+Window.SetBackgroundBottomColor({{BG_R}}, {{BG_G}}, {{BG_B}});
+
+logo_image = Image("logo.png");
+logo_sprite = Sprite(logo_image);
+logo_sprite.SetX(Window.GetWidth() / 2 - logo_image.GetWidth() / 2);
+logo_sprite.SetY(Window.GetHeight() / 2 - logo_image.GetHeight() / 2 - 40);
+
+/* "Inter" as a single Pango/fontconfig family hint -- if it isn't
+ * installed, fontconfig's own generic-family aliasing silently
+ * substitutes the system default sans-serif rather than erroring, the
+ * same fallback spirit as flugradar/display/fonts.py's family list (just
+ * resolved by fontconfig here instead of pygame). */
+title_image = Image.Text("SASSO RADAR TOWER", {{MUTED_R}}, {{MUTED_G}}, {{MUTED_B}}, "Inter");
+title_sprite = Sprite(title_image);
+title_sprite.SetX(Window.GetWidth() / 2 - title_image.GetWidth() / 2);
+title_sprite.SetY(Window.GetHeight() / 2 + logo_image.GetHeight() / 2 - 40);
+
+progress = 0;
+
+fun refresh_callback() {
+    progress++;
+    sweep_angle = progress * 0.05;
+
+    dot_x = Window.GetWidth() / 2 + Math.Cos(sweep_angle) * 60;
+    dot_y = Window.GetHeight() / 2 - 40 + Math.Sin(sweep_angle) * 60;
+
+    dot_image = Image.Text(".", {{ACCENT_R}}, {{ACCENT_G}}, {{ACCENT_B}}, "Inter");
+    dot_sprite = Sprite(dot_image);
+    dot_sprite.SetX(dot_x);
+    dot_sprite.SetY(dot_y);
+}
+
+Plymouth.SetRefreshFunction(refresh_callback);

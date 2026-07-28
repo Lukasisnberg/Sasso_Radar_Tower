@@ -3,6 +3,7 @@
 import logging
 import time
 from enum import Enum, auto
+from typing import Callable, Optional
 
 import pygame
 
@@ -66,6 +67,7 @@ class RadarApp:
         enable_map: bool = True,
         round_mask: bool = True,
         rotation_deg: float = 0.0,
+        on_first_frame: Optional[Callable[[], None]] = None,
     ) -> None:
         self.settings = settings
         self.screen_size = screen_size
@@ -73,6 +75,14 @@ class RadarApp:
         self.enable_map = enable_map
         self.round_mask = round_mask
         self.rotation_deg = rotation_deg
+        # Called once, right after the very first frame is actually drawn
+        # to the screen -- e.g. the kiosk boot flow uses this to end the
+        # Plymouth splash exactly when there's something to hand off to,
+        # rather than at process start (see flugradar/main.py). Never
+        # raises: a broken/missing callback must not take the render loop
+        # down with it.
+        self._on_first_frame = on_first_frame
+        self._first_frame_done = False
         self.running = False
         self._active = ActiveScreen.RADAR
         self._aircraft: list[Aircraft] = []
@@ -327,6 +337,15 @@ class RadarApp:
                     viewport.apply(screen, show_bezel=show_bezel)
 
                 pygame.display.flip()
+
+                if not self._first_frame_done:
+                    self._first_frame_done = True
+                    if self._on_first_frame:
+                        try:
+                            self._on_first_frame()
+                        except Exception:
+                            log.exception("on_first_frame callback failed -- continuing")
+
                 clock.tick(30)
 
         except KeyboardInterrupt:

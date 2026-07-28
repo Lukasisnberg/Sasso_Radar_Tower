@@ -93,6 +93,37 @@ Two display backends, switchable via `DISPLAY_BACKEND` in `.env`:
 - `kiosk` — direct KMS/DRM access to the physical panel, no desktop
   session required (for the finished, permanently-mounted display)
 
+### Boot screen (kiosk mode)
+
+In `kiosk` mode, `install.sh` sets the device up to boot straight into the
+radar with no visible console/kernel text: a Plymouth splash (rings +
+sweep dot, colour-matched to whichever theme — amber/mono — is currently
+configured) covers the entire boot, handed off to the app's first
+rendered frame with no gap in between. Specifics:
+
+- `quiet splash plymouth.ignore-serial-consoles loglevel=0
+  vt.global_cursor_default=0` are added to `/boot/firmware/cmdline.txt`
+  (backed up once to `cmdline.txt.srt-backup` before the first edit), and
+  the interactive console is moved off `tty1` (`console=tty3`) so no
+  login prompt ever flashes on the physical panel. Only applied for
+  `DISPLAY_BACKEND=kiosk` — `desktop` mode leaves the console untouched,
+  since HDMI/Pi Connect development wants to see boot output.
+- The splash doesn't end on its own timing (systemd's default
+  `plymouth-quit-wait.service`, which fires around the same time the
+  display service starts, racing it) — `install.sh` masks that service in
+  kiosk mode, and the app itself calls `plymouth quit` right after its
+  first frame is actually on screen (`RadarApp`'s `on_first_frame` hook,
+  wired up in `flugradar/main.py`). Safe to fail silently if `plymouth`
+  isn't installed/running (e.g. running the display directly for dev).
+- Regenerate the splash image/script after changing the theme or the
+  design tokens: `sudo bash install.sh` re-runs
+  `system/plymouth/generate_logo.py`, which reads the current theme from
+  `settings.json` and re-derives every colour from
+  `flugradar/display/theme.py` — no separate colour literals to keep in
+  sync by hand. Falls back to the amber theme if `settings.json` is
+  missing/unreadable or names an unknown theme, same as `resolve_theme()`
+  does at runtime.
+
 To deploy a code update to an existing install, use the **Update** button
 (web portal → System, or on-device → Settings → System → Update). It
 pulls the latest `main` from GitHub into `~/sasso-radar-tower`

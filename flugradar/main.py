@@ -10,9 +10,26 @@ Usage:
 
 import argparse
 import logging
+import subprocess
 
 from flugradar.config.settings import AppSettings
 from flugradar.display.app import RadarApp
+
+log = logging.getLogger(__name__)
+
+
+def _quit_plymouth() -> None:
+    """Ends the Plymouth boot splash right after the first real frame is
+    on screen, so there's no gap between "splash gone" and "something to
+    look at" (kiosk mode: install.sh masks Plymouth's own automatic quit
+    trigger so this call is the only thing that ends it). A no-op outside
+    of a Plymouth boot (dev machine, desktop mode, plymouth not
+    installed) -- caught broadly since nothing about starting the radar
+    display should ever hinge on a boot-splash tool being present."""
+    try:
+        subprocess.run(["plymouth", "quit"], timeout=5)
+    except Exception:
+        log.debug("plymouth quit skipped (not installed/running)", exc_info=True)
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -55,6 +72,7 @@ def main() -> None:
         enable_map=not args.no_map,
         round_mask=not args.no_mask,
         rotation_deg=args.rotation,
+        on_first_frame=_quit_plymouth,
     )
     app.run()
 

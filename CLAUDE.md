@@ -536,6 +536,46 @@ Schritte 1–8 aus dem Bauauftrag (Abschnitt 13) sind abgeschlossen:
   (`GestureRecogniser` braucht dafür `screen_size` im Konstruktor, um die
   normalisierten Finger-Koordinaten in Pixel umzurechnen); `app.py`
   entsprechend angepasst. Live am Gerät bestätigt.
+- **Sauberer Boot-Screen für den Kiosk-Betrieb** (separat angefragt,
+  Hintergrund: beim Hochfahren des fest verbauten Rundpanels war bisher
+  Konsolentext/Kernel-Output sichtbar, und zwischen Plymouth-Ende und
+  erstem Radar-Frame konnte eine sichtbare Lücke entstehen). **Noch nicht
+  live am Gerät bestätigt** — Auftrag war ausdrücklich, keinen
+  automatisierten Testlauf auszuführen, da Boot-Konfiguration/Reboot-
+  Verhalten betroffen ist; Nutzer prüft nach manuellem Neustart selbst.
+  - Plymouth-Theme (`system/plymouth/`) stammte noch aus der Zeit vor der
+    Design-Token-Reduktion (Ausbaustufe 2, Schritt 1) und hatte
+    hartcodierte alte Grün-Töne. `generate_logo.py` liest jetzt
+    `flugradar.display.theme` direkt (funktioniert unter System-Python
+    ohne venv, da theme.py keine Abhängigkeiten außer der Standardbibliothek
+    hat — kein pygame-Import), löst das aktuell konfigurierte Theme
+    (amber/mono) aus `settings.json` auf (Fallback auf amber bei
+    fehlender/kaputter Datei oder unbekanntem Namen, analog zu
+    `resolve_theme()`), und schreibt sowohl `logo.png` als auch das
+    Plymouth-Script neu. Das Script selbst ist jetzt eine Vorlage
+    (`sasso-radar.script.tmpl`) mit `{{...}}`-Farbplatzhaltern statt einer
+    statisch eingecheckten Endfassung — Farben lassen sich sonst nicht pro
+    Theme in die Plymouth-Skriptsprache einsetzen (die kann zur Bootzeit
+    keine externen Dateien lesen).
+  - `install.sh` ergänzt jetzt (nur im `kiosk`-Zweig, `desktop` bleibt für
+    Pi-Connect-Entwicklung bewusst unverändert) `quiet splash
+    plymouth.ignore-serial-consoles loglevel=0 vt.global_cursor_default=0`
+    in `/boot/firmware/cmdline.txt` (Duplikate werden übersprungen, ein
+    einmaliges Backup `cmdline.txt.srt-backup` wird vor der ersten
+    Änderung angelegt, da eine verunstaltete Cmdline den Boot verhindern
+    könnte) und verschiebt `console=tty1` auf `tty3`, damit kein
+    Login-Prompt auf dem Panel aufblitzt.
+  - Der Übergang Plymouth → App war bisher dem Zufall überlassen:
+    systemd startet `plymouth-quit-wait.service` und
+    `flugradar-display.service` beide um den Zeitpunkt von
+    `multi-user.target`, ein echtes Wettrennen. `install.sh` maskiert
+    `plymouth-quit-wait.service` jetzt im Kiosk-Fall; `RadarApp` bekommt
+    stattdessen einen neuen optionalen `on_first_frame`-Callback
+    (aufgerufen genau einmal, direkt nach dem ersten tatsächlichen
+    `pygame.display.flip()`, Fehler darin werden abgefangen und geloggt,
+    nie fatal), den `flugradar/main.py` mit einem `plymouth quit`-Aufruf
+    belegt (schlägt fehl/wird ignoriert, falls `plymouth` fehlt oder nicht
+    läuft — z. B. beim direkten Entwickeln ohne Bootsplash).
 
 ## Offene Punkte
 

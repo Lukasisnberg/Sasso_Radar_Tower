@@ -208,17 +208,18 @@ systemctl enable flugradar-web.service
 systemctl enable flugradar-network-watchdog.service
 
 # --- Plymouth boot splash ---
+# logo.png and sasso-radar.script are both generated (not copied statically)
+# so the boot splash picks up whichever theme (amber/mono) is currently
+# configured in settings.json -- generate_logo.py handles a missing/
+# unreadable settings.json or missing Pillow gracefully on its own (falls
+# back to amber; skips just the PNG if Pillow isn't available).
 info "Installing boot splash theme..."
 THEME_DIR="/usr/share/plymouth/themes/sasso-radar"
 mkdir -p "${THEME_DIR}"
 cp "${INSTALL_DIR}/system/plymouth/sasso-radar.plymouth" "${THEME_DIR}/"
-cp "${INSTALL_DIR}/system/plymouth/sasso-radar.script" "${THEME_DIR}/"
-
-if command -v python3 &>/dev/null && python3 -c "from PIL import Image" 2>/dev/null; then
-    python3 "${INSTALL_DIR}/system/plymouth/generate_logo.py" "${THEME_DIR}/logo.png"
-else
-    warn "Pillow not available — skipping logo generation."
-fi
+python3 "${INSTALL_DIR}/system/plymouth/generate_logo.py" \
+    "${THEME_DIR}/logo.png" "${THEME_DIR}/sasso-radar.script" \
+    "${SRT_HOME}/.local/share/flugradar/settings.json"
 
 plymouth-set-default-theme sasso-radar 2>/dev/null || warn "Could not set Plymouth theme."
 update-initramfs -u 2>/dev/null || warn "Could not update initramfs."
@@ -279,6 +280,56 @@ if [[ "${CURRENT_BACKEND}" == "kiosk" ]]; then
     info "DISPLAY_BACKEND=kiosk found in ${ENV_FILE} -- disabling desktop compositor..."
     systemctl disable lightdm 2>/dev/null || warn "Could not disable lightdm (may not be installed)."
     systemctl set-default multi-user.target || warn "Could not set default target to multi-user.target."
+
+    # plymouth-quit-wait.service normally ends the boot splash on its own
+    # once multi-user.target is reached -- which happens around the same
+    # time flugradar-display.service starts, racing it. Masking it hands
+    # full control to our own `plymouth quit` call (flugradar/main.py,
+    # fired from RadarApp's on_first_frame hook) so the splash stays up
+    # until there's an actual first frame to replace it with, not just
+    # "the target was reached."
+    systemctl mask plymouth-quit-wait.service 2>/dev/null || warn "Could not mask plymouth-quit-wait.service."
+
+    # --- Kernel boot parameters: hide console text (kiosk mode only) ---
+    # Desktop mode deliberately leaves the console alone (HDMI/Pi Connect
+    # development wants to see boot output); only the finished,
+    # permanently-mounted kiosk display should go fully silent.
+    CMDLINE_TXT="/boot/firmware/cmdline.txt"
+    if [[ ! -f "${CMDLINE_TXT}" ]]; then
+        CMDLINE_TXT="/boot/cmdline.txt"
+    fi
+    if [[ -f "${CMDLINE_TXT}" ]]; then
+        # cmdline.txt is boot-critical and must stay exactly one line --
+        # back it up once (never overwriting an existing backup with an
+        # already-modified copy) so there's a manual recovery path if
+        # something about this ever needs undoing by hand.
+        CMDLINE_BACKUP="${CMDLINE_TXT}.srt-backup"
+        if [[ ! -f "${CMDLINE_BACKUP}" ]]; then
+            cp "${CMDLINE_TXT}" "${CMDLINE_BACKUP}"
+        fi
+
+        ORIGINAL_CMDLINE="$(cat "${CMDLINE_TXT}")"
+        NEW_CMDLINE="${ORIGINAL_CMDLINE}"
+        for PARAM in quiet splash plymouth.ignore-serial-consoles loglevel=0 vt.global_cursor_default=0; do
+            case " ${NEW_CMDLINE} " in
+                *" ${PARAM} "*) ;;  # already present, don't duplicate
+                *) NEW_CMDLINE="${NEW_CMDLINE} ${PARAM}" ;;
+            esac
+        done
+        # Keep the visible panel free for Plymouth/kmsdrm -- move the
+        # interactive console to tty3 so no login prompt/shell ever
+        # flashes on the physical display before the app takes over.
+        NEW_CMDLINE="${NEW_CMDLINE//console=tty1/console=tty3}"
+        NEW_CMDLINE="$(echo "${NEW_CMDLINE}" | tr -s ' ')"
+        NEW_CMDLINE="${NEW_CMDLINE# }"
+        NEW_CMDLINE="${NEW_CMDLINE% }"
+
+        if [[ "${NEW_CMDLINE}" != "${ORIGINAL_CMDLINE}" ]]; then
+            info "Updating kernel boot parameters in ${CMDLINE_TXT} (backup: ${CMDLINE_BACKUP})..."
+            printf '%s\n' "${NEW_CMDLINE}" > "${CMDLINE_TXT}.tmp"
+            mv "${CMDLINE_TXT}.tmp" "${CMDLINE_TXT}"
+        fi
+    fi
 fi
 
 # --- Summary ---
@@ -302,7 +353,8 @@ else
     echo "   which kmsdrm needs for exclusive DRM access)"
 fi
 echo ""
-echo "  Reboot required if the DSI panel overlay or KMS overlay was just added."
+echo "  Reboot required if the DSI panel overlay, KMS overlay, or (in kiosk"
+echo "  mode) the boot console/cmdline.txt parameters were just added/changed."
 echo "  Start now: sudo systemctl start flugradar-display flugradar-web"
 echo "  Reboot to launch automatically."
 echo ""
