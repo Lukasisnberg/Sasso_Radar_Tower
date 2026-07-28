@@ -138,4 +138,7 @@ class WifiSetupScreen:
             status_text = f"Verbunden mit {self._connected_ssid}" if self._connected_ssid else "Verbunden"
         else:
             status_text = "Warte auf Konfiguration…"
-        draw_center_text(surface, status_text, y, self._font_small, self.theme.sweep_colour)
+        y = draw_center_text(surface, status_text, y, self._font_small, self.theme.sweep_colour)
+
+        y += scaling.s(4)
+        draw_center_text(surface, "rechts/runter wischen: abbrechen", y, self._font_small, self.theme.hint)

@@ -176,6 +176,12 @@ def create_app(settings: AppSettings | None = None) -> Flask:
         elif action == "update":
             message = "Update im Hintergrund gestartet — unten in einer Minute nachsehen."
             trigger_update_async()
+        elif action == "wifi_setup":
+            message = (
+                "WLAN-Setup-Hotspot wird geöffnet — dieses Portal ist gleich "
+                "kurzzeitig nicht erreichbar, bis ein neues Netzwerk eingerichtet ist."
+            )
+            network_watchdog.trigger_wifi_setup()
         return render_template(
             "system.html", settings=settings, version=__version__, message=message,
             update_log=_last_update_log_line(),

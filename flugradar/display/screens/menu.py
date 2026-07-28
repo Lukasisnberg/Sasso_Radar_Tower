@@ -32,6 +32,7 @@ from flugradar.display.fonts import get_font
 from flugradar.display.screens.about import _hostname, _ip_address
 from flugradar.display.theme import TOKENS, Theme, ease_out_cubic
 from flugradar.system.actions import system_action
+from flugradar.system.network_watchdog import trigger_wifi_setup
 from flugradar.system.update import trigger_update_async
 
 _SLIDE_DURATION_S = TOKENS.duration_long_ms / 1000.0
@@ -57,6 +58,10 @@ class _Row:
     get_text: Optional[Callable[[], str]] = None
     enabled: Callable[[], bool] = lambda: True
     submenu_key: Optional[str] = None
+    # Extra lines shown above Bestätigen/Abbrechen for an "action" row --
+    # only WLAN-Einrichten uses this so far (has real, potentially
+    # surprising side effects: drops the current WLAN connection).
+    confirm_hint: Optional[list[str]] = None
 
 
 _ROOT_ORDER = ("map", "location", "display", "filter", "screen", "units", "system")
@@ -298,6 +303,13 @@ class MenuScreen:
                 _Row("portal", "Portal", "info", get_text=lambda: f"{_hostname()}.local:5000"),
                 _Row("sources", "Datenquellen", "info", get_text=lambda: "adsb.fi, adsbdb.com"),
                 _Row("update", "Update", "action", run=trigger_update_async),
+                _Row(
+                    "wifi_setup", "WLAN einrichten", "action", run=trigger_wifi_setup,
+                    confirm_hint=[
+                        "Trennt aktuelle WLAN-Verbindung,",
+                        "öffnet Hotspot für neues Netzwerk",
+                    ],
+                ),
                 _Row("restart", "Neustart", "action", run=lambda: system_action("reboot")),
                 _Row("shutdown", "Herunterfahren", "action", run=lambda: system_action("shutdown")),
             ]
@@ -374,23 +386,32 @@ class MenuScreen:
         bottom = nav.content_bottom_y()
 
         self._row_rects = []
-        row_h = scaling.s(35)
+        base_row_h = scaling.s(35)
         gap = scaling.s(1)
         y = top - self._scroll.current_offset()
         total_h = 0
 
         for row in rows:
-            if top - row_h <= y <= bottom:
-                self._draw_row(surface, row, y, row_h)
-            if y + row_h >= top and y <= bottom:
-                hw = scaling.circle_half_width_at_row(max(y, top), row_h)
-                rect = pygame.Rect(scaling.center_x() - hw, y, hw * 2, row_h)
+            h = self._row_height(row, base_row_h)
+            if top - h <= y <= bottom:
+                self._draw_row(surface, row, y, h)
+            if y + h >= top and y <= bottom:
+                hw = scaling.circle_half_width_at_row(max(y, top), h)
+                rect = pygame.Rect(scaling.center_x() - hw, y, hw * 2, h)
                 self._row_rects.append((rect, row))
-            y += row_h + gap
-            total_h += row_h + gap
+            y += h + gap
+            total_h += h + gap
 
         self._scroll.max_offset = max(0, total_h - (bottom - top))
         self._draw_scroll_arc(surface, top, bottom)
+
+    def _row_height(self, row: _Row, base_h: int) -> int:
+        """Only the confirm state of an action row with a confirm_hint
+        grows beyond the uniform row height -- every other row (including
+        every other action row) renders exactly as before."""
+        if row.kind == "action" and self._confirm_key == row.key and row.confirm_hint:
+            return base_h + self._font_small.get_height() * len(row.confirm_hint) + scaling.s(6)
+        return base_h
 
     def _draw_header(self, surface: pygame.Surface, title: str) -> None:
         top_y = scaling.center_y() - int(scaling.visible_radius() * 0.75)
@@ -425,8 +446,17 @@ class MenuScreen:
 
         if row.kind == "action" and self._confirm_key == row.key:
             mid = (left + right) // 2
-            confirm_r = pygame.Rect(left + pad, y + scaling.s(4), mid - left - pad - scaling.s(2), row_h - scaling.s(8))
-            cancel_r = pygame.Rect(mid + scaling.s(2), y + scaling.s(4), right - mid - pad - scaling.s(2), row_h - scaling.s(8))
+            hint_h = 0
+            if row.confirm_hint:
+                for i, line in enumerate(row.confirm_hint):
+                    line_surf = self._font_small.render(line, True, self.theme.hint)
+                    line_y = y + scaling.s(4) + i * self._font_small.get_height()
+                    surface.blit(line_surf, line_surf.get_rect(midtop=((left + right) // 2, line_y)))
+                hint_h = len(row.confirm_hint) * self._font_small.get_height() + scaling.s(4)
+            btn_y = y + hint_h + scaling.s(4)
+            btn_h = row_h - hint_h - scaling.s(8)
+            confirm_r = pygame.Rect(left + pad, btn_y, mid - left - pad - scaling.s(2), btn_h)
+            cancel_r = pygame.Rect(mid + scaling.s(2), btn_y, right - mid - pad - scaling.s(2), btn_h)
             pygame.draw.rect(surface, self.theme.surface_accent, confirm_r, border_radius=scaling.s(6))
             pygame.draw.rect(surface, self.theme.surface, cancel_r, border_radius=scaling.s(6))
             self._blit_centered(surface, "Bestätigen", confirm_r.center, self._font_label, self.theme.sweep_colour)

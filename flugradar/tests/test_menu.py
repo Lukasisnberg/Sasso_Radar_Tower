@@ -259,6 +259,33 @@ class TestConfirmAction:
         m.handle_tap(rect.left + 2, rect.centery)  # left half == confirm
         mock_trigger.assert_called_once_with()
 
+    def test_wifi_setup_row_present_and_confirms_before_triggering(self, screen, monkeypatch):
+        m, surf = screen
+        mock_trigger = MagicMock()
+        monkeypatch.setattr(menu_mod, "trigger_wifi_setup", mock_trigger)
+        _tap_row(m, surf, "system")
+        result, rect, row = _tap_row(m, surf, "wifi_setup")
+        assert result == ""
+        assert m._confirm_key == "wifi_setup"
+        mock_trigger.assert_not_called()
+
+        m.draw(surf)
+        rect, _ = next(rr for rr in m._row_rects if rr[1].key == "wifi_setup")
+        m.handle_tap(rect.left + 2, rect.centery)  # left half == confirm
+        mock_trigger.assert_called_once_with()
+
+    def test_wifi_setup_cancel_tap_does_not_trigger(self, screen, monkeypatch):
+        m, surf = screen
+        mock_trigger = MagicMock()
+        monkeypatch.setattr(menu_mod, "trigger_wifi_setup", mock_trigger)
+        _tap_row(m, surf, "system")
+        _tap_row(m, surf, "wifi_setup")
+        m.draw(surf)
+        rect, _ = next(rr for rr in m._row_rects if rr[1].key == "wifi_setup")
+        m.handle_tap(rect.right - 2, rect.centery)  # right half == cancel
+        mock_trigger.assert_not_called()
+        assert m._confirm_key is None
+
     def test_leaving_the_submenu_clears_pending_confirmation(self, screen):
         m, surf = screen
         _tap_row(m, surf, "system")

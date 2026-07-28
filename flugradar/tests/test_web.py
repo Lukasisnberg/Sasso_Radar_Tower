@@ -344,6 +344,20 @@ class TestSystemUpdate:
         r = client.get("/system")
         assert r.status_code == 200
 
+    def test_wifi_setup_button_triggers_hotspot(self, client, monkeypatch):
+        mock_trigger = MagicMock()
+        monkeypatch.setattr(network_watchdog_mod, "trigger_wifi_setup", mock_trigger)
+        r = client.post("/system", data={"action": "wifi_setup"})
+        assert r.status_code == 200
+        mock_trigger.assert_called_once_with()
+        assert "kurzzeitig nicht erreichbar".encode() in r.data
+
+    def test_wifi_setup_does_not_trigger_on_plain_get(self, client, monkeypatch):
+        mock_trigger = MagicMock()
+        monkeypatch.setattr(network_watchdog_mod, "trigger_wifi_setup", mock_trigger)
+        client.get("/system")
+        mock_trigger.assert_not_called()
+
 
 class TestWifiSetup:
     def test_get_lists_networks_sorted_no_duplicates(self, client, monkeypatch):

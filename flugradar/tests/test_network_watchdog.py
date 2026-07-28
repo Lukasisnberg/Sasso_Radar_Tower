@@ -28,6 +28,8 @@ def _cp(returncode=0, stdout="", stderr=""):
 @pytest.fixture(autouse=True)
 def status_file(tmp_path, monkeypatch):
     monkeypatch.setattr(watchdog_mod, "STATUS_FILE", tmp_path / "network_status.json")
+    monkeypatch.setattr(watchdog_mod, "FORCE_SETUP_FILE", tmp_path / "network_force_setup.flag")
+    monkeypatch.setattr(watchdog_mod, "CANCEL_SETUP_FILE", tmp_path / "network_cancel_setup.flag")
     return tmp_path / "network_status.json"
 
 
@@ -297,6 +299,106 @@ class TestNetworkWatchdogStateMachine:
         with patch.object(watchdog_mod, "_run_nmcli", return_value=_cp(1, "", "nmcli: command not found")):
             wd = NetworkWatchdog(cfg)
             wd.tick()  # must not raise
+
+
+class TestManualTriggers:
+    """The device-menu "WLAN einrichten" action and its cancel-gesture
+    counterpart run in a different process than the watchdog service, so
+    they can't call methods on its live NetworkWatchdog instance --
+    trigger_wifi_setup()/cancel_wifi_setup() act immediately themselves
+    *and* leave a flag file for the watchdog's own next tick() to consume,
+    so it doesn't fight the external change on its following cycle."""
+
+    def test_trigger_wifi_setup_acts_immediately(self, clock):
+        cfg = _config()
+        hotspot_calls = []
+
+        def fake(args, timeout=None):
+            if "hotspot" in args:
+                hotspot_calls.append(args)
+                return _cp(0)
+            return _cp(0, "")
+
+        with patch.object(watchdog_mod, "_run_nmcli", side_effect=fake):
+            watchdog_mod.trigger_wifi_setup(cfg)
+
+        assert len(hotspot_calls) == 1
+        status = json.loads(watchdog_mod.STATUS_FILE.read_text())
+        assert status["state"] == SetupState.SETUP_MODE
+        assert watchdog_mod.FORCE_SETUP_FILE.exists()
+
+    def test_watchdog_tick_consumes_force_flag_without_fighting_it(self, clock):
+        """A manual trigger happens between two watchdog ticks -- the
+        watchdog still thinks it's CONNECTED (stale, from its own last
+        tick) and would otherwise treat the now-down connection as an
+        OUTAGE. The flag must make it sync to SETUP_MODE instead."""
+        cfg = _config()
+        hotspot_calls = []
+
+        def fake(args, timeout=None):
+            if "device" in args and "show" in args:
+                return _cp(0, "GENERAL.CONNECTION:HomeWifi\n")
+            if "hotspot" in args:
+                hotspot_calls.append(args)
+                return _cp(0)
+            return _cp(0, "HomeWifi:802-11-wireless\n")
+
+        with patch.object(watchdog_mod, "_run_nmcli", side_effect=fake):
+            wd = NetworkWatchdog(cfg)
+            wd.tick()
+            assert wd._state == SetupState.CONNECTED
+
+        # external trigger, as if from a different process
+        with patch.object(watchdog_mod, "_run_nmcli", return_value=_cp(0)):
+            watchdog_mod.trigger_wifi_setup(cfg)
+        assert watchdog_mod.FORCE_SETUP_FILE.exists()
+
+        with patch.object(watchdog_mod, "_run_nmcli", side_effect=fake):
+            wd.tick()  # watchdog's own next cycle, still thinks CONNECTED
+
+        assert wd._state == SetupState.SETUP_MODE
+        assert not watchdog_mod.FORCE_SETUP_FILE.exists()
+
+    def test_cancel_wifi_setup_acts_immediately(self, clock):
+        cfg = _config()
+
+        def fake(args, timeout=None):
+            if "device" in args and "show" in args:
+                return _cp(0, "GENERAL.CONNECTION:--\n")
+            return _cp(0, "")
+
+        with patch.object(watchdog_mod, "_run_nmcli", side_effect=fake):
+            watchdog_mod.cancel_wifi_setup(cfg)
+
+        status = json.loads(watchdog_mod.STATUS_FILE.read_text())
+        assert status["state"] == SetupState.GRACE
+        assert watchdog_mod.CANCEL_SETUP_FILE.exists()
+
+    def test_watchdog_tick_consumes_cancel_flag(self, clock):
+        cfg = _config()
+
+        def fake(args, timeout=None):
+            if "device" in args and "show" in args:
+                return _cp(0, "GENERAL.CONNECTION:SassoRadarSetup\n")
+            return _cp(0, "")
+
+        with patch.object(watchdog_mod, "_run_nmcli", side_effect=fake):
+            wd = NetworkWatchdog(cfg)
+            wd._state = SetupState.SETUP_MODE
+
+        with patch.object(watchdog_mod, "_run_nmcli", return_value=_cp(0)):
+            watchdog_mod.cancel_wifi_setup(cfg)
+        assert watchdog_mod.CANCEL_SETUP_FILE.exists()
+
+        with patch.object(watchdog_mod, "_run_nmcli", side_effect=fake) as mock_run:
+            wd.tick()
+
+        assert wd._state == SetupState.GRACE
+        assert not watchdog_mod.CANCEL_SETUP_FILE.exists()
+        # the pending FORCE flag (if any) is also cleared by a cancel
+        assert not watchdog_mod.FORCE_SETUP_FILE.exists()
+        stop_calls = [c for c in mock_run.call_args_list if "down" in c.args[0]]
+        assert len(stop_calls) == 1
 
 
 class TestReadStatus:

@@ -38,6 +38,15 @@ log = logging.getLogger(__name__)
 
 STATUS_FILE = Path.home() / ".local" / "share" / "flugradar" / "network_status.json"
 
+# Tiny cross-process "please do this on your next tick" signals for the
+# long-running watchdog service: the display app / web portal run in their
+# own processes and can't call methods on the watchdog's live
+# NetworkWatchdog instance directly, so a manual trigger/cancel just drops
+# a marker file for tick() to notice and consume -- same idea as
+# settings.json's mtime-poll, just for one-shot commands instead of state.
+FORCE_SETUP_FILE = Path.home() / ".local" / "share" / "flugradar" / "network_force_setup.flag"
+CANCEL_SETUP_FILE = Path.home() / ".local" / "share" / "flugradar" / "network_cancel_setup.flag"
+
 HOTSPOT_CON_NAME = "SassoRadarSetup"
 DEFAULT_INTERFACE = "wlan0"
 
@@ -277,6 +286,21 @@ class NetworkWatchdog:
         _persist_status(state, self.config, connected_ssid)
 
     def tick(self) -> None:
+        # Manual commands take priority over the regular state machine, and
+        # are checked (and consumed) before anything else so a request
+        # never gets fought by a tick that's still running on stale state.
+        if CANCEL_SETUP_FILE.exists():
+            CANCEL_SETUP_FILE.unlink(missing_ok=True)
+            FORCE_SETUP_FILE.unlink(missing_ok=True)  # a pending force is moot now
+            self._cancel_setup_mode()
+            return
+
+        if FORCE_SETUP_FILE.exists():
+            FORCE_SETUP_FILE.unlink(missing_ok=True)
+            if self._state != SetupState.SETUP_MODE:
+                self._enter_setup_mode()
+            return
+
         connected = is_client_connected(self.config.interface)
 
         if self._state == SetupState.SETUP_MODE:
@@ -326,6 +350,20 @@ class NetworkWatchdog:
             SetupState.CONNECTED, active_connection_name(self.config.interface),
         )
 
+    def _cancel_setup_mode(self) -> None:
+        """Manual cancel (device menu / WLAN setup screen back-gesture):
+        tear the hotspot down and let NetworkManager's own autoconnect try
+        known profiles, without forcing any particular one. Re-arms a
+        fresh boot-grace window (same semantics as an actual boot) rather
+        than re-entering setup mode immediately if nothing is in range --
+        a user who just backed out of setup on purpose shouldn't be
+        bounced right back into it."""
+        log.info("WLAN setup cancelled manually, tearing down hotspot")
+        stop_hotspot()
+        self._outage_since = None
+        self._boot_time = time.monotonic()
+        self._write_status(SetupState.GRACE)
+
     def run_forever(self) -> None:
         while True:
             try:
@@ -333,6 +371,43 @@ class NetworkWatchdog:
             except Exception:
                 log.exception("Watchdog tick failed, retrying next cycle")
             time.sleep(_POLL_INTERVAL_S)
+
+
+# --- manual triggers (device menu action row, portal button) ------------
+
+def trigger_wifi_setup(config: Optional[WatchdogConfig] = None) -> None:
+    """Force setup mode immediately, bypassing the boot-grace/outage-
+    tolerance timers -- e.g. the user is taking the device to a new house
+    and wants to actively open the setup portal rather than wait for an
+    automatic boot/outage fallback. Acts right away (starts the hotspot
+    and writes the shared status file itself, so the display/portal see
+    the change without delay) and also leaves a marker for the watchdog
+    service's own next tick to sync its internal state -- otherwise the
+    watchdog, unaware of this external change, would "correct" the status
+    file back on its own next cycle."""
+    cfg = config or WatchdogConfig.from_env()
+    start_hotspot(cfg.hotspot_ssid, cfg.hotspot_password, cfg.interface)
+    _persist_status(SetupState.SETUP_MODE, cfg)
+    FORCE_SETUP_FILE.parent.mkdir(parents=True, exist_ok=True)
+    FORCE_SETUP_FILE.touch()
+
+
+def cancel_wifi_setup(config: Optional[WatchdogConfig] = None) -> None:
+    """Counterpart to trigger_wifi_setup() -- used by the WLAN setup
+    screen's own back-gesture for "opened manually but no new network
+    needed/in range right now". Tears the hotspot down immediately and
+    lets NetworkManager try to autoconnect, same reasoning as
+    NetworkWatchdog._cancel_setup_mode()."""
+    cfg = config or WatchdogConfig.from_env()
+    stop_hotspot()
+    connected = is_client_connected(cfg.interface)
+    _persist_status(
+        SetupState.CONNECTED if connected else SetupState.GRACE,
+        cfg,
+        active_connection_name(cfg.interface) if connected else None,
+    )
+    CANCEL_SETUP_FILE.parent.mkdir(parents=True, exist_ok=True)
+    CANCEL_SETUP_FILE.touch()
 
 
 def main() -> None:

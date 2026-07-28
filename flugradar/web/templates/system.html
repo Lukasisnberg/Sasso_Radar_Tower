@@ -38,6 +38,19 @@
 </section>
 
 <section class="section">
+  <h2>WLAN</h2>
+  <p style="font-size:13px;color:var(--text-muted);">
+    Öffnet einen Setup-Hotspot zum Einrichten eines neuen WLANs (z. B. bei
+    einem Standortwechsel) -- trennt dafür die aktuelle Verbindung, dieses
+    Portal ist bis zur neuen Einrichtung kurzzeitig nicht erreichbar.
+  </p>
+  <form method="post" class="btn-group">
+    <button type="submit" name="action" value="wifi_setup" class="btn btn-danger"
+            onclick="return confirm('Aktuelle WLAN-Verbindung trennen und Setup-Hotspot öffnen?');">WLAN neu einrichten</button>
+  </form>
+</section>
+
+<section class="section">
   <h2>Aktionen</h2>
   <form method="post" class="btn-group">
     <button type="submit" name="action" value="restart" class="btn btn-danger"

@@ -729,3 +729,16 @@ class RadarApp:
                 menu.handle_scroll(1)
             elif gesture.type == GestureType.SWIPE_DOWN:
                 menu.handle_scroll(-1)
+
+        elif self._active == ActiveScreen.WIFI_SETUP:
+            if gesture.type in (GestureType.SWIPE_RIGHT, GestureType.SWIPE_DOWN):
+                # Explicit user cancel -- e.g. opened manually via the menu
+                # but no new network needed/in range right now. Switches
+                # back immediately rather than through the status-file
+                # poll (which is what the automatic entry/exit path uses),
+                # since a deliberate gesture should feel instant, not wait
+                # out the "Verbunden mit X" confirmation delay meant for
+                # the unattended/automatic case.
+                network_watchdog.cancel_wifi_setup()
+                self._wifi_success_since = None
+                self._active = ActiveScreen.RADAR
