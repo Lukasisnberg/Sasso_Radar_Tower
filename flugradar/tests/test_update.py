@@ -104,11 +104,8 @@ def _rev_parse(sha_for_head: str, sha_for_remote: str):
 
 
 class TestSuccessfulUpdate:
-    def test_happy_path_restarts_web_then_display(self):
-        calls: list[list[str]] = []
-
+    def test_happy_path_triggers_reboot(self):
         def fake(cmd, timeout=None):
-            calls.append(cmd)
             rp = _rev_parse(_OLD_SHA, _NEW_SHA)(cmd, timeout)
             if rp is not None:
                 return rp
@@ -116,21 +113,15 @@ class TestSuccessfulUpdate:
                 return _CLEAN_STATUS
             return _cp(0)
 
-        with patch.object(update_mod, "_run", side_effect=fake):
+        with patch.object(update_mod, "_run", side_effect=fake), \
+                patch.object(update_mod, "system_action") as mock_system_action:
             result = update_mod.apply_update()
 
         assert result.ok is True
         assert _OLD_SHA[:8] in result.message
         assert _NEW_SHA[:8] in result.message
-
-        restart_calls = [c for c in calls if c[:2] == ["sudo", "systemctl"]]
-        assert len(restart_calls) == 2
-        assert "flugradar-web.service" in restart_calls[0]
-        assert "flugradar-display.service" in restart_calls[1]
-        # web must be restarted before display (self-referential restart last)
-        web_idx = calls.index(restart_calls[0])
-        display_idx = calls.index(restart_calls[1])
-        assert web_idx < display_idx
+        assert "Neustart" in result.message
+        mock_system_action.assert_called_once_with("reboot")
 
     def test_resets_hard_to_origin_main(self):
         def fake(cmd, timeout=None):
@@ -163,7 +154,8 @@ class TestPipFailureRollsBack:
                 return _cp(1, "", "could not resolve dependency")
             return _cp(0)
 
-        with patch.object(update_mod, "_run", side_effect=fake):
+        with patch.object(update_mod, "_run", side_effect=fake), \
+                patch.object(update_mod, "system_action") as mock_system_action:
             result = update_mod.apply_update()
 
         assert result.ok is False
@@ -171,7 +163,7 @@ class TestPipFailureRollsBack:
         assert _OLD_SHA[:8] in result.message
         rollback_calls = [c for c in calls if c[:3] == ["git", "reset", "--hard"] and c[-1] == _OLD_SHA]
         assert len(rollback_calls) == 1
-        assert not any(c[:2] == ["sudo", "systemctl"] for c in calls)
+        mock_system_action.assert_not_called()
 
 
 class TestSanityCheckFailureRollsBack:
@@ -189,13 +181,14 @@ class TestSanityCheckFailureRollsBack:
                 return _cp(1, "", "ModuleNotFoundError: no module named 'foo'")
             return _cp(0)
 
-        with patch.object(update_mod, "_run", side_effect=fake):
+        with patch.object(update_mod, "_run", side_effect=fake), \
+                patch.object(update_mod, "system_action") as mock_system_action:
             result = update_mod.apply_update()
 
         assert result.ok is False
         assert "ließ sich nicht importieren" in result.message
         assert "zurückgesetzt" in result.message
-        assert not any(c[:2] == ["sudo", "systemctl"] for c in calls)
+        mock_system_action.assert_not_called()
 
 
 class TestTriggerUpdateAsync:

@@ -42,7 +42,7 @@ class CircularViewport:
         """Rebuild the bezel ring to match a newly applied theme (live-reload)."""
         self._bezel = create_bezel_ring(self.size, colour=theme.radar_ring)
 
-    def apply(self, surface: pygame.Surface) -> None:
+    def apply(self, surface: pygame.Surface, show_bezel: bool = True) -> None:
         if self.rotation_deg != 0.0:
             rotated = pygame.transform.rotate(surface, self.rotation_deg)
             rx = (rotated.get_width() - self.size) // 2
@@ -50,4 +50,5 @@ class CircularViewport:
             surface.blit(rotated, (0, 0), area=pygame.Rect(rx, ry, self.size, self.size))
 
         surface.blit(self._mask, (0, 0))
-        surface.blit(self._bezel, (0, 0))
+        if show_bezel:
+            surface.blit(self._bezel, (0, 0))

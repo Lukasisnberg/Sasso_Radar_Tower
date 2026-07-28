@@ -283,7 +283,14 @@ class RadarApp:
                 self._prev_frame_copy = frame_surface.copy()
 
                 if viewport:
-                    viewport.apply(screen)
+                    # The bezel ring is the round panel's decorative edge and
+                    # stays on for every other screen -- it's only tied to
+                    # show_rings on the radar screen itself, where it visually
+                    # doubles as the outermost distance ring.
+                    show_bezel = not (
+                        self._active == ActiveScreen.RADAR and not self.settings.show_rings
+                    )
+                    viewport.apply(screen, show_bezel=show_bezel)
 
                 pygame.display.flip()
                 clock.tick(30)

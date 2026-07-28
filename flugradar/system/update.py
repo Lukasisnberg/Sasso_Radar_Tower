@@ -3,7 +3,7 @@
 Triggered from the on-device System menu or the web portal (both call
 `trigger_update_async()`, mirroring how `system_action()` already handles
 reboot/shutdown fire-and-forget). Runs as a detached background process
-because the update's own final step restarts the very service that
+because the update's own final step reboots the very device that
 requested it -- waiting around for that synchronously isn't possible.
 
 Deliberately more cautious than a bare `git pull && restart`: the device
@@ -13,6 +13,12 @@ running service, it checks the working tree is clean, verifies the new
 code at least imports, and installs dependencies -- rolling back to the
 previous commit and leaving the running app untouched if anything fails,
 rather than risking a bricked device.
+
+A successful update ends in a full reboot rather than just restarting
+flugradar-web/flugradar-display: some changes (boot config overlays,
+apt packages pulled in by a re-run of install.sh, kernel/driver state)
+only take effect after a real reboot, and a service-only restart left
+those silently un-applied until someone rebooted by hand.
 """
 
 from __future__ import annotations
@@ -24,6 +30,8 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+from flugradar.system.actions import system_action
+
 log = logging.getLogger(__name__)
 
 REPO_DIR = Path(__file__).resolve().parents[2]
@@ -32,7 +40,6 @@ LOG_FILE = Path.home() / ".local" / "share" / "flugradar" / "update.log"
 _GIT_TIMEOUT_S = 120
 _PIP_TIMEOUT_S = 600
 _IMPORT_TIMEOUT_S = 30
-_RESTART_TIMEOUT_S = 60
 
 
 @dataclass
@@ -101,17 +108,17 @@ def apply_update() -> UpdateResult:
             f"{sanity.stderr.strip()[-500:]}",
         )
 
-    # The web service's cgroup is unrelated to whoever's making this
-    # request, so it always restarts cleanly. flugradar-display.service is
-    # restarted last since if *this* process happens to be running inside
-    # it, systemd may tear down this very call mid-flight -- by then the
-    # restart request has already been dispatched to systemd (PID 1, not
-    # us), so the restart itself still completes even if we don't get to
-    # see the exit code.
-    _run(["sudo", "systemctl", "restart", "flugradar-web.service"], timeout=_RESTART_TIMEOUT_S)
-    _run(["sudo", "systemctl", "restart", "flugradar-display.service"], timeout=_RESTART_TIMEOUT_S)
+    # A full reboot (not just restarting the two services) so that
+    # anything beyond plain Python code -- boot config, apt packages, a
+    # re-run of install.sh -- is guaranteed to be picked up too. Fire-and-
+    # forget, same as system_action("reboot") from the menu/portal: this
+    # process (possibly running inside flugradar-display.service, the very
+    # thing about to go down) never sees the reboot actually happen, but by
+    # the time we return, the request has already been dispatched to
+    # systemd/PID 1, so it completes regardless.
+    system_action("reboot")
 
-    return UpdateResult(True, f"aktualisiert {previous_sha[:8]} -> {target_sha[:8]}")
+    return UpdateResult(True, f"aktualisiert {previous_sha[:8]} -> {target_sha[:8]}, Neustart eingeleitet")
 
 
 def run_and_log() -> None:
