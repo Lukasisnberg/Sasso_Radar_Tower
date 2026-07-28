@@ -59,6 +59,7 @@ class AppSettings:
     # --- Darstellung (device menu "Darstellung") ---
     show_compass: bool = True
     show_sweep: bool = True
+    show_rings: bool = True
     show_aircraft_tags: bool = True
 
     # --- Filter (device menu "Filter") ---
@@ -136,6 +137,8 @@ class AppSettings:
             self.show_compass = _parse_bool(v)
         if v := os.environ.get("FLUGRADAR_SHOW_SWEEP"):
             self.show_sweep = _parse_bool(v)
+        if v := os.environ.get("FLUGRADAR_SHOW_RINGS"):
+            self.show_rings = _parse_bool(v)
         if v := os.environ.get("FLUGRADAR_SHOW_AIRCRAFT_TAGS"):
             self.show_aircraft_tags = _parse_bool(v)
         if v := os.environ.get("FLUGRADAR_HIGHLIGHT_EMERGENCY"):
@@ -215,6 +218,8 @@ class AppSettings:
             self.show_compass = _parse_bool(data["show_compass"])
         if "show_sweep" in data:
             self.show_sweep = _parse_bool(data["show_sweep"])
+        if "show_rings" in data:
+            self.show_rings = _parse_bool(data["show_rings"])
         if "show_aircraft_tags" in data:
             self.show_aircraft_tags = _parse_bool(data["show_aircraft_tags"])
         if "highlight_emergency" in data:
@@ -279,6 +284,7 @@ class AppSettings:
         old_map_brightness = self.map_brightness
         old_show_compass = self.show_compass
         old_show_sweep = self.show_sweep
+        old_show_rings = self.show_rings
         old_show_aircraft_tags = self.show_aircraft_tags
         old_highlight_emergency = self.highlight_emergency
         old_highlight_military = self.highlight_military
@@ -312,6 +318,7 @@ class AppSettings:
         self.map_brightness = 40
         self.show_compass = True
         self.show_sweep = True
+        self.show_rings = True
         self.show_aircraft_tags = True
         self.highlight_emergency = True
         self.highlight_military = True
@@ -346,6 +353,7 @@ class AppSettings:
             or self.map_brightness != old_map_brightness
             or self.show_compass != old_show_compass
             or self.show_sweep != old_show_sweep
+            or self.show_rings != old_show_rings
             or self.show_aircraft_tags != old_show_aircraft_tags
             or self.highlight_emergency != old_highlight_emergency
             or self.highlight_military != old_highlight_military

@@ -22,6 +22,7 @@ class RadarScreen:
         aircraft_icon_set: str = "detailed",
         show_compass: bool = True,
         show_sweep: bool = True,
+        show_rings: bool = True,
         show_aircraft_tags: bool = True,
         highlight_emergency: bool = True,
         highlight_military: bool = True,
@@ -36,6 +37,7 @@ class RadarScreen:
             theme=theme,
             distance_unit=distance_unit,
             aircraft_icon_set=aircraft_icon_set,
+            show_rings=show_rings,
             show_aircraft_tags=show_aircraft_tags,
             highlight_emergency=highlight_emergency,
             highlight_military=highlight_military,
@@ -89,10 +91,12 @@ class RadarScreen:
         self.renderer.aircraft_icon_set = icon_set
 
     def update_display_options(
-        self, show_compass: bool, show_sweep: bool, show_aircraft_tags: bool,
+        self, show_compass: bool, show_sweep: bool, show_rings: bool,
+        show_aircraft_tags: bool,
     ) -> None:
         self.show_compass = show_compass
         self.show_sweep = show_sweep
+        self.renderer.show_rings = show_rings
         self.renderer.show_aircraft_tags = show_aircraft_tags
 
     def update_highlight_options(

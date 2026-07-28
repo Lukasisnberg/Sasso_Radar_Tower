@@ -192,6 +192,11 @@ class MenuScreen:
                     get_bool=lambda: s.show_sweep,
                     set_bool=lambda v: {"show_sweep": v},
                 ),
+                _Row(
+                    "rings", "Ringe", "toggle",
+                    get_bool=lambda: s.show_rings,
+                    set_bool=lambda v: {"show_rings": v},
+                ),
             ]
         if key == "filter":
             return [

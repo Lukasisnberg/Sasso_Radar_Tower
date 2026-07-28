@@ -113,6 +113,7 @@ class RadarApp:
             aircraft_icon_set=self.settings.aircraft_icon_set,
             show_compass=self.settings.show_compass,
             show_sweep=self.settings.show_sweep,
+            show_rings=self.settings.show_rings,
             show_aircraft_tags=self.settings.show_aircraft_tags,
             highlight_emergency=self.settings.highlight_emergency,
             highlight_military=self.settings.highlight_military,
@@ -440,7 +441,7 @@ class RadarApp:
         radar.update_icon_set(self.settings.aircraft_icon_set)
         radar.update_display_options(
             self.settings.show_compass, self.settings.show_sweep,
-            self.settings.show_aircraft_tags,
+            self.settings.show_rings, self.settings.show_aircraft_tags,
         )
         radar.update_highlight_options(
             self.settings.highlight_emergency, self.settings.highlight_military,

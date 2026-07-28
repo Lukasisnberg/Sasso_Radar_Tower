@@ -656,6 +656,7 @@ Einstellung → Env-Variable → Portal-Seite → Menüpfad am Gerät:
 | Beschriftung | `FLUGRADAR_SHOW_AIRCRAFT_TAGS` | Display | Darstellung → Beschriftung |
 | Kompassrose | `FLUGRADAR_SHOW_COMPASS` | Display | Darstellung → Kompassrose |
 | Sweep | `FLUGRADAR_SHOW_SWEEP` | Display | Darstellung → Sweep |
+| Ringe | `FLUGRADAR_SHOW_RINGS` | Display | Darstellung → Ringe |
 | Automatisch zur Uhr | `FLUGRADAR_AUTO_CLOCK_S` | Display | Anzeige → Automatisch zur Uhr |
 | Helligkeit | `FLUGRADAR_BRIGHTNESS` | Display | Anzeige → Helligkeit |
 | Nachtmodus an/aus | `FLUGRADAR_NIGHT_MODE_ENABLED` | Display | Anzeige → Nachtmodus |

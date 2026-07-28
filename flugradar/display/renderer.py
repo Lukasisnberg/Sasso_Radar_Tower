@@ -37,6 +37,7 @@ class RadarRenderer:
         ring_count: int = 4,
         distance_unit: str = "km",
         aircraft_icon_set: str = "detailed",
+        show_rings: bool = True,
         show_aircraft_tags: bool = True,
         highlight_emergency: bool = True,
         highlight_military: bool = True,
@@ -48,6 +49,7 @@ class RadarRenderer:
         self.ring_count = ring_count
         self.distance_unit = distance_unit
         self.aircraft_icon_set = aircraft_icon_set
+        self.show_rings = show_rings
         self.show_aircraft_tags = show_aircraft_tags
         self.highlight_emergency = highlight_emergency
         self.highlight_military = highlight_military
@@ -90,6 +92,8 @@ class RadarRenderer:
         surface.fill(self.theme.background)
 
     def draw_rings(self, surface: pygame.Surface) -> None:
+        if not self.show_rings:
+            return
         self._ensure_fonts()
         cx, cy = int(self.proj.centre[0]), int(self.proj.centre[1])
         for i in range(1, self.ring_count + 1):

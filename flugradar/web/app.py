@@ -108,6 +108,7 @@ def create_app(settings: AppSettings | None = None) -> Flask:
                 updates["auto_clock_s"] = int(v)
             updates["show_compass"] = request.form.get("show_compass") is not None
             updates["show_sweep"] = request.form.get("show_sweep") is not None
+            updates["show_rings"] = request.form.get("show_rings") is not None
             updates["show_aircraft_tags"] = request.form.get("show_aircraft_tags") is not None
             if (v := request.form.get("brightness")) is not None:
                 updates["brightness"] = int(v)

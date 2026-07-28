@@ -186,6 +186,14 @@ class TestToggleAndSelect:
         assert result == "changed"
         assert settings.show_compass != before
 
+    def test_rings_toggle_flips_and_persists(self, screen, settings):
+        m, surf = screen
+        _tap_row(m, surf, "display")
+        before = settings.show_rings
+        result, _, _ = _tap_row(m, surf, "rings")
+        assert result == "changed"
+        assert settings.show_rings != before
+
     def test_disabled_row_ignores_taps(self, screen, settings):
         assert settings.openaip_api_key == ""
         m, surf = screen
