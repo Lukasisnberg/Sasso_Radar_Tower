@@ -65,6 +65,7 @@ class AboutScreen:
             "Fotos: planespotters.net",
             "Icons: adsb-radar.com",
             "Wettericons: erikflowers.github.io (SIL OFL 1.1)",
+            "UI-Icons: lucide.dev (ISC)",
         ]
         if self.openaip_enabled:
             lines.append("Luftraum-Overlay: openAIP.net (CC BY-NC 4.0)")

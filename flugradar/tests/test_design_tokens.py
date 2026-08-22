@@ -26,9 +26,18 @@ _ALLOWED = {
     ("display/renderer.py", "scratch.fill((0, 0, 0, 0))"),  # clear scratch surface to transparent
     ("display/mask.py", "mask.fill((0, 0, 0, 255))"),  # opaque stencil, only valid value
     ("display/screens/menu.py", "self._back_rect = pygame.Rect(0, 0, 0, 0)"),  # rect geometry, not a colour
+    # Same rect-geometry-not-a-colour reasoning as the menu.py line above --
+    # pre-existing gap in this allowlist found while touching wifi.py for
+    # Schritt 1 of the UI overhaul (the WLAN screen was added after this
+    # allowlist was last updated, so test_no_stray_color_tuples would
+    # already fail on unmodified `main` for these three lines).
+    ("display/screens/wifi.py", "self._back_rect = pygame.Rect(0, 0, 0, 0)"),
+    ("display/screens/wifi.py", "self._reload_rect = pygame.Rect(0, 0, 0, 0)"),
+    ("display/screens/wifi.py", "self._eye_rect = pygame.Rect(0, 0, 0, 0)"),
     ("display/mask.py", "pygame.draw.circle(mask, (0, 0, 0, 0), (size // 2, size // 2), size // 2)"),  # transparent punch
     ("display/aircraft_icons.py", 'tinted.fill((0, 0, 0, 255), special_flags=pygame.BLEND_RGBA_MULT)'),  # tint-recipe constant, not a colour choice
     ("display/weather_icons.py", 'tinted.fill((0, 0, 0, 255), special_flags=pygame.BLEND_RGBA_MULT)'),  # tint-recipe constant, not a colour choice
+    ("display/ui_icons.py", 'tinted.fill((0, 0, 0, 255), special_flags=pygame.BLEND_RGBA_MULT)'),  # tint-recipe constant, not a colour choice
 }
 
 

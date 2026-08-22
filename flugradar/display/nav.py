@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import math
-
 import pygame
 
 import time
 
-from flugradar.display import scaling
+from flugradar.display import scaling, ui_icons
 from flugradar.display.draw_helpers import fit_text
 from flugradar.display.fonts import get_font
 from flugradar.display.theme import TOKENS, Theme, ease_out_cubic
@@ -185,45 +183,6 @@ def footer_button_rects(button_count: int) -> list[pygame.Rect]:
     ]
 
 
-def _draw_nav_arrow(
-    surface: pygame.Surface,
-    center: tuple[int, int],
-    size: int,
-    color: tuple[int, int, int],
-    left: bool,
-) -> None:
-    cx, cy = center
-    half_h = size
-    reach = size + scaling.s(2)
-    if left:
-        pts = [(cx - reach, cy), (cx + reach // 2, cy - half_h), (cx + reach // 2, cy + half_h)]
-    else:
-        pts = [(cx + reach, cy), (cx - reach // 2, cy - half_h), (cx - reach // 2, cy + half_h)]
-    pygame.draw.polygon(surface, color, pts)
-
-
-def _draw_radar_icon(
-    surface: pygame.Surface,
-    center: tuple[int, int],
-    radius: int,
-    color: tuple[int, int, int],
-    theme: Theme,
-) -> None:
-    cx, cy = center
-    r = max(4, radius)
-    grid_color = theme.radar_ring
-    stroke = max(1, scaling.s(TOKENS.line_stroke))
-    pygame.draw.circle(surface, color, (cx, cy), r, stroke)
-    pygame.draw.circle(surface, grid_color, (cx, cy), max(2, r * 2 // 3), 1)
-    pygame.draw.line(surface, grid_color, (cx - r, cy), (cx + r, cy), 1)
-    pygame.draw.line(surface, grid_color, (cx, cy - r), (cx, cy + r), 1)
-    sweep_rad = math.radians(-35)
-    sx = cx + int(r * math.cos(sweep_rad))
-    sy = cy + int(r * math.sin(sweep_rad))
-    pygame.draw.line(surface, theme.sweep_colour, (cx, cy), (sx, sy), stroke)
-    pygame.draw.circle(surface, theme.aircraft_dot, (cx + r // 3, cy - r // 4), max(2, scaling.s(3)))
-
-
 def draw_footer_buttons(
     surface: pygame.Surface,
     kinds: list[str],
@@ -249,14 +208,14 @@ def draw_footer_buttons(
 
         icon_color = theme.sweep_colour if accent else theme.label
         icon_cy = rect.centery - scaling.s(6)
-        icon_size = scaling.s(7)
+        icon_size = scaling.s(TOKENS.icon_medium)
 
         if kind == "prev":
-            _draw_nav_arrow(surface, (rect.centerx, icon_cy), icon_size, icon_color, left=True)
+            ui_icons.draw_icon(surface, "chevron-left", (rect.centerx, icon_cy), icon_size, icon_color)
         elif kind == "next":
-            _draw_nav_arrow(surface, (rect.centerx, icon_cy), icon_size, icon_color, left=False)
+            ui_icons.draw_icon(surface, "chevron-right", (rect.centerx, icon_cy), icon_size, icon_color)
         elif kind == "radar":
-            _draw_radar_icon(surface, (rect.centerx, icon_cy), icon_size, icon_color, theme)
+            ui_icons.draw_icon(surface, "radar", (rect.centerx, icon_cy), icon_size, icon_color)
 
         labels = {
             "prev": "ZURÜCK", "next": "WEITER", "radar": "RADAR",

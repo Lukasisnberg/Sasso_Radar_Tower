@@ -161,6 +161,17 @@ class DesignTokens:
     duration_short_ms: int = 150  # tap feedback
     duration_long_ms: int = 350   # screen/layer transitions
     easing: str = "ease_out_cubic"
+    # UI-icon size tiers (Schritt 1.3) -- visible glyph size, not the tap
+    # target. small: inline decorations (lock icon next to a network name).
+    # medium: standalone controls (back chevron, footer icons, reload/eye).
+    # large: prominent standalone glyphs (e.g. a connecting spinner).
+    icon_small: int = 12
+    icon_medium: int = 18
+    icon_large: int = 28
+    # Minimum touch target, independent of how small the visible icon is
+    # (Rahmenbedingungen: >=64px at the device's 720px size, ~1.85x scale
+    # over REF_SIZE=390 -> 64 / 1.846 =~ 35).
+    touch_target: int = 35
 
 
 TOKENS = DesignTokens()

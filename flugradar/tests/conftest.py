@@ -1,6 +1,6 @@
 import pytest
 
-from flugradar.display import fonts
+from flugradar.display import fonts, ui_icons
 
 
 @pytest.fixture(autouse=True)
@@ -14,3 +14,11 @@ def _reset_font_cache():
     subsystem instance that no longer exists."""
     yield
     fonts.reset_cache()
+
+
+@pytest.fixture(autouse=True)
+def _reset_ui_icon_cache():
+    """Same reasoning as _reset_font_cache above, for ui_icons.py's cached
+    Surfaces (Schritt 1 of the UI overhaul)."""
+    yield
+    ui_icons.reset_cache()

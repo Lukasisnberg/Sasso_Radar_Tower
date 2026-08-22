@@ -218,6 +218,11 @@ docs/ANFORDERUNGEN.md           # Full project specification
   `flugradar/assets/icons/weather/LICENSE.txt`
 - **[Tomorrow.io](https://www.tomorrow.io/)** — current conditions and
   forecast on the weather screen, requires a free API key
+- **[Lucide](https://lucide.dev)** — stroke-based UI icons (back/forward
+  navigation, radar/reload/lock/eye/signal glyphs), licensed
+  [ISC](https://opensource.org/license/isc-license-txt) (a fork of
+  Feather Icons, MIT for the icons derived from it) — see
+  `flugradar/assets/icons/ui/LICENSE.txt`
 
 ## License
 

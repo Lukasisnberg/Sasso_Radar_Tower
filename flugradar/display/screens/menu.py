@@ -26,7 +26,7 @@ from flugradar import __version__
 from flugradar.config.locations import LOCATIONS, RADIUS_PRESETS_KM, current_location_key
 from flugradar.config.settings import AppSettings
 from flugradar.data_sources.geo import km_to_unit, unit_label
-from flugradar.display import nav, scaling
+from flugradar.display import nav, scaling, ui_icons
 from flugradar.display.draw_helpers import fit_text
 from flugradar.display.fonts import get_font
 from flugradar.display.screens.about import _hostname, _ip_address
@@ -397,20 +397,13 @@ class MenuScreen:
         top_y = scaling.center_y() - int(scaling.visible_radius() * 0.75)
         cx = scaling.center_x()
 
-        arrow_size = scaling.s(9)
+        icon_size = scaling.s(TOKENS.icon_medium)
         arrow_cx = scaling.center_x() - int(scaling.visible_radius() * 0.55)
-        arrow_cy = top_y + arrow_size
-        pts = [
-            (arrow_cx + arrow_size, arrow_cy - arrow_size),
-            (arrow_cx - arrow_size, arrow_cy),
-            (arrow_cx + arrow_size, arrow_cy + arrow_size),
-        ]
-        pygame.draw.polygon(surface, self.theme.hint, pts)
-        pad = scaling.s(10)
-        self._back_rect = pygame.Rect(
-            arrow_cx - arrow_size - pad, arrow_cy - arrow_size - pad,
-            arrow_size * 2 + pad * 2, arrow_size * 2 + pad * 2,
-        )
+        arrow_cy = top_y + icon_size // 2
+        ui_icons.draw_icon(surface, "chevron-left", (arrow_cx, arrow_cy), icon_size, self.theme.hint)
+        touch = scaling.s(TOKENS.touch_target)
+        self._back_rect = pygame.Rect(0, 0, touch, touch)
+        self._back_rect.center = (arrow_cx, arrow_cy)
 
         title_surf = self._font_title.render(title.upper(), True, self.theme.label)
         surface.blit(title_surf, title_surf.get_rect(midtop=(cx, top_y)))

@@ -23,7 +23,7 @@ from typing import Optional
 
 import pygame
 
-from flugradar.display import nav, scaling
+from flugradar.display import nav, scaling, ui_icons
 from flugradar.display.draw_helpers import draw_center_text, fit_text
 from flugradar.display.fonts import get_font
 from flugradar.display.keyboard import OnScreenKeyboard
@@ -35,32 +35,22 @@ from flugradar.system import network
 # instant the connection succeeds.
 SUCCESS_DISPLAY_S = 3.0
 
+# Bucketed the same way the old hand-drawn 4-bar gauge already was
+# (signal < 25/50/75) -- weakest to strongest, matching Lucide's discrete
+# signal-strength icon family.
+_SIGNAL_ICONS = ("signal-low", "signal-medium", "signal-high", "signal")
 
-def _draw_signal_bars(
-    surface: pygame.Surface, right_x: int, cy: int, signal: int,
-    color: tuple[int, int, int], off_color: tuple[int, int, int],
+
+def _draw_signal_icon(
+    surface: pygame.Surface, right_x: int, cy: int, signal: int, color: tuple[int, int, int],
 ) -> int:
-    """Four ascending bars, right-aligned at `right_x`. Returns the total width used."""
-    bars = 4
-    bar_w = max(2, scaling.s(3))
-    gap = scaling.s(2)
-    max_h = scaling.s(14)
-    active = 1 if signal < 25 else 2 if signal < 50 else 3 if signal < 75 else 4
-    total_w = bars * bar_w + (bars - 1) * gap
-    x = right_x - total_w
-    for i in range(bars):
-        h = max(scaling.s(3), int(max_h * (i + 1) / bars))
-        rect = pygame.Rect(x + i * (bar_w + gap), cy + max_h // 2 - h, bar_w, h)
-        pygame.draw.rect(surface, color if i < active else off_color, rect)
-    return total_w
-
-
-def _draw_lock_icon(surface: pygame.Surface, center: tuple[int, int], size: int, color: tuple[int, int, int]) -> None:
-    cx, cy = center
-    body = pygame.Rect(cx - size, cy - size // 4, size * 2, int(size * 1.6))
-    pygame.draw.rect(surface, color, body, border_radius=max(1, size // 3))
-    shackle_rect = pygame.Rect(cx - int(size * 0.7), cy - size - size // 4, int(size * 1.4), size * 2)
-    pygame.draw.arc(surface, color, shackle_rect, math.pi, 2 * math.pi, max(1, scaling.s(2)))
+    """Bucketed signal-strength icon, right-aligned at `right_x`, vertically
+    centred on `cy`. Returns the icon's width so callers can position
+    something (the lock icon) to its left."""
+    bucket = 0 if signal < 25 else 1 if signal < 50 else 2 if signal < 75 else 3
+    size = scaling.s(TOKENS.icon_small)
+    ui_icons.draw_icon(surface, _SIGNAL_ICONS[bucket], (right_x - size // 2, cy), size, color)
+    return size
 
 
 class WifiScreen:
@@ -189,20 +179,13 @@ class WifiScreen:
         top_y = scaling.center_y() - int(scaling.visible_radius() * 0.75)
         cx = scaling.center_x()
 
-        arrow_size = scaling.s(9)
+        icon_size = scaling.s(TOKENS.icon_medium)
+        touch = scaling.s(TOKENS.touch_target)
         arrow_cx = cx - int(scaling.visible_radius() * 0.55)
-        arrow_cy = top_y + arrow_size
-        pts = [
-            (arrow_cx + arrow_size, arrow_cy - arrow_size),
-            (arrow_cx - arrow_size, arrow_cy),
-            (arrow_cx + arrow_size, arrow_cy + arrow_size),
-        ]
-        pygame.draw.polygon(surface, self.theme.hint, pts)
-        pad = scaling.s(10)
-        self._back_rect = pygame.Rect(
-            arrow_cx - arrow_size - pad, arrow_cy - arrow_size - pad,
-            arrow_size * 2 + pad * 2, arrow_size * 2 + pad * 2,
-        )
+        arrow_cy = top_y + icon_size // 2
+        ui_icons.draw_icon(surface, "chevron-left", (arrow_cx, arrow_cy), icon_size, self.theme.hint)
+        self._back_rect = pygame.Rect(0, 0, touch, touch)
+        self._back_rect.center = (arrow_cx, arrow_cy)
 
         title_surf = self._font_title.render(title.upper(), True, self.theme.label)
         surface.blit(title_surf, title_surf.get_rect(midtop=(cx, top_y)))
@@ -210,14 +193,13 @@ class WifiScreen:
         self._reload_rect = pygame.Rect(0, 0, 0, 0)
         if self._mode == "list":
             reload_cx = cx + int(scaling.visible_radius() * 0.55)
-            r = scaling.s(9)
             colour = self.theme.hint if not self._scanning else self.theme.sweep_colour
-            rect = pygame.Rect(reload_cx - r, arrow_cy - r, r * 2, r * 2)
-            spin = (time.monotonic() * 240) % 360 if self._scanning else 40
-            pygame.draw.arc(surface, colour, rect, math.radians(spin), math.radians(spin + 260), max(1, scaling.s(2)))
-            self._reload_rect = pygame.Rect(
-                reload_cx - r - pad, arrow_cy - r - pad, r * 2 + pad * 2, r * 2 + pad * 2,
-            )
+            icon = ui_icons.get_icon("refresh-cw", icon_size, colour)
+            if self._scanning:
+                icon = pygame.transform.rotate(icon, (time.monotonic() * 240) % 360)
+            surface.blit(icon, icon.get_rect(center=(reload_cx, arrow_cy)))
+            self._reload_rect = pygame.Rect(0, 0, touch, touch)
+            self._reload_rect.center = (reload_cx, arrow_cy)
 
     def _draw_list(self, surface: pygame.Surface) -> None:
         top = nav.content_top_y()
@@ -259,10 +241,16 @@ class WifiScreen:
 
         cy = y + row_h // 2
         bars_right = right - pad
-        used = _draw_signal_bars(surface, bars_right, y, net.signal, colour, self.theme.radar_ring)
+        # Vertically centred on `cy` -- the pre-icon version anchored the
+        # bars to the row's top edge `y` instead, a small pre-existing
+        # misalignment against the lock icon next to it (fixed in passing).
+        used = _draw_signal_icon(surface, bars_right, cy, net.signal, colour)
         if net.secured:
-            lock_size = scaling.s(5)
-            _draw_lock_icon(surface, (bars_right - used - scaling.s(12), cy), lock_size, self.theme.hint)
+            lock_size = scaling.s(TOKENS.icon_small)
+            gap = scaling.s(6)
+            ui_icons.draw_icon(
+                surface, "lock", (bars_right - used - gap - lock_size // 2, cy), lock_size, self.theme.hint,
+            )
 
         overlay = pygame.Surface((right - left, 1), pygame.SRCALPHA)
         overlay.fill((*self.theme.radar_ring, TOKENS.hairline_alpha))
@@ -294,13 +282,18 @@ class WifiScreen:
         rendered = field_font.render(text, True, colour)
         surface.blit(rendered, rendered.get_rect(midtop=(cx, y)))
 
-        eye_r = scaling.s(10)
+        eye_size = scaling.s(TOKENS.icon_medium)
         eye_cx = cx + field_w // 2 + scaling.s(20)
         eye_cy = y + rendered.get_height() // 2
         eye_colour = self.theme.sweep_colour if not self._masked else self.theme.hint
-        pygame.draw.circle(surface, eye_colour, (eye_cx, eye_cy), eye_r, max(1, scaling.s(2)))
-        pygame.draw.circle(surface, eye_colour, (eye_cx, eye_cy), max(1, eye_r // 3))
-        self._eye_rect = pygame.Rect(eye_cx - eye_r * 2, eye_cy - eye_r * 2, eye_r * 4, eye_r * 4)
+        # "eye" while the password is showing, "eye-off" while it's masked
+        # -- the earlier version used one glyph shape and only recoloured
+        # it, losing that visual distinction.
+        eye_icon = "eye" if not self._masked else "eye-off"
+        ui_icons.draw_icon(surface, eye_icon, (eye_cx, eye_cy), eye_size, eye_colour)
+        touch = scaling.s(TOKENS.touch_target)
+        self._eye_rect = pygame.Rect(0, 0, touch, touch)
+        self._eye_rect.center = (eye_cx, eye_cy)
 
         if self._error_message:
             draw_center_text(
@@ -312,15 +305,15 @@ class WifiScreen:
 
     def _draw_connecting(self, surface: pygame.Surface) -> None:
         cx, cy = scaling.center_x(), scaling.center_y()
-        r = scaling.s(28)
+        icon_size = scaling.s(TOKENS.icon_large)
         elapsed = time.monotonic() - self._connect_started_at
-        angle = math.radians((elapsed * 220) % 360)
-        rect = pygame.Rect(cx - r, cy - r, r * 2, r * 2)
-        pygame.draw.arc(surface, self.theme.sweep_colour, rect, angle, angle + math.radians(260), max(2, scaling.s(3)))
+        icon = ui_icons.get_icon("loader-circle", icon_size, self.theme.sweep_colour)
+        icon = pygame.transform.rotate(icon, (elapsed * 220) % 360)
+        surface.blit(icon, icon.get_rect(center=(cx, cy)))
 
         ssid = self._selected.ssid if self._selected else ""
         draw_center_text(
-            surface, f"Verbinde mit {ssid}…", cy + r + scaling.s(16), self._font_label, self.theme.label,
+            surface, f"Verbinde mit {ssid}…", cy + icon_size // 2 + scaling.s(16), self._font_label, self.theme.label,
         )
 
     def _draw_result(self, surface: pygame.Surface) -> None:

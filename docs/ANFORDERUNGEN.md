@@ -824,3 +824,19 @@ Vollständige Übersichtstabelle ergänzt:
   nur die Weitergabe des Lizenztexts bei Redistribution — trotzdem aus
   Konsistenz mit den übrigen Quellen zusätzlich im On-Device-About-Screen,
   der Portal-About-Seite und README.md genannt.
+- **Lucide UI-Icons** (Ausbaustufe 3, UI-Überarbeitung Schritt 1, siehe
+  `flugradar/display/ui_icons.py`): lizenziert unter ISC
+  (`flugradar/assets/icons/ui/LICENSE.txt`, vollständiger Text inkl.
+  Copyright-Zeile — ISC verlangt deren Erhalt bei Weitergabe). Lucide ist
+  ein Fork von Feather Icons; drei der übernommenen Dateien
+  (`chevron-left`, `chevron-right`, `lock`) sind laut Lucides eigener
+  LICENSE-Datei zusätzlich von Feather abgeleitet und stehen daher
+  zusätzlich unter Feathers MIT-Lizenz (Copyright Cole Bemis) — auch das
+  ist im übernommenen Lizenztext vollständig enthalten, nicht separat
+  zusammengefasst. Weder ISC noch MIT verlangen eine sichtbare
+  In-App-Nennung, ist aber aus Konsistenz mit den übrigen Icon-/Font-
+  Quellen trotzdem in README.md, dem On-Device-About-Screen (bzw. dessen
+  Nachfolger in den Einstellungen) und der Portal-About-Seite aufgeführt.
+  Es liegen nur die tatsächlich verwendeten SVG-Dateien im Repo, nicht das
+  komplette Lucide-Set — Quelle, Abrufdatum und Versionsnummer stehen in
+  `flugradar/assets/icons/ui/SOURCE.md`.
