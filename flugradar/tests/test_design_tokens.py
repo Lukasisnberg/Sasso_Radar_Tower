@@ -49,7 +49,11 @@ class TestNoHardcodedColorsOutsideTheme:
     def test_no_stray_color_tuples(self):
         offenders = []
         for path in _display_py_files():
-            rel = str(path.relative_to(DISPLAY_DIR.parent))
+            # .as_posix(), not str() -- on Windows, relative_to() yields
+            # backslash-separated paths, which would never match _ALLOWED's
+            # forward-slash keys (silently failing every entry, not just
+            # newly added ones).
+            rel = path.relative_to(DISPLAY_DIR.parent).as_posix()
             for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
                 if not _COLOR_TUPLE_RE.search(line):
                     continue
