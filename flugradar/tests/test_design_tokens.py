@@ -50,7 +50,7 @@ class TestNoHardcodedColorsOutsideTheme:
         offenders = []
         for path in _display_py_files():
             rel = str(path.relative_to(DISPLAY_DIR.parent))
-            for lineno, line in enumerate(path.read_text().splitlines(), start=1):
+            for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
                 if not _COLOR_TUPLE_RE.search(line):
                     continue
                 if (rel, line.strip()) in _ALLOWED:
