@@ -590,11 +590,66 @@ Schritte 1–8 aus dem Bauauftrag (Abschnitt 13) sind abgeschlossen:
   Uhrzeigersinn, daher -90 für "nach rechts"/im Uhrzeigersinn). Fest im
   Startskript verdrahtet statt als Einstellung, da es eine feste
   Hardware-Eigenschaft dieses Gehäuses ist, keine Nutzerpräferenz.
+  **Nachbesserung nach Gerätetest**: das Radar selbst ist seitdem korrekt
+  gedreht, aber zwei Lücken blieben — Touch traf noch die alten
+  (Vor-Rotation-) Stellen, und Boot-Konsolentext/Plymouth-Startlogo waren
+  gar nicht gedreht. Ursache: `CircularViewport.apply()` rotiert nur das
+  fertig gerenderte Bild kurz vor der Anzeige (rein optisch), Touch-
+  Events kommen aber unverändert in physischen Panel-Pixel-Koordinaten
+  rein — beide Räume liefen seit dem ersten Rotationsfix auseinander.
+  Behoben in `GestureRecogniser` (`flugradar/display/gestures.py`): jede
+  eingehende Position (Maus- und Touch-Events) läuft jetzt durch
+  `_rotate_point()`, die exakte Inverse von `CircularViewport`s Rotation,
+  bevor Tap-/Swipe-Erkennung greift — Formel empirisch gegen echtes
+  `pygame.transform.rotate()`-Verhalten verifiziert (nicht nur am Papier
+  hergeleitet), Tests dafür in `flugradar/tests/test_gestures.py`.
+  Plymouth läuft vor `flugradar-display` (noch kein pygame, das
+  kompensieren könnte) und zeichnet komplett unabhängig vom Rotations-
+  mechanismus der App — reine Software-Positionskorrektur in der App
+  reicht hier also nicht. `system/plymouth/generate_logo.py` komponiert
+  Ringgrafik *und* Titel-Schriftzug jetzt unrotiert auf einer gemeinsamen
+  Leinwand und dreht das Ganze einmal als Einheit (`PIL.Image.rotate`,
+  gegen `pygame.transform.rotate` verifiziert identisches Pixel-Mapping
+  für exakte 90°-Vielfache — selbe Konvention, selber Wert `-90`). Titel
+  wird dafür jetzt per PIL statt per Plymouths eigenem `Image.Text()`
+  gezeichnet (Schriftdatei-Auflösung über `fc-match`, Fallback-Kette
+  Inter → DejaVu Sans → Noto Sans → PILs eingebauter Bitmap-Font), da PIL
+  anders als Plymouth eine echte Font-*Datei* braucht, keinen
+  Familiennamen. Der lebende Sweep-Punkt (`sasso-radar.script.tmpl`,
+  animiert bei jedem Refresh) bleibt eigenständig im Script, braucht aber
+  keine eigene Bild-Rotation — eine Kreisbahn ist rotationssymmetrisch um
+  ihren eigenen Mittelpunkt, nur dieser Mittelpunkt muss stimmen. Dessen
+  Position (`{{DOT_OFFSET_X}}`/`{{DOT_OFFSET_Y}}`) wird deshalb von
+  `generate_logo.py` exakt berechnet und ins Script templated, statt im
+  Script selbst geraten/hergeleitet zu werden.
+  **Bewusst nicht angefasst**: sichtbarer Kernel-/Boot-Konsolentext vor
+  Plymouth. Das ginge nur über eine Rotation auf DRM/Device-Tree-Ebene
+  (`rotation=`-Parameter am `vc4-kms-dsi-waveshare-panel`-Overlay in
+  `config.txt`) — diese Ebene liegt unterhalb von Pygame *und* Plymouth
+  und würde zwangsläufig auch die App-Anzeige nochmal mitdrehen, also die
+  bereits als korrekt bestätigte Software-Rotation der App doppelt
+  anwenden (kaputt) statt sie zu ersetzen. Ohne Zugriff auf das echte
+  Gerät ist weder die genaue Drehrichtung/der Wert für diesen Overlay-
+  Parameter noch die exakte Touch-Achsen-Zuordnung (`invx`/`invy`/
+  `swapxy`, ebenfalls Teil desselben Overlays) verifizierbar — das ist
+  ein größerer, riskanteren Umbau als die beiden hier gemachten
+  Software-Fixes und wurde daher zurückgestellt. Falls `DISPLAY_BACKEND=
+  kiosk` auf diesem Gerät bereits aktiv ist (der bestehende Mechanismus
+  dafür — `quiet splash`, `console=tty3`, `plymouth-quit-wait.service`
+  maskiert — sollte Konsolentext eigentlich schon unterdrücken, siehe
+  „Echter Kiosk-Modus zum Laufen gebracht" oben) und trotzdem noch Text
+  sichtbar ist, braucht das eine gezielte Untersuchung auf dem Gerät
+  selbst, nicht nur einen Config-Wert raten.
 
 ## Offene Punkte
 
 - FAA VFR Sectional Charts (Abschnitt 5.3) weiterhin nicht gebaut — kein
   Provider im Code, keine Portal-Option.
+- Sichtbarer Kernel-/Boot-Konsolentext vor Plymouth auf dem FlightPanel
+  (falls trotz `DISPLAY_BACKEND=kiosk` noch sichtbar) — bräuchte eine
+  DRM/Device-Tree-Rotation am `vc4-kms-dsi-waveshare-panel`-Overlay,
+  siehe Nachbesserung im Rotations-Eintrag oben; nicht ohne Gerätezugriff
+  angegangen.
 - Live-Reload-Verifikation (Settings-Änderungen im Portal ohne App-Neustart)
 - Kein dediziertes Drohnen-/UAV-Icon im lizenzierten "detailed"-Set
   (ADS-B-Kategorie B6 fällt dort auf das generische Icon zurück; die

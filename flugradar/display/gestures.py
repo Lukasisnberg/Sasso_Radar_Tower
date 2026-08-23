@@ -9,6 +9,16 @@ On the real panel (kiosk/kmsdrm backend), SDL delivers touch input as
 FINGERDOWN/FINGERUP with normalised (0..1) coordinates rather than the
 MOUSEBUTTONDOWN/UP pixel events X11/Wayland deliver — both paths are
 handled here and funnelled through the same tap/swipe logic.
+
+Touch (and, in desktop mode, mouse) positions arrive in physical
+panel-pixel space — wherever a finger actually lands on the glass. All
+hit-testing elsewhere in the app (button rects, swipe zones) is done in
+the app's internal, pre-rotation coordinate space, since that's what
+every screen draws in; CircularViewport.apply() only rotates the
+*rendered* frame right before it hits the panel (see
+flugradar/display/mask.py). When rotation_deg != 0 those two spaces
+differ, so every incoming position is rotated back here before gesture
+recognition, using the exact inverse of that same rotation.
 """
 
 import time
@@ -40,14 +50,37 @@ class Gesture:
     y: int
 
 
+def _rotate_point(x: int, y: int, n: int, angle_deg: float) -> tuple[int, int]:
+    """(x, y) as it lands after pygame.transform.rotate(surface, angle_deg)
+    on a (n+1)x(n+1) square surface, for the cardinal angles that matter
+    for panel mounting (0/90/180/270 -- verified against pygame's actual
+    rotate output, not derived from rotation matrices, since
+    pygame.transform.rotate is not guaranteed sub-pixel-exact for
+    non-cardinal angles). Any other angle is treated as unrotated."""
+    angle = round(angle_deg) % 360
+    if angle == 90:
+        return y, n - x
+    if angle == 180:
+        return n - x, n - y
+    if angle == 270:
+        return n - y, x
+    return x, y
+
+
 class GestureRecogniser:
-    def __init__(self, screen_size: int) -> None:
+    def __init__(self, screen_size: int, rotation_deg: float = 0.0) -> None:
         self._screen_size = screen_size
+        # Undoing CircularViewport's rotation_deg is exactly applying the
+        # negated angle (rotating a rotated point back).
+        self._inverse_rotation_deg = -rotation_deg
         self._down_pos: Optional[tuple[int, int]] = None
         self._down_time: float = 0.0
 
+    def _to_internal(self, x: int, y: int) -> tuple[int, int]:
+        return _rotate_point(x, y, self._screen_size - 1, self._inverse_rotation_deg)
+
     def _finger_pos(self, event: pygame.event.Event) -> tuple[int, int]:
-        return (
+        return self._to_internal(
             int(event.x * self._screen_size),
             int(event.y * self._screen_size),
         )
@@ -78,11 +111,11 @@ class GestureRecogniser:
 
     def process_event(self, event: pygame.event.Event) -> Optional[Gesture]:
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            self._handle_down(event.pos)
+            self._handle_down(self._to_internal(*event.pos))
             return None
 
         if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
-            return self._handle_up(event.pos)
+            return self._handle_up(self._to_internal(*event.pos))
 
         if event.type == pygame.FINGERDOWN:
             self._handle_down(self._finger_pos(event))
@@ -92,7 +125,7 @@ class GestureRecogniser:
             return self._handle_up(self._finger_pos(event))
 
         if event.type == pygame.MOUSEWHEEL:
-            mx, my = pygame.mouse.get_pos()
+            mx, my = self._to_internal(*pygame.mouse.get_pos())
             if event.y > 0:
                 return Gesture(GestureType.ZOOM_IN, mx, my)
             if event.y < 0:

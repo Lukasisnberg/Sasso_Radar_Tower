@@ -39,7 +39,7 @@ except Exception:  # pragma: no cover -- see module docstring
     _THEMES = {}
 
 try:
-    from PIL import Image, ImageDraw
+    from PIL import Image, ImageDraw, ImageFont
     HAS_PIL = True
 except ImportError:
     HAS_PIL = False
@@ -49,7 +49,47 @@ SIZE = 200
 CENTER = SIZE // 2
 RADIUS = 80
 
+TITLE_TEXT = "SASSO RADAR TOWER"
+TITLE_FONT_SIZE = 22
+TITLE_GAP = 12
+TITLE_PADDING = 16
+
+# The FlightPanel enclosure mounts the DSI panel physically rotated 90°
+# clockwise -- same fixed hardware fact as `--rotation -90` in
+# system/flugradar-display-start.sh. Plymouth runs before flugradar-display
+# (no pygame yet to do that compensation itself), so the whole static boot
+# graphic (rings + title) is composed unrotated below and rotated once as a
+# single image here instead. -90 is deliberately the same value and the
+# same rotate() convention as the pygame side: verified empirically that
+# PIL.Image.rotate() and pygame.transform.rotate() produce identical pixel
+# mappings for exact 90° rotations (both treat negative degrees as
+# clockwise) -- see flugradar/display/gestures.py's _rotate_point() for the
+# analogous, also-verified touch-coordinate derivation.
+BOOT_ROTATION_DEG = -90
+
 _SCRIPT_TEMPLATE = Path(__file__).with_name("sasso-radar.script.tmpl")
+
+
+def _resolve_font(size: int) -> "ImageFont.ImageFont":
+    """Looks up an installed TTF via fontconfig by family name (same
+    families flugradar/display/fonts.py falls back through), since PIL
+    -- unlike Plymouth's own Image.Text() -- needs an actual font *file*,
+    not just a family name. Falls back to PIL's built-in bitmap font
+    (small, but never crashes an install) if fontconfig or all three
+    families are unavailable."""
+    import subprocess
+    for family in ("Inter", "DejaVu Sans", "Noto Sans"):
+        try:
+            result = subprocess.run(
+                ["fc-match", "-f", "%{file}", family],
+                capture_output=True, text=True, timeout=2,
+            )
+            path = result.stdout.strip()
+            if path:
+                return ImageFont.truetype(path, size)
+        except Exception:
+            continue
+    return ImageFont.load_default()
 
 
 def _resolve_theme_name(settings_path: Path) -> str:
@@ -83,13 +123,23 @@ def _resolve_colours(settings_path: Path):
     }
 
 
-def _draw_logo(out_path: Path, colours: dict) -> None:
+def _draw_logo(out_path: Path, colours: dict) -> tuple[float, float]:
+    """Draws the rings graphic + title text unrotated (as if the panel
+    were mounted normally), composes them into one image, then rotates
+    that whole composition once for the physically-rotated FlightPanel
+    mount. Returns (dot_offset_x, dot_offset_y): where the rings' own
+    centre (the live sweep dot's orbit centre, animated separately by
+    the .script at boot) ends up inside the *rotated* saved image --
+    the .script positions its dot relative to this, since a circular
+    orbit doesn't otherwise need rotating (a circle is rotation-symmetric
+    about its own centre; only where that centre sits does)."""
     bg = colours["background"]
     ring = colours["ring"]
     accent = colours["accent"]
+    muted = colours["muted"]
 
-    img = Image.new("RGB", (SIZE, SIZE), bg)
-    draw = ImageDraw.Draw(img)
+    rings = Image.new("RGB", (SIZE, SIZE), bg)
+    draw = ImageDraw.Draw(rings)
 
     for r in (RADIUS, RADIUS * 2 // 3, RADIUS // 3):
         draw.ellipse(
@@ -115,11 +165,34 @@ def _draw_logo(out_path: Path, colours: dict) -> None:
         faded = tuple(int(bg[i] + (accent[i] - bg[i]) * alpha) for i in range(3))
         draw.ellipse((x - 1, y - 1, x + 1, y + 1), fill=faded)
 
-    img.save(out_path)
+    font = _resolve_font(TITLE_FONT_SIZE)
+    measurer = ImageDraw.Draw(Image.new("RGB", (1, 1)))
+    tx0, ty0, tx1, ty1 = measurer.textbbox((0, 0), TITLE_TEXT, font=font)
+    title_w, title_h = tx1 - tx0, ty1 - ty0
+
+    canvas_w = max(SIZE, title_w + TITLE_PADDING * 2)
+    canvas_h = SIZE + TITLE_GAP + title_h
+    canvas = Image.new("RGB", (canvas_w, canvas_h), bg)
+    canvas.paste(rings, ((canvas_w - SIZE) // 2, 0))
+    ImageDraw.Draw(canvas).text(
+        ((canvas_w - title_w) // 2 - tx0, SIZE + TITLE_GAP - ty0),
+        TITLE_TEXT, fill=muted, font=font,
+    )
+
+    # Where the rings' own centre sits in the unrotated canvas.
+    rings_cx, rings_cy = canvas_w / 2, SIZE / 2
+    # Same (x, y) -> (H-1-y, x) mapping pygame.transform.rotate(-90) uses
+    # (verified against actual pygame/PIL output, not derived on paper --
+    # see flugradar/display/gestures.py's _rotate_point()).
+    dot_offset = (canvas_h - 1 - rings_cy, rings_cx)
+
+    rotated = canvas.rotate(BOOT_ROTATION_DEG, expand=True)
+    rotated.save(out_path)
     print(f"Wrote {out_path}")
+    return dot_offset
 
 
-def _write_script(out_path: Path, colours: dict) -> None:
+def _write_script(out_path: Path, colours: dict, dot_offset: tuple[float, float]) -> None:
     template = _SCRIPT_TEMPLATE.read_text()
     bg = colours["background"]
     accent = colours["accent"]
@@ -134,6 +207,7 @@ def _write_script(out_path: Path, colours: dict) -> None:
         .replace("{{BG_R}}", str(bg_n[0])).replace("{{BG_G}}", str(bg_n[1])).replace("{{BG_B}}", str(bg_n[2]))
         .replace("{{ACCENT_R}}", str(accent_n[0])).replace("{{ACCENT_G}}", str(accent_n[1])).replace("{{ACCENT_B}}", str(accent_n[2]))
         .replace("{{MUTED_R}}", str(muted_n[0])).replace("{{MUTED_G}}", str(muted_n[1])).replace("{{MUTED_B}}", str(muted_n[2]))
+        .replace("{{DOT_OFFSET_X}}", str(dot_offset[0])).replace("{{DOT_OFFSET_Y}}", str(dot_offset[1]))
     )
     out_path.write_text(rendered)
     print(f"Wrote {out_path}")
@@ -149,10 +223,16 @@ def main() -> None:
 
     colours = _resolve_colours(settings_path)
 
+    # Falls back to roughly the rings' own centre (no title-strip offset)
+    # if Pillow isn't installed and _draw_logo() never ran -- logo.png
+    # itself is skipped in that case too (module docstring), so the
+    # .script would fail to load it regardless; this just keeps the
+    # template placeholder from being left unsubstituted.
+    dot_offset = (SIZE / 2 - 1, SIZE / 2)
     if HAS_PIL:
-        _draw_logo(logo_out, colours)
+        dot_offset = _draw_logo(logo_out, colours)
     if _SCRIPT_TEMPLATE.exists():
-        _write_script(script_out, colours)
+        _write_script(script_out, colours, dot_offset)
     else:
         print(f"Script template {_SCRIPT_TEMPLATE} not found -- skipping.", file=sys.stderr)
 

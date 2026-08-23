@@ -164,7 +164,7 @@ class RadarApp:
             location_label=location_display_name(self.settings.home.lat, self.settings.home.lon),
         )
         wifi_scr = WifiScreen(self.screen_size, theme)
-        gestures = GestureRecogniser(self.screen_size)
+        gestures = GestureRecogniser(self.screen_size, self.rotation_deg)
 
         if self.settings.tracked_callsign:
             self._tracked_last_seen = time.monotonic()

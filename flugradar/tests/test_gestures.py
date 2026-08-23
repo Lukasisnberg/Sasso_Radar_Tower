@@ -94,6 +94,41 @@ class TestFingerTouch:
         assert g.type == GestureType.SWIPE_RIGHT
 
 
+class TestRotationCompensation:
+    """FlightPanel is mounted with the display rotated -90 (90 to the
+    right, see CircularViewport / flugradar-display-start.sh). Touch
+    reports physical panel-pixel positions -- a tap must map back to the
+    same internal coordinates the app used to draw whatever's there."""
+
+    @pytest.fixture
+    def gr(self):
+        return GestureRecogniser(_SCREEN_SIZE, rotation_deg=-90.0)
+
+    def test_tap_maps_back_to_internal_coords(self, gr):
+        # Internal point (50, 10) lands at physical panel pixel
+        # (SCREEN-1-10, 50) = (709, 50) once CircularViewport rotates the
+        # rendered frame by -90 for display -- verified against pygame's
+        # actual rotate() output in the implementation's derivation.
+        physical = (_SCREEN_SIZE - 1 - 10, 50)
+        assert gr.process_event(_mouse_down(physical)) is None
+        g = gr.process_event(_mouse_up(physical))
+        assert g is not None
+        assert g.type == GestureType.TAP
+        assert (g.x, g.y) == (50, 10)
+
+    def test_finger_tap_maps_back_to_internal_coords(self, gr):
+        physical = (_SCREEN_SIZE - 1 - 10, 50)
+        assert gr.process_event(_finger_down(physical)) is None
+        g = gr.process_event(_finger_up(physical))
+        assert (g.x, g.y) == (50, 10)
+
+    def test_unrotated_recogniser_is_unaffected(self):
+        gr = GestureRecogniser(_SCREEN_SIZE)
+        assert gr.process_event(_mouse_down((100, 100))) is None
+        g = gr.process_event(_mouse_up((100, 100)))
+        assert (g.x, g.y) == (100, 100)
+
+
 class TestZoom:
     def test_zoom_in(self, gr):
         g = gr.process_event(_scroll(1))
