@@ -38,4 +38,8 @@ case "${DISPLAY_BACKEND}" in
 esac
 
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-exec "${SCRIPT_DIR}/.venv/bin/flugradar-display" --size 720
+# FlightPanel-Gehäuse: das Panel steckt physisch um 90° nach rechts (im
+# Uhrzeigersinn) gedreht im Gehäuse -- Software rotiert das Bild dagegen,
+# damit es aufrecht erscheint. pygame.transform.rotate ist positiv =
+# gegen den Uhrzeigersinn, daher -90 für "nach rechts".
+exec "${SCRIPT_DIR}/.venv/bin/flugradar-display" --size 720 --rotation -90

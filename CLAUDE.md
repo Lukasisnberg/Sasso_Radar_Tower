@@ -576,6 +576,20 @@ Schritte 1–8 aus dem Bauauftrag (Abschnitt 13) sind abgeschlossen:
     nie fatal), den `flugradar/main.py` mit einem `plymouth quit`-Aufruf
     belegt (schlägt fehl/wird ignoriert, falls `plymouth` fehlt oder nicht
     läuft — z. B. beim direkten Entwickeln ohne Bootsplash).
+- **Display-Rotation 90° nach rechts fürs FlightPanel-Gehäuse** (separat
+  angefragt): beim Zusammenbau des FlightPanel-Gehäuses musste das Panel
+  physisch um 90° im Uhrzeigersinn gedreht verbaut werden. Software rotiert
+  jetzt dagegen, damit der Inhalt für den Betrachter wieder aufrecht steht.
+  Der Mechanismus existierte bereits (`--rotation`-Flag in `flugradar/
+  main.py`, `CircularViewport.apply()` in `flugradar/display/mask.py` via
+  `pygame.transform.rotate`), war aber ungenutzt (Default `0.0`, kein
+  Aufrufer setzte ihn). `system/flugradar-display-start.sh` — der
+  tatsächliche systemd-Startpfad (`flugradar-display.service` →
+  `flugradar-display-start.sh` → `flugradar-display`) — ruft die App jetzt
+  mit `--rotation -90` auf (pygame-Konvention: positiv = gegen den
+  Uhrzeigersinn, daher -90 für "nach rechts"/im Uhrzeigersinn). Fest im
+  Startskript verdrahtet statt als Einstellung, da es eine feste
+  Hardware-Eigenschaft dieses Gehäuses ist, keine Nutzerpräferenz.
 
 ## Offene Punkte
 
