@@ -38,6 +38,15 @@ _ALLOWED = {
     ("display/aircraft_icons.py", 'tinted.fill((0, 0, 0, 255), special_flags=pygame.BLEND_RGBA_MULT)'),  # tint-recipe constant, not a colour choice
     ("display/weather_icons.py", 'tinted.fill((0, 0, 0, 255), special_flags=pygame.BLEND_RGBA_MULT)'),  # tint-recipe constant, not a colour choice
     ("display/ui_icons.py", 'tinted.fill((0, 0, 0, 255), special_flags=pygame.BLEND_RGBA_MULT)'),  # tint-recipe constant, not a colour choice
+    # Schritt 2 (display/ui/) components -- same rect-geometry-not-a-colour
+    # reasoning as the menu.py/wifi.py entries above; every component
+    # zero-initialises its hit-test rect the same way.
+    ("display/ui/header.py", "self._back_rect = pygame.Rect(0, 0, 0, 0)"),
+    ("display/ui/list_row.py", "self._rect = pygame.Rect(0, 0, 0, 0)"),
+    ("display/ui/button.py", "self._rect = pygame.Rect(0, 0, 0, 0)"),
+    ("display/ui/controls.py", "self._rect = pygame.Rect(0, 0, 0, 0)"),
+    ("display/ui/controls.py", "self._confirm_rect = pygame.Rect(0, 0, 0, 0)"),
+    ("display/ui/controls.py", "self._cancel_rect = pygame.Rect(0, 0, 0, 0)"),
 }
 
 

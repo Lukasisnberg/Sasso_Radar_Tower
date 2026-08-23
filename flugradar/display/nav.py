@@ -6,10 +6,12 @@ import pygame
 
 import time
 
-from flugradar.display import scaling, ui_icons
+from flugradar.display import scaling
 from flugradar.display.draw_helpers import fit_text
 from flugradar.display.fonts import get_font
 from flugradar.display.theme import TOKENS, Theme, ease_out_cubic
+from flugradar.display.ui import scroll as ui_scroll
+from flugradar.display.ui.button import Button
 
 # How long a single momentum-scroll "kick" (nav.ScrollState.kick) takes to
 # settle -- long end of the two animation-duration tokens, since it's a
@@ -149,17 +151,10 @@ def draw_page_dots(
     total: int,
     theme: Theme,
 ) -> None:
-    if total <= 1:
-        return
-    y = _top_y() + scaling.s(30)
-    gap = scaling.s(14)
-    r = max(2, scaling.s(4))
-    span = (total - 1) * gap
-    x0 = scaling.center_x() - span // 2
-    for i in range(total):
-        cx = x0 + i * gap
-        color = theme.sweep_colour if i == active else theme.page_dot_inactive
-        pygame.draw.circle(surface, color, (cx, y), r)
+    """Kept here (unchanged signature -- detail.py calls this directly)
+    as a thin wrapper over the shared ui.scroll implementation, which also
+    backs whatever other screen ends up needing page dots (Schritt 2)."""
+    ui_scroll.draw_page_dots(surface, active, total, theme, _top_y() + scaling.s(30))
 
 
 def footer_button_rects(button_count: int) -> list[pygame.Rect]:
@@ -183,6 +178,34 @@ def footer_button_rects(button_count: int) -> list[pygame.Rect]:
     ]
 
 
+_FOOTER_ICONS = {"prev": "chevron-left", "next": "chevron-right", "radar": "radar"}
+_FOOTER_LABELS = {
+    "prev": "ZURÜCK", "next": "WEITER", "radar": "RADAR",
+    "track": "FOLGEN", "untrack": "STOPP", "stop": "STOPP",
+}
+
+# Pending the user's screenshot comparison (Rueckfrage im Auftrag:
+# "Footer-Buttons: mit oder ohne Flaeche") -- both variants are fully
+# implemented in ui.button.Button, this just picks which one renders.
+# "flat" is the brief's own suggested default; flip to "filled" here (or
+# pass --button-style filled to the screenshot harness) to compare.
+_FOOTER_BUTTON_VARIANT = "flat"
+
+# One Button instance per footer slot (0..3), reused across frames so its
+# tap-feedback animation persists between draw() calls -- rebuilt lazily,
+# never recreated per frame.
+_footer_buttons: list[Button] = []
+
+
+def _get_footer_button(index: int, theme: Theme) -> Button:
+    while len(_footer_buttons) <= index:
+        _footer_buttons.append(Button(theme, variant=_FOOTER_BUTTON_VARIANT))
+    button = _footer_buttons[index]
+    button.theme = theme
+    button.variant = _FOOTER_BUTTON_VARIANT
+    return button
+
+
 def draw_footer_buttons(
     surface: pygame.Surface,
     kinds: list[str],
@@ -191,42 +214,9 @@ def draw_footer_buttons(
     if not kinds:
         return
     rects = footer_button_rects(len(kinds))
-    btn_fill = theme.surface
-    btn_fill_accent = theme.surface_accent
-    btn_border = theme.radar_ring
-    btn_border_accent = theme.sweep_colour
-
-    for kind, rect in zip(kinds, rects):
-        accent = kind == "radar"
-        fill = btn_fill_accent if accent else btn_fill
-        border = btn_border_accent if accent else btn_border
-        radius = max(scaling.s(8), rect.height // 4)
-        width = max(1, scaling.s(TOKENS.line_stroke) if accent else scaling.s(TOKENS.line_stroke // 2))
-
-        pygame.draw.rect(surface, fill, rect, border_radius=radius)
-        pygame.draw.rect(surface, border, rect, width=width, border_radius=radius)
-
-        icon_color = theme.sweep_colour if accent else theme.label
-        icon_cy = rect.centery - scaling.s(6)
-        icon_size = scaling.s(TOKENS.icon_medium)
-
-        if kind == "prev":
-            ui_icons.draw_icon(surface, "chevron-left", (rect.centerx, icon_cy), icon_size, icon_color)
-        elif kind == "next":
-            ui_icons.draw_icon(surface, "chevron-right", (rect.centerx, icon_cy), icon_size, icon_color)
-        elif kind == "radar":
-            ui_icons.draw_icon(surface, "radar", (rect.centerx, icon_cy), icon_size, icon_color)
-
-        labels = {
-            "prev": "ZURÜCK", "next": "WEITER", "radar": "RADAR",
-            "track": "FOLGEN", "untrack": "STOPP", "stop": "STOPP",
-        }
-        label = labels.get(kind, kind.upper())
-        label_font = get_font(scaling.s(TOKENS.font_standard))
-        label_color = theme.sweep_colour if accent else theme.hint
-        text = fit_text(label, label_font, rect.width - scaling.s(6))
-        rendered = label_font.render(text, True, label_color)
-        surface.blit(rendered, rendered.get_rect(midtop=(rect.centerx, icon_cy + scaling.s(10))))
+    for i, (kind, rect) in enumerate(zip(kinds, rects)):
+        button = _get_footer_button(i, theme)
+        button.draw(surface, rect, _FOOTER_ICONS.get(kind), _FOOTER_LABELS.get(kind, kind.upper()), accent=kind == "radar")
 
 
 def tap_footer_button(
@@ -237,5 +227,7 @@ def tap_footer_button(
     rects = footer_button_rects(button_count)
     for i, rect in enumerate(rects):
         if rect.collidepoint(x, y):
+            if i < len(_footer_buttons):
+                _footer_buttons[i].handle_tap(x, y)  # triggers the tap-feedback flash
             return i
     return None

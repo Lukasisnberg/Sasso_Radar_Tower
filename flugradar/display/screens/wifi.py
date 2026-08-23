@@ -16,7 +16,6 @@ nicht einfriert.
 
 from __future__ import annotations
 
-import math
 import threading
 import time
 from typing import Optional
@@ -28,6 +27,7 @@ from flugradar.display.draw_helpers import draw_center_text, fit_text
 from flugradar.display.fonts import get_font
 from flugradar.display.keyboard import OnScreenKeyboard
 from flugradar.display.theme import TOKENS, Theme
+from flugradar.display.ui import scroll as ui_scroll
 from flugradar.system import network
 
 # Confirmation window: keep showing "Verbunden mit X" for a moment before
@@ -257,18 +257,9 @@ class WifiScreen:
         surface.blit(overlay, (left, y + row_h))
 
     def _draw_scroll_arc(self, surface: pygame.Surface, top: int, bottom: int) -> None:
-        if self._scroll.max_offset <= 0:
-            return
-        cx, cy = scaling.center_x(), scaling.center_y()
-        r = scaling.visible_radius() - scaling.s(4)
-        span = bottom - top
-        visible_frac = min(1.0, span / (span + self._scroll.max_offset))
-        total_arc = math.radians(40)
-        arc_len = max(math.radians(4), total_arc * visible_frac)
-        progress = self._scroll.current_offset() / self._scroll.max_offset
-        start = math.radians(-20) + (total_arc - arc_len) * progress
-        rect = pygame.Rect(cx - r, cy - r, r * 2, r * 2)
-        pygame.draw.arc(surface, self.theme.hint, rect, -(start + arc_len), -start, max(1, scaling.s(2)))
+        ui_scroll.draw_scroll_arc(
+            surface, self.theme, self._scroll.current_offset(), self._scroll.max_offset, bottom - top,
+        )
 
     def _draw_password(self, surface: pygame.Surface) -> None:
         cx = scaling.center_x()

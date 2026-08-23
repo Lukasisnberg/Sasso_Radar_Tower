@@ -26,7 +26,7 @@ from flugradar.config.settings import AppSettings, HomeLocation
 from flugradar.data_sources.demo import DemoSource
 from flugradar.data_sources.projection import ScreenProjection
 from flugradar.data_sources.weather import DailyForecast, WeatherData
-from flugradar.display import scaling
+from flugradar.display import nav, scaling
 from flugradar.display.brightness import apply_dim_overlay, effective_brightness
 from flugradar.display.mask import CircularViewport
 from flugradar.display.screens.about import AboutScreen
@@ -114,6 +114,18 @@ def main() -> None:
 
     detail.tracked_callsign = selected.callsign or ""
     shoot("detail_tracked", detail.draw)
+
+    # Footer-button style comparison (Schritt 2, Rueckfrage im Auftrag:
+    # "Footer-Buttons: mit oder ohne Flaeche") -- render the same screen
+    # with both ui.button.Button variants so they can be compared side by
+    # side before nav.py's default ("flat") is settled. Restores nav's
+    # module-level default afterwards so the rest of this run is
+    # unaffected.
+    original_variant = nav._FOOTER_BUTTON_VARIANT
+    for variant in ("flat", "filled"):
+        nav._FOOTER_BUTTON_VARIANT = variant
+        shoot(f"detail_buttons_{variant}", detail.draw)
+    nav._FOOTER_BUTTON_VARIANT = original_variant
 
     clock_scr = ClockScreen(SCREEN_SIZE, theme)
     clock_scr.set_weather("18°C", "Bewölkt")

@@ -32,8 +32,11 @@ def _lighten(base: tuple[int, int, int], factor: float) -> tuple[int, int, int]:
     return tuple(_clamp(int(round(c + (255 - c) * factor))) for c in base)
 
 
-def _blend(a: tuple[int, int, int], b: tuple[int, int, int], t: float) -> tuple[int, int, int]:
-    """Linear-interpolate from `a` (t=0) to `b` (t=1)."""
+def blend(a: tuple[int, int, int], b: tuple[int, int, int], t: float) -> tuple[int, int, int]:
+    """Linear-interpolate from `a` (t=0) to `b` (t=1). Public -- also used
+    by the Schritt 2 component layer (flugradar/display/ui/) for tap
+    feedback, so every component blends toward its highlight the same way.
+    """
     return tuple(_clamp(int(round(a[i] + (b[i] - a[i]) * t))) for i in range(3))
 
 
@@ -116,7 +119,7 @@ def _theme_from_accent(accent: tuple[int, int, int], name: str) -> Theme:
         page_dot_inactive=_scale_color(grid, 0.5),
         label=(235, 235, 233),
         surface=_lighten(background, 0.06),
-        surface_accent=_blend(background, trail, 0.55),
+        surface_accent=blend(background, trail, 0.55),
         name=name,
     )
 

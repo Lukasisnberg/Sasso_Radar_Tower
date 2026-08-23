@@ -15,7 +15,6 @@ Every change is written immediately via `settings.save_portal_settings()`
 
 from __future__ import annotations
 
-import math
 import time
 from dataclasses import dataclass
 from typing import Callable, Optional
@@ -31,6 +30,7 @@ from flugradar.display.draw_helpers import fit_text
 from flugradar.display.fonts import get_font
 from flugradar.display.screens.about import _hostname, _ip_address
 from flugradar.display.theme import TOKENS, Theme, ease_out_cubic
+from flugradar.display.ui import scroll as ui_scroll
 from flugradar.system.actions import system_action
 from flugradar.system.update import trigger_update_async
 
@@ -474,20 +474,8 @@ class MenuScreen:
         surface.blit(surf, surf.get_rect(center=center))
 
     def _draw_scroll_arc(self, surface: pygame.Surface, top: int, bottom: int) -> None:
-        if self._scroll.max_offset <= 0:
-            return
-        cx, cy = scaling.center_x(), scaling.center_y()
-        r = scaling.visible_radius() - scaling.s(4)
-        span = bottom - top
-        visible_frac = min(1.0, span / (span + self._scroll.max_offset))
-        total_arc = math.radians(40)
-        arc_len = max(math.radians(4), total_arc * visible_frac)
-        progress = self._scroll.current_offset() / self._scroll.max_offset
-        start = math.radians(-20) + (total_arc - arc_len) * progress
-        rect = pygame.Rect(cx - r, cy - r, r * 2, r * 2)
-        pygame.draw.arc(
-            surface, self.theme.hint, rect, -(start + arc_len), -start,
-            max(1, scaling.s(2)),
+        ui_scroll.draw_scroll_arc(
+            surface, self.theme, self._scroll.current_offset(), self._scroll.max_offset, bottom - top,
         )
 
     # ---- input --------------------------------------------------------
