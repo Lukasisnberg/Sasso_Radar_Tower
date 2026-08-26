@@ -1,0 +1,947 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Sasso Radar Tower — Bedienungsanleitung</title>
+<link rel="stylesheet" href="buch.css">
+</head>
+<body>
+<div class="buch">
+
+<!-- ============================================================ -->
+<!-- 1 — Umschlag vorne -->
+<!-- ============================================================ -->
+<section class="seite seite--umschlag">
+  <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
+    <svg width="120" height="120" viewBox="0 0 120 120" style="margin-bottom:14mm;">
+      <circle cx="60" cy="60" r="52" fill="none" stroke="#d2b446" stroke-width="1.4" opacity="0.55"/>
+      <circle cx="60" cy="60" r="34" fill="none" stroke="#d2b446" stroke-width="1.4" opacity="0.55"/>
+      <circle cx="60" cy="60" r="16" fill="none" stroke="#d2b446" stroke-width="1.4" opacity="0.55"/>
+      <line x1="60" y1="60" x2="60" y2="8" stroke="#d2b446" stroke-width="1.6"/>
+      <circle cx="86" cy="34" r="2.6" fill="#d2b446"/>
+      <circle cx="60" cy="60" r="2.4" fill="#efe6cf"/>
+    </svg>
+    <div style="font-size:9pt;letter-spacing:0.3em;color:#a89968;margin-bottom:4mm;">SASSO RADAR TOWER</div>
+    <div style="font-size:22pt;line-height:1.3;font-weight:600;letter-spacing:0.02em;">Bedienungs-<br>anleitung</div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 2 — Gerät und Fassung -->
+<!-- ============================================================ -->
+<section class="seite">
+  <span class="kicker">Über dieses Gerät</span>
+  <h1 class="titel">Sasso Radar Tower</h1>
+  <p class="lauftext">Ein eigenständiges ADS-B-Flugradar für ein rundes 4″-Touch-Display.
+  Es zeigt den Luftverkehr in der Umgebung live an — Position, Höhe, Geschwindigkeit,
+  Flugzeugtyp und, wenn verfügbar, Route und Foto. Alle Positionsdaten stammen von
+  <span class="mono">adsb.fi</span>, einer offenen, kostenlosen ADS-B-Datenquelle.</p>
+  <p class="lauftext">Diese Anleitung beschreibt ausschließlich die <strong>Bedienung</strong> —
+  jeden Bildschirm, jede Geste, jeden Menüpunkt. Ersteinrichtung, Installation und technische
+  Hintergründe sind nicht Teil dieses Hefts.</p>
+  <hr class="haarlinie">
+  <p class="lauftext">Die meisten Einstellungen lassen sich sowohl direkt am Gerät als auch
+  bequemer von einem Telefon oder Rechner aus über das <strong>Web-Portal</strong> ändern —
+  solange dieses Gerät und das andere Gerät im selben WLAN sind. Siehe Seite 24.</p>
+  <div class="box">
+    <span class="box__titel">Fassung</span>
+    Diese Anleitung beschreibt Sasso Radar Tower v0.1.0. Die aktuelle Version steht am
+    Gerät unter <span class="mono">Einstellungen → System → Version</span> und auf der
+    Portal-Startseite.
+  </div>
+  <div class="kolumne"><span>Sasso Radar Tower</span><span>Über dieses Gerät</span></div>
+  <div class="folio">2</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 3 — Inhalt -->
+<!-- ============================================================ -->
+<section class="seite">
+  <span class="kicker">Inhalt</span>
+  <h1 class="titel">Inhaltsverzeichnis</h1>
+
+  <div style="columns:2;column-gap:8mm;margin-top:2mm;">
+    <div style="break-inside:avoid;margin-bottom:4mm;">
+      <div class="zwischentitel" style="margin-top:0;">Erste Schritte</div>
+      <div class="toc__zeile"><span class="toc__titel">Das Gerät auf einen Blick</span><span class="toc__punkte"></span><span class="toc__seite">4</span></div>
+      <div class="toc__zeile"><span class="toc__titel">Tippen und Wischen</span><span class="toc__punkte"></span><span class="toc__seite">5</span></div>
+      <div class="toc__zeile"><span class="toc__titel">Die Wischkarte</span><span class="toc__punkte"></span><span class="toc__seite">6</span></div>
+    </div>
+
+    <div style="break-inside:avoid;margin-bottom:4mm;">
+      <div class="zwischentitel" style="margin-top:0;">Die Bildschirme</div>
+      <div class="toc__zeile"><span class="toc__titel">Radar</span><span class="toc__punkte"></span><span class="toc__seite">7</span></div>
+      <div class="toc__zeile"><span class="toc__titel">Flugdetail</span><span class="toc__punkte"></span><span class="toc__seite">9</span></div>
+      <div class="toc__zeile"><span class="toc__titel">Verfolgter Flug</span><span class="toc__punkte"></span><span class="toc__seite">11</span></div>
+      <div class="toc__zeile"><span class="toc__titel">Uhr</span><span class="toc__punkte"></span><span class="toc__seite">13</span></div>
+      <div class="toc__zeile"><span class="toc__titel">Wetter</span><span class="toc__punkte"></span><span class="toc__seite">14</span></div>
+      <div class="toc__zeile"><span class="toc__titel">Info</span><span class="toc__punkte"></span><span class="toc__seite">15</span></div>
+      <div class="toc__zeile"><span class="toc__titel">WLAN einrichten</span><span class="toc__punkte"></span><span class="toc__seite">16</span></div>
+    </div>
+
+    <div style="break-inside:avoid;margin-bottom:4mm;">
+      <div class="zwischentitel" style="margin-top:0;">Einstellungen</div>
+      <div class="toc__zeile"><span class="toc__titel">Aufbau &amp; Bedienelemente</span><span class="toc__punkte"></span><span class="toc__seite">17</span></div>
+      <div class="toc__zeile"><span class="toc__titel">Menüreferenz (Karte … System)</span><span class="toc__punkte"></span><span class="toc__seite">18</span></div>
+    </div>
+
+    <div style="break-inside:avoid;margin-bottom:4mm;">
+      <div class="zwischentitel" style="margin-top:0;">Web-Portal</div>
+      <div class="toc__zeile"><span class="toc__titel">Aufrufen</span><span class="toc__punkte"></span><span class="toc__seite">24</span></div>
+      <div class="toc__zeile"><span class="toc__titel">Radar &amp; Darstellung</span><span class="toc__punkte"></span><span class="toc__seite">25</span></div>
+      <div class="toc__zeile"><span class="toc__titel">Nur im Portal</span><span class="toc__punkte"></span><span class="toc__seite">26</span></div>
+    </div>
+
+    <div style="break-inside:avoid;margin-bottom:4mm;">
+      <div class="zwischentitel" style="margin-top:0;">Nachschlagen</div>
+      <div class="toc__zeile"><span class="toc__titel">Symbole und Farben</span><span class="toc__punkte"></span><span class="toc__seite">27</span></div>
+      <div class="toc__zeile"><span class="toc__titel">Höhen- und Statusanzeigen</span><span class="toc__punkte"></span><span class="toc__seite">28</span></div>
+      <div class="toc__zeile"><span class="toc__titel">Wenn etwas nicht stimmt</span><span class="toc__punkte"></span><span class="toc__seite">29</span></div>
+      <div class="toc__zeile"><span class="toc__titel">Kurzreferenz Gesten</span><span class="toc__punkte"></span><span class="toc__seite">31</span></div>
+      <div class="toc__zeile"><span class="toc__titel">Kurzreferenz Menübaum</span><span class="toc__punkte"></span><span class="toc__seite">32</span></div>
+      <div class="toc__zeile"><span class="toc__titel">Datenquellen und Nachweise</span><span class="toc__punkte"></span><span class="toc__seite">33</span></div>
+      <div class="toc__zeile"><span class="toc__titel">Lizenz</span><span class="toc__punkte"></span><span class="toc__seite">34</span></div>
+    </div>
+  </div>
+
+  <div class="kolumne"><span>Sasso Radar Tower</span><span>Inhalt</span></div>
+  <div class="folio">3</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 4 — Das Gerät auf einen Blick -->
+<!-- ============================================================ -->
+<section class="seite">
+  <div class="kolumne"><span>Erste Schritte</span><span>Auf einen Blick</span></div>
+  <span class="kicker">Erste Schritte</span>
+  <h1 class="titel">Das Gerät auf einen Blick</h1>
+
+  <div class="diagramm-bild">
+    <img src="../bilder/radar.png" alt="Radar-Bildschirm">
+    <div class="marke" style="left:50%;top:14%;">1</div>
+    <div class="marke" style="left:95%;top:50%;">2</div>
+    <div class="marke" style="left:72%;top:52%;">3</div>
+    <div class="marke" style="left:65%;top:8%;">4</div>
+    <div class="marke" style="left:17%;top:97%;">5</div>
+  </div>
+
+  <div style="margin-top:5mm;">
+    <div class="zeile"><span class="zeile__label"><span class="mono">1</span> &nbsp; Sweep-Strahl</span><span class="zeile__wert" style="font-weight:400;color:var(--text-gedaempft);">dreht gleichmäßig, keine Funktion</span></div>
+    <div class="zeile"><span class="zeile__label"><span class="mono">2</span> &nbsp; Kompassrose</span><span class="zeile__wert" style="font-weight:400;color:var(--text-gedaempft);">N/O/S/W, oben = Norden</span></div>
+    <div class="zeile"><span class="zeile__label"><span class="mono">3</span> &nbsp; Entfernungsringe</span><span class="zeile__wert" style="font-weight:400;color:var(--text-gedaempft);">Abstand vom Gerät</span></div>
+    <div class="zeile"><span class="zeile__label"><span class="mono">4</span> &nbsp; Flugzeug mit Beschriftung</span><span class="zeile__wert" style="font-weight:400;color:var(--text-gedaempft);">Rufzeichen, Typ, Höhe</span></div>
+    <div class="zeile"><span class="zeile__label"><span class="mono">5</span> &nbsp; Statuszeile</span><span class="zeile__wert" style="font-weight:400;color:var(--text-gedaempft);">Anzahl, Reichweite, Wetter</span></div>
+  </div>
+  <div class="folio">4</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 5 — Tippen und Wischen -->
+<!-- ============================================================ -->
+<section class="seite">
+  <div class="kolumne"><span>Erste Schritte</span><span>Tippen und Wischen</span></div>
+  <span class="kicker">Erste Schritte</span>
+  <h1 class="titel">Tippen und Wischen</h1>
+  <p class="lauftext">Der Bildschirm reagiert auf zwei Gesten. Alle Bildschirme dieses
+  Geräts lassen sich allein damit bedienen — es gibt keine physischen Tasten.</p>
+
+  <div class="zwischentitel">Tippen</div>
+  <p class="lauftext">Ein kurzer Fingertipp an derselben Stelle. Öffnet die Detailansicht
+  eines Flugzeugs, betätigt Schaltflächen in der Fußzeile und wählt Zeilen im
+  Einstellungsmenü aus.</p>
+
+  <div class="zwischentitel">Wischen</div>
+  <p class="lauftext">Ein Finger bewegt sich deutlich in eine Richtung, bevor er den
+  Bildschirm verlässt. Wischgesten wechseln zwischen den Bildschirmen — welche Richtung
+  wohin führt, zeigt die Wischkarte auf der nächsten Seite.</p>
+
+  <div class="box">
+    <span class="box__titel">Faustregel</span>
+    Ein kurzer, ruhiger Tipp öffnet etwas. Eine Wischbewegung wechselt den Bildschirm.
+    Nichts geht dabei verloren — jeder Bildschirm ist über eine Wischgeste in die
+    Gegenrichtung wieder verlassbar.
+  </div>
+  <div class="folio">5</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 6 — Die Wischkarte -->
+<!-- ============================================================ -->
+<section class="seite">
+  <div class="kolumne"><span>Erste Schritte</span><span>Die Wischkarte</span></div>
+  <!-- Inline statt <img src="wischkarte.svg">: dieses gepackte, headless
+       Chromium lädt lokale SVG-Dateien über file:// als <img>-Subressource
+       zuverlässig NICHT (leeres "gebrochenes Bild"-Icon, per Test
+       bestätigt -- weder --allow-file-access-from-files noch
+       --headless=new ändern das; PNG-<img> aus demselben Verzeichnis
+       funktioniert dagegen anstandslos). Inline-SVG im Dokument selbst
+       rendert dagegen zuverlässig. build.py setzt den tatsächlichen
+       Inhalt von wischkarte.svg hier ein -- die Datei bleibt trotzdem die
+       eigenständig editierbare Quelle. -->
+  <div style="width:116mm;margin:8mm auto 0 auto;">{{WISCHKARTE_SVG}}</div>
+  <div class="folio">6</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 7 — Radar: Anzeige -->
+<!-- ============================================================ -->
+<section class="seite">
+  <div class="kolumne"><span>Die Bildschirme</span><span>Radar</span></div>
+  <span class="kicker">Bildschirm</span>
+  <h1 class="titel">Radar — Anzeige</h1>
+  <div class="zwei-spalten">
+    <div class="bildspalte">
+      <img class="schirm schirm--klein" src="../bilder/radar.png" alt="Radar-Bildschirm">
+      <div class="bildunterschrift">Startbildschirm</div>
+    </div>
+    <div>
+      <p class="lauftext">Der Radar-Bildschirm ist der Ausgangspunkt und zeigt den
+      Luftverkehr im eingestellten Radius live. Jedes Flugzeug erscheint als Symbol,
+      gedreht in Flugrichtung; Farbe und Ring zeigen Sonderzustände an (siehe Seite 27).</p>
+      <p class="lauftext">Die <strong>Statuszeile</strong> unten links nennt die Anzahl
+      sichtbarer Flugzeuge, den Radius und, falls ein Wetter-Schlüssel hinterlegt ist,
+      die aktuelle Temperatur.</p>
+      <p class="lauftext">Kompassrose, Entfernungsringe, Sweep und Flugzeug-Beschriftung
+      lassen sich einzeln abschalten — siehe <span class="mono">Einstellungen → Darstellung</span>,
+      Seite 20.</p>
+    </div>
+  </div>
+  <div class="folio">7</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 8 — Radar: Bedienung -->
+<!-- ============================================================ -->
+<section class="seite">
+  <div class="kolumne"><span>Die Bildschirme</span><span>Radar</span></div>
+  <span class="kicker">Bildschirm</span>
+  <h1 class="titel">Radar — Bedienung</h1>
+
+  <div class="zeile"><span class="zeile__label">Auf ein Flugzeug tippen</span><span class="chip">Detailansicht</span></div>
+  <div class="zeile"><span class="zeile__label">Nach unten wischen</span><span class="chip">Uhr</span></div>
+  <div class="zeile"><span class="zeile__label">Nach oben wischen</span><span class="chip">Info</span></div>
+  <div class="zeile"><span class="zeile__label">Nach links wischen</span><span class="chip">Einstellungen</span></div>
+  <div class="zeile"><span class="zeile__label">Nach rechts wischen</span><span class="chip chip--akzent">Verfolgter Flug</span></div>
+
+  <div class="box">
+    <span class="box__titel">Anzeigeradius ändern</span>
+    Der Radius lässt sich auf dem Radar-Bildschirm selbst nicht ändern — dafür
+    <span class="mono">Einstellungen → Standort → Radius</span> verwenden (Seite 19)
+    oder die Radius-Schnellauswahl im Web-Portal (Seite 25).
+  </div>
+  <div class="folio">8</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 9 — Flugdetail: Anzeige -->
+<!-- ============================================================ -->
+<section class="seite">
+  <div class="kolumne"><span>Die Bildschirme</span><span>Flugdetail</span></div>
+  <span class="kicker">Bildschirm</span>
+  <h1 class="titel">Flugdetail — Anzeige</h1>
+  <div class="zwei-spalten">
+    <div class="bildspalte">
+      <img class="schirm schirm--klein" src="../bilder/detail.png" alt="Flugdetail-Bildschirm">
+      <div class="bildunterschrift">Flugdetail</div>
+    </div>
+    <div>
+      <p class="lauftext">Zeigt alles Bekannte zu einem einzelnen Flugzeug: Foto (falls
+      verfügbar), Fluggesellschaft, Route, Flugzeugtyp, Höhe, Geschwindigkeit, Kurs,
+      Steig-/Sinkrate, Squawk-Code, Registrierung und Halter.</p>
+      <p class="lauftext">Nicht jedes Feld ist immer bekannt — Route und Foto hängen von
+      externen, kostenlosen Datenquellen ab (siehe Seite 33) und sind nicht für jeden
+      Flug hinterlegt. Das ist normal, kein Fehler.</p>
+      <p class="lauftext">Trägt ein Flugzeug einen Notfall-Squawk (7500 / 7600 / 7700),
+      erscheint zusätzlich eine rote Warnzeile.</p>
+    </div>
+  </div>
+  <div class="folio">9</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 10 — Flugdetail: Bedienung -->
+<!-- ============================================================ -->
+<section class="seite">
+  <div class="kolumne"><span>Die Bildschirme</span><span>Flugdetail</span></div>
+  <span class="kicker">Bildschirm</span>
+  <h1 class="titel">Flugdetail — Bedienung</h1>
+
+  <p class="lauftext">Vier Schaltflächen in der Fußzeile:</p>
+  <div class="zeile"><span class="chip">ZURÜCK</span><span class="zeile__label" style="text-align:right;">vorheriges Flugzeug in der Liste</span></div>
+  <div class="zeile"><span class="chip">WEITER</span><span class="zeile__label" style="text-align:right;">nächstes Flugzeug in der Liste</span></div>
+  <div class="zeile"><span class="chip chip--akzent">FOLGEN</span><span class="zeile__label" style="text-align:right;">diesen Flug verfolgen (Seite 11)</span></div>
+  <div class="zeile"><span class="chip chip--akzent">RADAR</span><span class="zeile__label" style="text-align:right;">zurück zum Radar</span></div>
+  <p class="hinweis-zeile" style="margin-top:1mm;">ZURÜCK/WEITER erscheinen nur, wenn mehr als ein Flugzeug sichtbar ist.
+  Wird der angezeigte Flug bereits verfolgt, steht dort STOPP statt FOLGEN.</p>
+
+  <hr class="haarlinie">
+  <div class="zeile"><span class="zeile__label">Nach rechts oder unten wischen</span><span class="chip chip--akzent">Radar</span></div>
+  <div class="zeile"><span class="zeile__label">Nach oben / links wischen</span><span class="zeile__wert" style="font-weight:400;color:var(--text-gedaempft);">Text blättern</span></div>
+  <div class="folio">10</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 11 — Verfolgter Flug: Anzeige -->
+<!-- ============================================================ -->
+<section class="seite">
+  <div class="kolumne"><span>Die Bildschirme</span><span>Verfolgter Flug</span></div>
+  <span class="kicker">Bildschirm</span>
+  <h1 class="titel">Verfolgter Flug — Anzeige</h1>
+  <div class="zwei-spalten">
+    <div class="bildspalte">
+      <img class="schirm schirm--klein" src="../bilder/tracking.png" alt="Verfolgter Flug">
+      <div class="bildunterschrift">Fortschrittsbalken</div>
+    </div>
+    <div>
+      <p class="lauftext">Zeigt einen einzelnen, ausgewählten Flug dauerhaft an — auch
+      wenn zwischendurch andere Bildschirme geöffnet werden. Ein Fortschrittsbalken mit
+      Start- und Zielflughafen zeigt die Position entlang der Route, dazu verbleibende
+      Entfernung und geschätzte Ankunftszeit.</p>
+      <p class="lauftext">Einen Flug verfolgen — drei Wege:</p>
+      <div class="zeile"><span class="zeile__label">Detailansicht, Schaltfläche FOLGEN</span></div>
+      <div class="zeile"><span class="zeile__label">Web-Portal, Feld „Flugverfolgung"</span></div>
+      <div class="zeile"><span class="zeile__label">läuft nach Zeitfenster ohne Empfang automatisch ab</span></div>
+    </div>
+  </div>
+  <div class="folio">11</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 12 — Verfolgter Flug: Sonderfälle -->
+<!-- ============================================================ -->
+<section class="seite">
+  <div class="kolumne"><span>Die Bildschirme</span><span>Verfolgter Flug</span></div>
+  <span class="kicker">Bildschirm</span>
+  <h1 class="titel">Verfolgter Flug — Sonderfälle</h1>
+  <div class="zwei-spalten">
+    <div class="bildspalte">
+      <img class="schirm schirm--klein" src="../bilder/tracking-ohne-route.png" alt="Verfolgter Flug ohne Route">
+      <div class="bildunterschrift">Route unbekannt</div>
+    </div>
+    <div>
+      <p class="lauftext">Vier Fälle, in denen der Bildschirm vom Normalbild abweicht,
+      aber nie leer bleibt:</p>
+    </div>
+  </div>
+  <div style="margin-top:3mm;">
+    <div class="zeile"><span class="zeile__label"><strong>Route unbekannt</strong> — kein Balken, Code-Kürzel falls vorhanden, Telemetrie bleibt sichtbar</span></div>
+    <div class="zeile"><span class="zeile__label"><strong>Außer Reichweite</strong> — letzter bekannter Stand plus „zuletzt gesehen vor …"</span></div>
+    <div class="zeile"><span class="zeile__label"><strong>Kein Flug verfolgt</strong> — kurzer Hinweistext statt leerem Bildschirm</span></div>
+    <div class="zeile"><span class="zeile__label"><strong>Gelandet / Signal endgültig weg</strong> — Verfolgung endet automatisch, zurück zum Radar</span></div>
+  </div>
+  <div class="box">
+    <span class="box__titel">Beenden</span>
+    Über die Schaltfläche STOPP auf diesem Bildschirm oder in der Detailansicht, über das
+    leere Feld „Flugverfolgung" im Portal, oder automatisch nach dem eingestellten
+    Zeitfenster ohne Empfang (Voreinstellung 15 Minuten, im Portal änderbar).
+  </div>
+  <div class="folio">12</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 13 — Uhr -->
+<!-- ============================================================ -->
+<section class="seite">
+  <div class="kolumne"><span>Die Bildschirme</span><span>Uhr</span></div>
+  <span class="kicker">Bildschirm</span>
+  <h1 class="titel">Uhr</h1>
+  <div class="zwei-spalten">
+    <div class="bildspalte">
+      <img class="schirm schirm--klein" src="../bilder/uhr.png" alt="Uhr-Bildschirm">
+      <div class="bildunterschrift">Uhr mit Kurzwetter</div>
+    </div>
+    <div>
+      <p class="lauftext">Uhrzeit, Datum und — sofern ein Wetterschlüssel hinterlegt ist
+      — Temperatur und Wetterlage in einer Zeile. Erscheint auch von selbst, wenn
+      längere Zeit kein Flugzeug sichtbar war (einstellbar unter
+      <span class="mono">Einstellungen → Anzeige → Automatisch zur Uhr</span>).</p>
+      <div class="zeile"><span class="zeile__label">Nach oben wischen</span><span class="chip chip--akzent">Radar</span></div>
+      <div class="zeile"><span class="zeile__label">Nach links wischen</span><span class="chip">Einstellungen</span></div>
+      <div class="zeile"><span class="zeile__label">Nach rechts wischen</span><span class="chip">Wetter</span></div>
+    </div>
+  </div>
+  <div class="folio">13</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 14 — Wetter -->
+<!-- ============================================================ -->
+<section class="seite">
+  <div class="kolumne"><span>Die Bildschirme</span><span>Wetter</span></div>
+  <span class="kicker">Bildschirm</span>
+  <h1 class="titel">Wetter</h1>
+  <div class="zwei-spalten">
+    <div class="bildspalte">
+      <img class="schirm schirm--klein" src="../bilder/wetter.png" alt="Wetter-Bildschirm">
+      <div class="bildunterschrift">5-Tage-Vorschau</div>
+    </div>
+    <div>
+      <p class="lauftext">Aktuelle Temperatur, gefühlte Temperatur, Wind und
+      Niederschlagswahrscheinlichkeit, darunter eine 5-Tage-Vorschau. Erreichbar per
+      Wischen nach rechts von der Uhr, zurück per Wischen nach links oder unten.</p>
+      <p class="lauftext">Ohne hinterlegten Wetter-Schlüssel bleibt die Kopfzeile stehen,
+      die Wetterblöcke werden durch einen Hinweis ersetzt — kein leerer oder
+      abstürzender Bildschirm.</p>
+    </div>
+  </div>
+  <img class="schirm" style="width:38mm;margin-top:4mm;" src="../bilder/wetter-ohne-schluessel.png" alt="Wetter ohne Schlüssel">
+  <div class="bildunterschrift" style="margin-top:1mm;">Ohne Wetter-Schlüssel</div>
+  <div class="folio">14</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 15 — Info -->
+<!-- ============================================================ -->
+<section class="seite">
+  <div class="kolumne"><span>Die Bildschirme</span><span>Info</span></div>
+  <span class="kicker">Bildschirm</span>
+  <h1 class="titel">Info</h1>
+  <div class="zwei-spalten">
+    <div class="bildspalte">
+      <img class="schirm schirm--klein" src="../bilder/info.png" alt="Info-Bildschirm">
+      <div class="bildunterschrift">Info</div>
+    </div>
+    <div>
+      <p class="lauftext">Versionsnummer, Gerätename und IP-Adresse, die Adresse des
+      Web-Portals sowie eine kurze Liste der genutzten Datenquellen. Erreichbar per
+      Wischen nach oben vom Radar, zurück über die Schaltfläche RADAR.</p>
+      <p class="lauftext">Nützlich, um schnell die Portal-Adresse abzulesen, ohne den
+      Router oder ein anderes Gerät zu bemühen.</p>
+    </div>
+  </div>
+  <div class="folio">15</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 16 — WLAN einrichten -->
+<!-- ============================================================ -->
+<section class="seite">
+  <div class="kolumne"><span>Die Bildschirme</span><span>WLAN einrichten</span></div>
+  <span class="kicker">Bildschirm</span>
+  <h1 class="titel">WLAN einrichten</h1>
+  <p class="lauftext">Erscheint automatisch, wenn das Gerät keine WLAN-Verbindung hat —
+  oder manuell über <span class="mono">Einstellungen → System → WLAN einrichten</span>.</p>
+  <div class="zwei-spalten">
+    <div class="bildspalte">
+      <img class="schirm schirm--klein" src="../bilder/wlan-liste.png" alt="WLAN-Netzliste">
+      <div class="bildunterschrift">Netzliste</div>
+    </div>
+    <div class="bildspalte">
+      <img class="schirm schirm--klein" src="../bilder/wlan-passwort.png" alt="WLAN-Passworteingabe">
+      <div class="bildunterschrift">Passwort</div>
+    </div>
+  </div>
+  <div style="margin-top:3mm;">
+    <div class="zeile"><span class="zeile__label">Netz antippen</span><span class="zeile__wert" style="font-weight:400;color:var(--text-gedaempft);">öffnet Passwortfeld (gesichert) oder verbindet direkt</span></div>
+    <div class="zeile"><span class="zeile__label">Augensymbol</span><span class="zeile__wert" style="font-weight:400;color:var(--text-gedaempft);">Passwort ein-/ausblenden</span></div>
+    <div class="zeile"><span class="zeile__label">Verbindung erfolgreich</span><span class="zeile__wert" style="font-weight:400;color:var(--text-gedaempft);">kehrt nach kurzer Bestätigung zum Radar zurück</span></div>
+  </div>
+  <div class="folio">16</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 17 — Einstellungen: Aufbau -->
+<!-- ============================================================ -->
+<section class="seite">
+  <div class="kolumne"><span>Einstellungen</span><span>Aufbau</span></div>
+  <span class="kicker">Einstellungen</span>
+  <h1 class="titel">Aufbau &amp; Bedienelemente</h1>
+  <p class="lauftext">Öffnen per Wischen nach links (vom Radar oder von der Uhr). Zwei
+  Ebenen: eine Wurzelliste mit sieben Bereichen, darunter je ein Untermenü. Zurück per
+  Wischen nach rechts oder über den Pfeil oben links — beides eine Ebene zurück, von der
+  Wurzel direkt zum Radar. Jede Änderung wird sofort übernommen, es gibt keine
+  Speichern-Schaltfläche.</p>
+
+  <div class="zwischentitel">Vier Bedienelemente</div>
+  <div class="zeile"><span class="zeile__label"><strong>Umschalter</strong></span><span class="zeile__wert" style="font-weight:400;color:var(--text-gedaempft);text-align:right;">Antippen kippt An/Aus</span></div>
+  <div class="zeile"><span class="zeile__label"><strong>Einfachauswahl</strong></span><span class="zeile__wert" style="font-weight:400;color:var(--text-gedaempft);text-align:right;">Antippen schaltet zum nächsten Wert</span></div>
+  <div class="zeile"><span class="zeile__label"><strong>Stufenregler</strong></span><span class="zeile__wert" style="font-weight:400;color:var(--text-gedaempft);text-align:right;">Position in der Zeile antippen setzt den Wert</span></div>
+  <div class="zeile"><span class="zeile__label"><strong>Aktion mit Rückfrage</strong></span><span class="zeile__wert" style="font-weight:400;color:var(--text-gedaempft);text-align:right;">erster Tipp zeigt Bestätigen/Abbrechen</span></div>
+
+  <img class="schirm" style="width:52mm;margin-top:5mm;" src="../bilder/menu-bestaetigen.png" alt="Rückfrage bei Neustart">
+  <div class="bildunterschrift">Rückfrage vor Neustart/Herunterfahren/Update — ein versehentlicher Tipp löst nichts aus</div>
+  <div class="folio">17</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 18 — Menü: Karte -->
+<!-- ============================================================ -->
+<section class="seite">
+  <div class="kolumne"><span>Einstellungen</span><span>Menü: Karte</span></div>
+  <span class="kicker">Menüreferenz</span>
+  <h1 class="titel">Karte</h1>
+  <div class="zwei-spalten">
+    <div class="bildspalte">
+      <img class="schirm schirm--klein" src="../bilder/menu-map.png" alt="Menü Karte">
+    </div>
+    <div>
+      <div class="zeile"><span class="zeile__label">Anbieter</span><span class="zeile__wert">CARTO dunkel</span></div>
+      <div class="zeile"><span class="zeile__label" style="display:block;"><span class="zeile__hinweis">weitere Werte: CARTO hell · OpenStreetMap · Keine Karte</span></span></div>
+      <div class="zeile"><span class="zeile__label">openAIP-Luftraum</span><span class="zeile__wert">Aus</span></div>
+      <div class="zeile"><span class="zeile__label" style="display:block;"><span class="zeile__hinweis">nur wählbar mit hinterlegtem openAIP-Schlüssel (Portal)</span></span></div>
+      <div class="zeile"><span class="zeile__label">Regenradar</span><span class="zeile__wert">An</span></div>
+      <div class="zeile"><span class="zeile__label">Kartenhelligkeit</span><span class="zeile__wert">40 %</span></div>
+    </div>
+  </div>
+  <div class="folio">18</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 19 — Menü: Standort & Einheiten -->
+<!-- ============================================================ -->
+<section class="seite">
+  <div class="kolumne"><span>Einstellungen</span><span>Menü: Standort &amp; Einheiten</span></div>
+  <span class="kicker">Menüreferenz</span>
+  <h1 class="titel">Standort &amp; Einheiten</h1>
+  <div class="zwei-spalten">
+    <div class="bildspalte">
+      <img class="schirm schirm--klein" src="../bilder/menu-location.png" alt="Menü Standort">
+      <div class="bildunterschrift">Standort</div>
+    </div>
+    <div>
+      <div class="zeile"><span class="zeile__label">Ort</span><span class="zeile__wert">Sassofortino, IT</span></div>
+      <div class="zeile"><span class="zeile__label" style="display:block;"><span class="zeile__hinweis">zweite Option: Gießen, DE — genau zwei feste Orte, kein Suchfeld</span></span></div>
+      <div class="zeile"><span class="zeile__label">Radius</span><span class="zeile__wert">100 km</span></div>
+      <div class="zeile"><span class="zeile__label" style="display:block;"><span class="zeile__hinweis">weitere Werte: 25 · 50 · 150 · 250 km</span></span></div>
+    </div>
+  </div>
+  <hr class="haarlinie">
+  <div class="zwei-spalten">
+    <div class="bildspalte">
+      <img class="schirm schirm--klein" src="../bilder/menu-units.png" alt="Menü Einheiten">
+      <div class="bildunterschrift">Einheiten</div>
+    </div>
+    <div>
+      <div class="zeile"><span class="zeile__label">Distanz</span><span class="zeile__wert">km</span></div>
+      <div class="zeile"><span class="zeile__label" style="display:block;"><span class="zeile__hinweis">weitere Werte: sm (Meilen) · nm (Seemeilen)</span></span></div>
+      <div class="zeile"><span class="zeile__label">Temperatur</span><span class="zeile__wert">°C</span></div>
+      <div class="zeile"><span class="zeile__label">Uhrzeit</span><span class="zeile__wert">24 h</span></div>
+    </div>
+  </div>
+  <div class="folio">19</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 20 — Menü: Darstellung -->
+<!-- ============================================================ -->
+<section class="seite">
+  <div class="kolumne"><span>Einstellungen</span><span>Menü: Darstellung</span></div>
+  <span class="kicker">Menüreferenz</span>
+  <h1 class="titel">Darstellung</h1>
+  <div class="zwei-spalten">
+    <div class="bildspalte">
+      <img class="schirm schirm--klein" src="../bilder/menu-display.png" alt="Menü Darstellung">
+    </div>
+    <div>
+      <div class="zeile"><span class="zeile__label">Theme</span><span class="zeile__wert">Amber</span></div>
+      <div class="zeile"><span class="zeile__label" style="display:block;"><span class="zeile__hinweis">weiterer Wert: Mono (neutrales Off-White)</span></span></div>
+      <div class="zeile"><span class="zeile__label">Icon-Set</span><span class="zeile__wert">Detailliert</span></div>
+      <div class="zeile"><span class="zeile__label" style="display:block;"><span class="zeile__hinweis">weiterer Wert: Einfach (eigene Silhouetten)</span></span></div>
+      <div class="zeile"><span class="zeile__label">Beschriftung</span><span class="zeile__wert">An</span></div>
+      <div class="zeile"><span class="zeile__label">Kompassrose</span><span class="zeile__wert">An</span></div>
+      <div class="zeile"><span class="zeile__label">Sweep</span><span class="zeile__wert">An</span></div>
+      <div class="zeile"><span class="zeile__label">Ringe</span><span class="zeile__wert">An</span></div>
+    </div>
+  </div>
+  <div class="folio">20</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 21 — Menü: Filter -->
+<!-- ============================================================ -->
+<section class="seite">
+  <div class="kolumne"><span>Einstellungen</span><span>Menü: Filter</span></div>
+  <span class="kicker">Menüreferenz</span>
+  <h1 class="titel">Filter</h1>
+  <div class="zwei-spalten">
+    <div class="bildspalte">
+      <img class="schirm schirm--klein" src="../bilder/menu-regler.png" alt="Menü Filter, Stufenregler">
+      <div class="bildunterschrift">Mindesthöhe als Stufenregler, hier auf 4.000 ft gesetzt</div>
+    </div>
+    <div>
+      <div class="zeile"><span class="zeile__label">Mindesthöhe</span><span class="zeile__wert">0 ft</span></div>
+      <div class="zeile"><span class="zeile__label" style="display:block;"><span class="zeile__hinweis">Grundzustand aus; 0–10.000 ft, in 250-ft-Schritten — blendet z. B. Platzrunden aus</span></span></div>
+      <div class="zeile"><span class="zeile__label">Notfall hervorheben</span><span class="zeile__wert">An</span></div>
+      <div class="zeile"><span class="zeile__label">Militär hervorheben</span><span class="zeile__wert">An</span></div>
+      <div class="zeile"><span class="zeile__label">Nur Hervorgehobene</span><span class="zeile__wert">Aus</span></div>
+      <div class="zeile"><span class="zeile__label" style="display:block;"><span class="zeile__hinweis">blendet allen anderen Verkehr aus, wenn eingeschaltet</span></span></div>
+    </div>
+  </div>
+  <div class="folio">21</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 22 — Menü: Anzeige -->
+<!-- ============================================================ -->
+<section class="seite">
+  <div class="kolumne"><span>Einstellungen</span><span>Menü: Anzeige</span></div>
+  <span class="kicker">Menüreferenz</span>
+  <h1 class="titel">Anzeige</h1>
+  <div class="zwei-spalten">
+    <div class="bildspalte">
+      <img class="schirm schirm--klein" src="../bilder/menu-screen.png" alt="Menü Anzeige">
+    </div>
+    <div>
+      <div class="zeile"><span class="zeile__label">Helligkeit</span><span class="zeile__wert">100 %</span></div>
+      <div class="zeile"><span class="zeile__label" style="display:block;"><span class="zeile__hinweis">Software-Abdunkelung, keine echte Backlight-Steuerung</span></span></div>
+      <div class="zeile"><span class="zeile__label">Nachtmodus</span><span class="zeile__wert">Aus</span></div>
+      <div class="zeile"><span class="zeile__label" style="display:block;"><span class="zeile__hinweis">bei „An" zusätzlich: Nachtmodus ab/bis, Nachthelligkeit</span></span></div>
+      <div class="zeile"><span class="zeile__label">Automatisch zur Uhr</span><span class="zeile__wert">5 min</span></div>
+      <div class="zeile"><span class="zeile__label" style="display:block;"><span class="zeile__hinweis">weitere Werte: Aus · 1 min · 10 min · 30 min</span></span></div>
+    </div>
+  </div>
+  <div class="folio">22</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 23 — Menü: System -->
+<!-- ============================================================ -->
+<section class="seite">
+  <div class="kolumne"><span>Einstellungen</span><span>Menü: System</span></div>
+  <span class="kicker">Menüreferenz</span>
+  <h1 class="titel">System</h1>
+  <div class="zwei-spalten">
+    <div class="bildspalte">
+      <img class="schirm schirm--klein" src="../bilder/menu-system.png" alt="Menü System">
+    </div>
+    <div>
+      <div class="zeile"><span class="zeile__label">Version / Hostname / IP / Portal / Datenquellen</span><span class="zeile__wert" style="font-weight:400;">nur lesend</span></div>
+      <div class="zeile"><span class="zeile__label">Update</span><span class="zeile__wert" style="font-weight:400;">mit Rückfrage</span></div>
+      <div class="zeile"><span class="zeile__label">WLAN einrichten</span><span class="zeile__wert" style="font-weight:400;">öffnet Seite 16</span></div>
+      <div class="zeile"><span class="zeile__label">Neustart</span><span class="zeile__wert" style="font-weight:400;">mit Rückfrage</span></div>
+      <div class="zeile"><span class="zeile__label">Herunterfahren</span><span class="zeile__wert" style="font-weight:400;">mit Rückfrage</span></div>
+    </div>
+  </div>
+  <div class="box box--warnung">
+    <span class="box__titel">Update</span>
+    Zieht die neueste Version, prüft sie und startet erst danach neu. Schlägt ein Schritt
+    fehl, wird automatisch auf den vorherigen Stand zurückgesetzt — das Gerät bleibt in
+    jedem Fall betriebsbereit.
+  </div>
+  <div class="folio">23</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 24 — Portal: Aufrufen -->
+<!-- ============================================================ -->
+<section class="seite">
+  <div class="kolumne"><span>Web-Portal</span><span>Aufrufen</span></div>
+  <span class="kicker">Web-Portal</span>
+  <h1 class="titel">Aufrufen</h1>
+  <p class="lauftext">Von jedem Telefon, Tablet oder Rechner im selben WLAN aus, im
+  Browser:</p>
+  <p class="lauftext mono" style="font-size:11pt;text-align:center;background:var(--akzent-flaeche);padding:3mm;border-radius:2px;">http://sasso.local:5000</p>
+  <p class="klein">Die Adresse steht auch am Gerät unter <span class="mono">Info</span>
+  (Seite 15). Löst der Browser den <span class="mono">.local</span>-Namen nicht auf, die
+  IP-Adresse von derselben Stelle verwenden.</p>
+  <p class="lauftext">Kein Internetzugang nötig — das Portal läuft ausschließlich im
+  lokalen Netzwerk.</p>
+  <div class="telefon-rahmen" style="margin-top:6mm;">
+    <img src="../bilder/portal-start.png" alt="Portal-Startseite">
+  </div>
+  <div class="bildunterschrift">Startseite</div>
+  <div class="folio">24</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 25 — Portal: Radar & Darstellung -->
+<!-- ============================================================ -->
+<section class="seite">
+  <div class="kolumne"><span>Web-Portal</span><span>Radar &amp; Darstellung</span></div>
+  <span class="kicker">Web-Portal</span>
+  <h1 class="titel">Radar &amp; Darstellung</h1>
+  <p class="lauftext">Alle Einstellungen aus dem Gerätemenü stehen auch hier — bequemer zu
+  tippen, mit denselben Auswirkungen (Änderungen werden innerhalb von etwa zwei Sekunden
+  auch am Gerät übernommen).</p>
+  <div class="zwei-spalten">
+    <div class="bildspalte">
+      <div class="telefon-rahmen"><img src="../bilder/portal-radar.png" alt="Portal-Seite Radar"></div>
+      <div class="bildunterschrift">Radar: Standort, Filter, Karte, Tracking</div>
+    </div>
+    <div class="bildspalte">
+      <div class="telefon-rahmen"><img src="../bilder/portal-display.png" alt="Portal-Seite Darstellung"></div>
+      <div class="bildunterschrift">Darstellung: Theme, Ruheverhalten, Einheiten</div>
+    </div>
+  </div>
+  <div class="folio">25</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 26 — Portal: Nur im Portal -->
+<!-- ============================================================ -->
+<section class="seite">
+  <div class="kolumne"><span>Web-Portal</span><span>Nur im Portal</span></div>
+  <span class="kicker">Web-Portal</span>
+  <h1 class="titel">Nur im Portal</h1>
+  <p class="lauftext">Das Gerätemenü verzichtet bewusst auf freie Textfelder — diese vier
+  Dinge lassen sich deshalb ausschließlich hier einrichten:</p>
+  <div class="zeile"><span class="zeile__label"><strong>API-Schlüssel</strong></span><span class="zeile__wert" style="font-weight:400;text-align:right;">Tomorrow.io (Wetter), AirLabs, openAIP</span></div>
+  <div class="zeile"><span class="zeile__label"><strong>Flugverfolgung</strong></span><span class="zeile__wert" style="font-weight:400;text-align:right;">Rufzeichen per Texteingabe, Zeitfenster</span></div>
+  <div class="zeile"><span class="zeile__label"><strong>adsbdb-Anreicherung</strong></span><span class="zeile__wert" style="font-weight:400;text-align:right;">an/aus, Fotos als Zusatzquelle</span></div>
+  <div class="zeile"><span class="zeile__label"><strong>Neustart / Herunterfahren</strong></span><span class="zeile__wert" style="font-weight:400;text-align:right;">Systemseite, mit Bestätigung</span></div>
+  <div class="telefon-rahmen" style="margin-top:5mm;"><img src="../bilder/portal-api-keys.png" alt="Portal-Seite API-Schlüssel"></div>
+  <div class="bildunterschrift">API-Schlüssel — leere Felder zeigen „Nicht gesetzt", nichts wird beim erneuten Öffnen überschrieben</div>
+  <div class="folio">26</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 27 — Symbole und Farben -->
+<!-- ============================================================ -->
+<section class="seite">
+  <div class="kolumne"><span>Nachschlagen</span><span>Symbole und Farben</span></div>
+  <span class="kicker">Nachschlagen</span>
+  <h1 class="titel">Symbole und Farben</h1>
+  <div class="legende-raster">
+    <div class="legende-eintrag">
+      <img class="schirm schirm--legende" src="../bilder/legende-normal.png" alt="Normales Flugzeugsymbol">
+      <div class="bildunterschrift">Normal</div>
+    </div>
+    <div class="legende-eintrag">
+      <img class="schirm schirm--legende" src="../bilder/legende-ausgewaehlt.png" alt="Ausgewähltes Flugzeugsymbol">
+      <div class="bildunterschrift">Angetippt</div>
+    </div>
+    <div class="legende-eintrag">
+      <img class="schirm schirm--legende" src="../bilder/legende-verfolgt.png" alt="Verfolgtes Flugzeugsymbol">
+      <div class="bildunterschrift">Wird verfolgt</div>
+    </div>
+    <div class="legende-eintrag">
+      <img class="schirm schirm--legende" src="../bilder/legende-militaer.png" alt="Militärisches Flugzeugsymbol">
+      <div class="bildunterschrift">Militär</div>
+    </div>
+    <div class="legende-eintrag">
+      <img class="schirm schirm--legende" src="../bilder/legende-notfall.png" alt="Notfall-Flugzeugsymbol">
+      <div class="bildunterschrift">Notfall-Squawk</div>
+    </div>
+  </div>
+  <div class="zwischentitel">Höhenfarbe in der Beschriftung</div>
+  <div class="zeile"><span class="zeile__label">Cyan</span><span class="zeile__wert" style="color:#0891a8;font-weight:400;text-align:right;">steigt</span></div>
+  <div class="zeile"><span class="zeile__label">Magenta</span><span class="zeile__wert" style="color:#a8148f;font-weight:400;text-align:right;">sinkt</span></div>
+  <p class="klein" style="margin-top:2mm;">Militär- und Notfall-Hervorhebung lassen sich unter
+  <span class="mono">Einstellungen → Filter</span> einzeln abschalten.</p>
+  <div class="folio">27</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 28 — Höhen- und Statusanzeigen -->
+<!-- ============================================================ -->
+<section class="seite">
+  <div class="kolumne"><span>Nachschlagen</span><span>Höhen- und Statusanzeigen</span></div>
+  <span class="kicker">Nachschlagen</span>
+  <h1 class="titel">Höhen- und Statusanzeigen</h1>
+
+  <div class="zwischentitel">Höhenanzeige</div>
+  <div class="zeile"><span class="zeile__label">ab 18.000 ft</span><span class="zeile__wert">FL350</span></div>
+  <div class="zeile"><span class="zeile__label">darunter</span><span class="zeile__wert">12,500ft</span></div>
+  <p class="klein">Flugfläche (FL) = Höhe in hundert Fuß, Luftfahrt-Konvention oberhalb der
+  Übergangshöhe.</p>
+
+  <div class="zwischentitel">Statuszeile (Radar, unten links)</div>
+  <p class="lauftext mono" style="text-align:center;background:var(--akzent-flaeche);padding:2.5mm;border-radius:2px;">14 Flugzeuge · 100km Reichweite · 21°C · adsb.fi</p>
+
+  <div class="zwischentitel">Squawk-Codes</div>
+  <div class="zeile"><span class="zeile__label mono">7500</span><span class="zeile__wert" style="font-weight:400;text-align:right;">unrechtmäßiger Eingriff</span></div>
+  <div class="zeile"><span class="zeile__label mono">7600</span><span class="zeile__wert" style="font-weight:400;text-align:right;">Funkausfall</span></div>
+  <div class="zeile"><span class="zeile__label mono">7700</span><span class="zeile__wert" style="font-weight:400;text-align:right;">allgemeiner Notfall</span></div>
+  <p class="klein">International genormte Codes, vom Gerät nur angezeigt — keine eigene
+  Bewertung oder Alarmierung darüber hinaus.</p>
+  <div class="folio">28</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 29 — Wenn etwas nicht stimmt (1/2) -->
+<!-- ============================================================ -->
+<section class="seite">
+  <div class="kolumne"><span>Nachschlagen</span><span>Wenn etwas nicht stimmt</span></div>
+  <span class="kicker">Nachschlagen</span>
+  <h1 class="titel">Wenn etwas nicht stimmt</h1>
+
+  <div class="zwischentitel">Radar zeigt keine oder wenige Flugzeuge</div>
+  <p class="lauftext">Prüfen: <span class="mono">Filter → Nur Hervorgehobene</span> aus?
+  <span class="mono">Filter → Mindesthöhe</span> nicht zu hoch? Radius groß genug für die
+  Gegend? An sehr ruhigen Orten ist wenig bis kein Verkehr auch einfach der Normalfall.</p>
+
+  <div class="zwischentitel">Wetterbildschirm zeigt nur einen Hinweis</div>
+  <p class="lauftext">Kein Tomorrow.io-Schlüssel hinterlegt. Im Portal unter
+  <span class="mono">API-Schlüssel</span> nachtragen (Seite 26) — kostenloses Konto bei
+  Tomorrow.io genügt.</p>
+
+  <div class="zwischentitel">Foto oder Route fehlen bei einem Flug</div>
+  <p class="lauftext">Kein Fehler — nicht jeder Flug ist in den kostenlosen
+  Zusatzdatenbanken hinterlegt. Höhe, Geschwindigkeit und Position kommen unabhängig
+  davon immer direkt von adsb.fi.</p>
+
+  <div class="zwischentitel">WLAN-Bildschirm erscheint unerwartet</div>
+  <p class="lauftext">Die WLAN-Verbindung wurde unterbrochen. Netz erneut auswählen
+  (Seite 16) — eine vorher funktionierende Verbindung wird zudem einige Minuten toleriert,
+  bevor dieser Bildschirm überhaupt erscheint (z. B. bei einem Router-Neustart).</p>
+  <div class="folio">29</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 30 — Wenn etwas nicht stimmt (2/2) -->
+<!-- ============================================================ -->
+<section class="seite">
+  <div class="kolumne"><span>Nachschlagen</span><span>Wenn etwas nicht stimmt</span></div>
+
+  <div class="zwischentitel" style="margin-top:0;">Portal unter dem Namen nicht erreichbar</div>
+  <p class="lauftext">Manche Router/Geräte lösen <span class="mono">.local</span>-Namen
+  nicht auf. Stattdessen die IP-Adresse verwenden, abzulesen unter
+  <span class="mono">Einstellungen → System → IP-Adresse</span> am Gerät.</p>
+
+  <div class="zwischentitel">Bildschirm reagiert kurz nicht</div>
+  <p class="lauftext">Ein Kartenwechsel im Hintergrund kann kurz Zeit brauchen; der
+  Sweep läuft dabei normal weiter. Bleibt das Gerät dauerhaft ohne Reaktion, über
+  <span class="mono">Einstellungen → System → Neustart</span> neu starten oder kurz vom
+  Strom trennen.</p>
+
+  <div class="zwischentitel">Update schlägt fehl</div>
+  <p class="lauftext">Das Gerät setzt sich in diesem Fall automatisch auf den vorherigen,
+  funktionierenden Stand zurück, bevor irgendein Dienst angefasst wird — es bleibt in
+  jedem Fall benutzbar. Die letzte Meldung dazu steht auf der Portal-Systemseite.</p>
+
+  <div class="box">
+    <span class="box__titel">Sonst</span>
+    Ein Neustart über <span class="mono">Einstellungen → System → Neustart</span> löst die
+    meisten vorübergehenden Zustände. Bleibt ein Problem bestehen, hilft ein Blick auf die
+    Portal-Systemseite weiter.
+  </div>
+  <div class="folio">30</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 31 — Kurzreferenz Gesten -->
+<!-- ============================================================ -->
+<section class="seite">
+  <div class="kolumne"><span>Nachschlagen</span><span>Kurzreferenz Gesten</span></div>
+  <span class="kicker">Kurzreferenz</span>
+  <h1 class="titel">Gesten</h1>
+  <div class="gesten-tabelle">
+    <div class="zeile"><span class="zeile__label">Radar → runter</span><span class="zeile__wert">Uhr</span></div>
+    <div class="zeile"><span class="zeile__label">Radar → hoch</span><span class="zeile__wert">Info</span></div>
+    <div class="zeile"><span class="zeile__label">Radar → links</span><span class="zeile__wert">Einstellungen</span></div>
+    <div class="zeile"><span class="zeile__label">Radar → rechts</span><span class="zeile__wert">Verfolgter Flug</span></div>
+    <div class="zeile"><span class="zeile__label">Radar, Flugzeug antippen</span><span class="zeile__wert">Flugdetail</span></div>
+    <div class="zeile"><span class="zeile__label">Flugdetail → rechts/runter</span><span class="zeile__wert">Radar</span></div>
+    <div class="zeile"><span class="zeile__label">Flugdetail, FOLGEN antippen</span><span class="zeile__wert">Verfolgter Flug</span></div>
+    <div class="zeile"><span class="zeile__label">Verfolgter Flug → rechts/runter</span><span class="zeile__wert">Radar</span></div>
+    <div class="zeile"><span class="zeile__label">Uhr → hoch</span><span class="zeile__wert">Radar</span></div>
+    <div class="zeile"><span class="zeile__label">Uhr → links</span><span class="zeile__wert">Einstellungen</span></div>
+    <div class="zeile"><span class="zeile__label">Uhr → rechts</span><span class="zeile__wert">Wetter</span></div>
+    <div class="zeile"><span class="zeile__label">Wetter → links/runter</span><span class="zeile__wert">Uhr</span></div>
+    <div class="zeile"><span class="zeile__label">Info → runter/rechts</span><span class="zeile__wert">Radar</span></div>
+    <div class="zeile"><span class="zeile__label">Einstellungen → rechts</span><span class="zeile__wert">eine Ebene zurück</span></div>
+  </div>
+  <div class="folio">31</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 32 — Kurzreferenz Menübaum -->
+<!-- ============================================================ -->
+<section class="seite">
+  <div class="kolumne"><span>Nachschlagen</span><span>Kurzreferenz Menübaum</span></div>
+  <span class="kicker">Kurzreferenz</span>
+  <h1 class="titel">Menübaum</h1>
+  <div style="columns:2;column-gap:6mm;font-size:8.6pt;line-height:13pt;">
+    <p><strong>Karte</strong><br>Anbieter · openAIP-Luftraum · Regenradar · Kartenhelligkeit</p>
+    <p><strong>Standort</strong><br>Ort · Radius</p>
+    <p><strong>Darstellung</strong><br>Theme · Icon-Set · Beschriftung · Kompassrose · Sweep · Ringe</p>
+    <p><strong>Filter</strong><br>Mindesthöhe · Notfall hervorheben · Militär hervorheben · Nur Hervorgehobene</p>
+    <p><strong>Anzeige</strong><br>Helligkeit · Nachtmodus · Nachtmodus ab/bis · Nachthelligkeit · Automatisch zur Uhr</p>
+    <p><strong>Einheiten</strong><br>Distanz · Temperatur · Uhrzeit</p>
+    <p><strong>System</strong><br>Version · Hostname · IP-Adresse · Portal · Datenquellen · Update · WLAN einrichten · Neustart · Herunterfahren</p>
+  </div>
+  <div class="folio">32</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 33 — Datenquellen und Nachweise -->
+<!-- ============================================================ -->
+<section class="seite">
+  <div class="kolumne"><span>Nachschlagen</span><span>Datenquellen und Nachweise</span></div>
+  <span class="kicker">Nachschlagen</span>
+  <h1 class="titel">Datenquellen und Nachweise</h1>
+  <div style="font-size:8.6pt;">
+    <div class="zeile" style="padding:1.6mm 0;"><span class="zeile__label"><strong>Live-Positionen</strong></span><span class="zeile__wert mono" style="font-weight:400;">adsb.fi</span></div>
+    <div class="zeile" style="padding:1.6mm 0;"><span class="zeile__label"><strong>Route/Airline/Halter</strong></span><span class="zeile__wert mono" style="font-weight:400;">adsbdb.com</span></div>
+    <div class="zeile" style="padding:1.6mm 0;"><span class="zeile__label"><strong>Kartenkacheln</strong></span><span class="zeile__wert mono" style="font-weight:400;">CARTO · OpenStreetMap</span></div>
+    <div class="zeile" style="padding:1.6mm 0;"><span class="zeile__label"><strong>Flugzeugfotos</strong></span><span class="zeile__wert mono" style="font-weight:400;">planespotters.net</span></div>
+    <div class="zeile" style="padding:1.6mm 0;"><span class="zeile__label"><strong>Wetter</strong></span><span class="zeile__wert mono" style="font-weight:400;">Tomorrow.io</span></div>
+    <div class="zeile" style="padding:1.6mm 0;"><span class="zeile__label"><strong>Regenradar</strong></span><span class="zeile__wert mono" style="font-weight:400;">RainViewer.com</span></div>
+    <div class="zeile" style="padding:1.6mm 0;"><span class="zeile__label"><strong>Luftraum-Overlay</strong></span><span class="zeile__wert mono" style="font-weight:400;">openAIP.net</span></div>
+  </div>
+
+  <div style="columns:2;column-gap:5mm;margin-top:4mm;font-size:8pt;line-height:11.5pt;">
+    <div class="box" style="margin:0 0 3mm 0;break-inside:avoid;">
+      <span class="box__titel">Flugzeug-Symbole</span>
+      Icons von ADS-B Radar for macOS — <span class="mono">adsb-radar.com</span>. Frei
+      nutzbar für private und kommerzielle Projekte gegen Rückverweis; dieser Nachweis
+      erfüllt die Bedingung.
+    </div>
+    <div class="box" style="margin:0 0 3mm 0;break-inside:avoid;">
+      <span class="box__titel">Wetter-Symbole</span>
+      Weather Icons von Erik Flowers, Originalentwurf Lukas Bischoff —
+      <span class="mono">erikflowers.github.io/weather-icons</span>. Lizenz SIL OFL 1.1.
+    </div>
+    <div class="box" style="margin:0 0 3mm 0;break-inside:avoid;">
+      <span class="box__titel">openAIP</span>
+      Luftraum-/Flugplatzdaten unter CC BY-NC 4.0 (nur nicht-kommerzielle Nutzung),
+      <span class="mono">openaip.net</span>.
+    </div>
+    <div class="box" style="margin:0 0 3mm 0;break-inside:avoid;">
+      <span class="box__titel">adsbdb</span>
+      Routendaten von David J. Taylor und Jim Mason, community-gepflegt,
+      <span class="mono">adsbdb.com</span>. Werden ausschließlich im Arbeitsspeicher
+      zwischengespeichert, nie dauerhaft übernommen.
+    </div>
+  </div>
+  <div class="folio">33</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 34 — Lizenz -->
+<!-- ============================================================ -->
+<section class="seite">
+  <div class="kolumne"><span>Nachschlagen</span><span>Lizenz</span></div>
+  <span class="kicker">Nachschlagen</span>
+  <h1 class="titel">Lizenz</h1>
+  <p class="lauftext">Sasso Radar Tower ist eigenständig entwickelte Software, lizenziert
+  unter der MIT-Lizenz.</p>
+  <div class="box">
+    MIT License<br>
+    Copyright © 2026 Lukas Isenberg<br><br>
+    Permission is hereby granted, free of charge, to any person obtaining a copy of this
+    software and associated documentation files, to deal in the Software without
+    restriction, subject to the inclusion of the above copyright notice in all copies or
+    substantial portions of the Software. Provided „as is", without warranty of any kind.
+  </div>
+  <p class="lauftext">Die auf Seite 33 genannten Drittanbieter-Datenquellen unterliegen
+  eigenen, unabhängigen Nutzungsbedingungen, die von dieser Lizenz unberührt bleiben.</p>
+  <hr class="haarlinie">
+  <p class="klein" style="text-align:center;">Sasso Radar Tower · Bedienungsanleitung ·
+  gesetzt in Inter · erstellt aus dem eigenen Quellcode</p>
+  <div class="folio">34</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 35 — leer -->
+<!-- ============================================================ -->
+<section class="seite seite--leer">
+</section>
+
+<!-- ============================================================ -->
+<!-- 36 — Umschlag hinten -->
+<!-- ============================================================ -->
+<section class="seite seite--umschlag">
+  <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
+    <svg width="46" height="46" viewBox="0 0 120 120" style="margin-bottom:8mm;opacity:0.8;">
+      <circle cx="60" cy="60" r="52" fill="none" stroke="#d2b446" stroke-width="1.6" opacity="0.55"/>
+      <circle cx="60" cy="60" r="16" fill="none" stroke="#d2b446" stroke-width="1.6" opacity="0.55"/>
+      <circle cx="60" cy="60" r="2.4" fill="#efe6cf"/>
+    </svg>
+    <div style="font-size:7.5pt;letter-spacing:0.24em;color:#a89968;">SASSO RADAR TOWER</div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

@@ -12,3 +12,9 @@ settings.json
 *.log
 .pytest_cache/
 tile_cache/
+
+# Anleitung-Build: Zwischen-HTML + optionale Sichtprüf-PNGs (das fertige
+# PDF unter anleitung/out/ wird dagegen mitversioniert -- Teil des
+# Lieferergebnisses, siehe anleitung/README.md)
+anleitung/buch/_gebaut.html
+anleitung/out/seiten/

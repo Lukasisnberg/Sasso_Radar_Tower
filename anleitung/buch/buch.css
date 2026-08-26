@@ -1,0 +1,317 @@
+/* Sasso Radar Tower -- Bedienungsanleitung, Satzsystem.
+   Abgeleitet aus flugradar/display/theme.py (TOKENS, CLASSIC_AMBER) --
+   Papierversion derselben Gestaltungssprache, nicht neu erfunden:
+   dunkle Scheibe auf hellem Grund statt hellem Text auf dunklem Grund,
+   sonst dieselben Verhältnisse (eine Akzentfarbe, vier Schriftgrößen,
+   Haarlinien statt Rahmen, tabellarische Ziffern für Werte).
+   Siehe anleitung/README.md für die Herleitung jedes Werts. */
+
+@font-face {
+  font-family: "Inter";
+  src: url("../../flugradar/web/static/fonts/Inter-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: "Inter";
+  src: url("../../flugradar/web/static/fonts/Inter-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+}
+/* IBM Plex Mono kommt als Systemschrift (apt: fonts-ibm-plex, ohnehin für
+   die App-Screenshots installiert) -- kein woff2 davon im Repo, ein
+   zweiter Vendoring-Pfad nur fürs Buch wäre unnötig doppelt gepflegt. */
+
+:root {
+  /* Papier/Text -- invertiertes theme.py: background wird Papier, label
+     wird Text. */
+  --papier: #faf9f6;
+  --papier-seite: #fcfbf9;
+  --text: #1a1c1d;
+  --text-gedaempft: #4a473f;
+  --text-hinweis: #8a877d;
+  --haarlinie: #dad8d1;
+  --akzent: #b08a1e;      /* CLASSIC_AMBER-Akzent, für Papier abgedunkelt (Kontrast) */
+  --akzent-flaeche: #fbefcb;
+  --warnung: #a52f2f;      /* theme.emergency, ebenfalls abgedunkelt */
+  --warnung-flaeche: #f6e4e2;
+
+  --schrift: "Inter", "IBM Plex Sans", "DejaVu Sans", sans-serif;
+  --schrift-mono: "IBM Plex Mono", "DejaVu Sans Mono", monospace;
+
+  /* Vier Stufen, wie TOKENS.font_title/value/standard/small am Gerät. */
+  --gr-hero: 40pt;
+  --gr-titel: 17pt;
+  --gr-zwischentitel: 11pt;
+  --gr-text: 9.5pt;
+  --gr-klein: 7.5pt;
+
+  --einheit: 7pt; /* Vertikalrhythmus-Grundmaß, TOKENS.grid_unit-Analogon */
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #e5e3dd;
+  color: var(--text);
+}
+
+@page { size: 148mm 210mm; margin: 0; }
+
+.buch {
+  margin: 0;
+  padding: 0;
+}
+
+.seite {
+  width: 148mm;
+  height: 210mm;
+  position: relative;
+  overflow: hidden;
+  background: var(--papier-seite);
+  color: var(--text);
+  font-family: var(--schrift);
+  font-size: var(--gr-text);
+  line-height: 14pt;
+  page-break-after: always;
+  padding: 18mm 16mm 20mm 20mm;
+}
+.seite:nth-of-type(even) {
+  padding: 18mm 20mm 20mm 16mm; /* gerade Seiten: Bundsteg (innen) rechts */
+}
+
+.seite--umschlag {
+  background: #14120c;
+  color: #efe6cf;
+  padding: 0;
+}
+.seite--leer { background: var(--papier-seite); }
+
+/* ---- Kolumnentitel + Folio -------------------------------------- */
+
+.kolumne {
+  position: absolute;
+  top: 10mm;
+  left: 20mm;
+  right: 16mm;
+  display: flex;
+  justify-content: space-between;
+  font-size: 7pt;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-hinweis);
+}
+.seite:nth-of-type(even) .kolumne { left: 16mm; right: 20mm; }
+
+.folio {
+  position: absolute;
+  bottom: 10mm;
+  right: 16mm;
+  font-family: var(--schrift-mono);
+  font-size: 8pt;
+  color: var(--text-hinweis);
+}
+.seite:nth-of-type(even) .folio { right: auto; left: 16mm; }
+
+/* ---- Typografie ---------------------------------------------------- */
+
+h1, h2, h3 { margin: 0; font-weight: 600; }
+
+.kicker {
+  display: block;
+  font-size: 7.5pt;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--akzent);
+  margin-bottom: 3mm;
+}
+.titel {
+  font-size: var(--gr-titel);
+  font-weight: 600;
+  margin: 0 0 6mm 0;
+  line-height: 1.2;
+}
+.zwischentitel {
+  font-size: var(--gr-zwischentitel);
+  font-weight: 600;
+  margin: 6mm 0 2.5mm 0;
+}
+p { margin: 0 0 3mm 0; }
+.lauftext { font-size: var(--gr-text); line-height: 14pt; }
+.klein { font-size: var(--gr-klein); color: var(--text-gedaempft); line-height: 11pt; }
+.hinweis-zeile { font-size: var(--gr-klein); color: var(--text-hinweis); }
+.mono { font-family: var(--schrift-mono); font-variant-numeric: tabular-nums; }
+strong { font-weight: 600; }
+
+.haarlinie {
+  border: none;
+  border-top: 1px solid var(--haarlinie);
+  margin: 4mm 0;
+}
+
+/* ---- Kapitel-Auftakt ------------------------------------------------ */
+
+.kapitel-ziffer {
+  font-family: var(--schrift-mono);
+  font-size: var(--gr-hero);
+  font-weight: 600;
+  color: var(--akzent);
+  line-height: 1;
+  margin-bottom: 4mm;
+}
+
+/* ---- Bilder / Bildschirmfotos --------------------------------------- */
+
+.schirm {
+  display: block;
+  background: transparent;
+}
+.schirm--gross { width: 84mm; margin: 0 auto; }
+.schirm--klein { width: 52mm; }
+.schirm--legende { width: 20mm; }
+
+.bildspalte { text-align: center; }
+.bildunterschrift {
+  font-size: var(--gr-klein);
+  color: var(--text-hinweis);
+  text-align: center;
+  margin-top: 2mm;
+}
+
+.zwei-spalten {
+  display: grid;
+  grid-template-columns: 52mm 1fr;
+  gap: 6mm;
+  align-items: start;
+}
+.zwei-spalten--rechts {
+  display: grid;
+  grid-template-columns: 1fr 52mm;
+  gap: 6mm;
+  align-items: start;
+}
+
+.telefon-rahmen {
+  width: 48mm;
+  height: 74mm;
+  overflow: hidden;
+  border: 1px solid var(--haarlinie);
+  border-radius: 2px;
+  margin: 0 auto;
+}
+.telefon-rahmen img {
+  width: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: top;
+}
+
+/* ---- Callout-Diagramm (S. 4) ----------------------------------------- */
+
+.diagramm-bild { position: relative; width: 84mm; margin: 0 auto; }
+.diagramm-bild img { width: 100%; display: block; }
+.marke {
+  position: absolute;
+  width: 4.2mm;
+  height: 4.2mm;
+  margin: -2.1mm 0 0 -2.1mm;
+  border-radius: 50%;
+  background: var(--akzent);
+  color: #1a1305;
+  font-family: var(--schrift-mono);
+  font-size: 6.4pt;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---- Listen / Tabellenzeilen (Menü-, Gesten-, Ausstattungslisten) ---- */
+
+.zeile {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 4mm;
+  padding: 2.4mm 0;
+  border-bottom: 1px solid var(--haarlinie);
+}
+.zeile:last-child { border-bottom: none; }
+.zeile__label { font-size: var(--gr-text); }
+.zeile__wert {
+  font-family: var(--schrift-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--akzent);
+  text-align: right;
+  white-space: nowrap;
+}
+.zeile__hinweis { display: block; font-size: var(--gr-klein); color: var(--text-hinweis); margin-top: 0.5mm; }
+
+.gesten-tabelle .zeile__label { width: 60mm; }
+
+/* ---- Boxen (Hinweis / Warnung) ---------------------------------------- */
+
+.box {
+  border: 1px solid var(--haarlinie);
+  border-left: 2px solid var(--akzent);
+  padding: 3mm 4mm;
+  margin: 3mm 0;
+  font-size: var(--gr-klein);
+  line-height: 11.5pt;
+  background: var(--akzent-flaeche);
+}
+.box--warnung {
+  border-left-color: var(--warnung);
+  background: var(--warnung-flaeche);
+}
+.box__titel {
+  display: block;
+  font-weight: 600;
+  font-size: var(--gr-klein);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 1.5mm;
+  color: var(--text);
+}
+
+/* ---- Fußzeilen-Chips (Nachbau der Gerätefußzeile in Text) ------------ */
+
+.chip {
+  display: inline-block;
+  border: 1px solid var(--haarlinie);
+  border-radius: 2px;
+  padding: 0.6mm 2mm;
+  font-size: var(--gr-klein);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--text-gedaempft);
+}
+.chip--akzent { color: var(--akzent); border-color: var(--akzent); }
+
+/* ---- Inhaltsverzeichnis ------------------------------------------------ */
+
+.toc__zeile {
+  display: flex;
+  align-items: baseline;
+  gap: 2mm;
+  padding: 1.6mm 0;
+}
+.toc__titel { white-space: nowrap; }
+.toc__punkte {
+  flex: 1;
+  border-bottom: 1px dotted var(--text-hinweis);
+  transform: translateY(-1.5mm);
+}
+.toc__seite { font-family: var(--schrift-mono); color: var(--text-hinweis); }
+
+/* ---- Farb-/Symbol-Legende (S. 27) -------------------------------------- */
+
+.legende-raster {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5mm 4mm;
+}
+.legende-eintrag { text-align: center; }
+.legende-eintrag .schirm--legende { background: #101112; border-radius: 50%; }
